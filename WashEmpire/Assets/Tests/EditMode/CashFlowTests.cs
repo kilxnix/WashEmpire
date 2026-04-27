@@ -51,7 +51,7 @@ namespace WashEmpire.Tests
             bay.SetSlippageRate(0.03f);
 
             bay.SetHasCardReader(false);
-            bay.SettlePayout(payout: 5);
+            bay.SettlePayout(5);
             // Expected: bin += 5 × 0.90 × 0.97 ≈ 4.365 → 4 (int truncation), changer += 5 × 0.10 × 0.97 ≈ 0.485 → 0
             Assert.AreEqual(4, bay.CashInBin);
             Assert.AreEqual(0, changer.BillStacker);
