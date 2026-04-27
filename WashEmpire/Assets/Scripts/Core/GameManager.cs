@@ -37,6 +37,9 @@ namespace WashEmpire
             OnCashChanged?.Invoke(DepositedCash);
         }
 
+        [System.Obsolete("Use Deposit() instead. Will be removed in Sprint 2.B.")]
+        public void AddCash(int amount) => Deposit(amount);
+
         public bool TrySpend(int amount)
         {
             if (amount > DepositedCash) return false;
