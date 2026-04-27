@@ -11,6 +11,7 @@ namespace WashEmpire
 
         [Header("Cash Routing (Sprint 2)")]
         [SerializeField] private Changer changer;
+        [SerializeField] private LotEconomy economy;
         [SerializeField] private bool hasCardReader = false;
         [Range(0f, 0.2f)]
         [SerializeField] private float slippageRate = 0.03f;
@@ -48,6 +49,7 @@ namespace WashEmpire
         public void SettlePayout(int amount)
         {
             lifetimeRevenue += amount;
+            if (economy != null) economy.RecordRevenue(amount);
 
             if (hasCardReader)
             {
@@ -57,12 +59,15 @@ namespace WashEmpire
                 {
                     cardCredit -= whole;
                     if (GameManager.Instance != null) GameManager.Instance.Deposit(whole);
+                    if (economy != null) economy.RecordCardRevenue(whole);
                 }
                 return;
             }
 
             float netCashRevenue = amount * (1f - slippageRate);
-            lifetimeSlippage += amount - netCashRevenue;
+            float slippageThisCall = amount - netCashRevenue;
+            lifetimeSlippage += slippageThisCall;
+            if (economy != null) economy.RecordSlippage(Mathf.RoundToInt(slippageThisCall));
 
             float toBin = netCashRevenue * bayBinShare;
             float toChanger = netCashRevenue - toBin;
