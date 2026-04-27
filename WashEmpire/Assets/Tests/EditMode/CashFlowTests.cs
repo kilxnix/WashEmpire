@@ -91,9 +91,9 @@ namespace WashEmpire.Tests
         [Test]
         public void CardBay_Deposits_Directly_With_3Percent_Fee_NoBin()
         {
-            // Reuse [SetUp]'s GameManager singleton; reset its cash to 0 for this test
-            GameManager.Instance.SetStartingCash(0);
-            GameManager.Instance.Initialize();
+            // Use [SetUp]'s GM (Edit Mode doesn't auto-fire Awake; must call Initialize explicitly)
+            gm.SetStartingCash(0);
+            gm.Initialize();
 
             var bayGO = new GameObject("Bay");
             var bay = bayGO.AddComponent<BayController>();
