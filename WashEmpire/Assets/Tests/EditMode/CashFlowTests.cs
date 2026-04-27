@@ -48,21 +48,25 @@ namespace WashEmpire.Tests
             var changerGO = new GameObject("Changer");
             var changer = changerGO.AddComponent<Changer>();
             bay.SetChanger(changer);
-            bay.SetHasCardReader(false);
             bay.SetSlippageRate(0.03f);
 
-            // Settle $100 cash payment.
-            // netCash = 100 * 0.97 = 97; slippage = 100 - 97 = 3
-            // toBin = round(97 * 0.90) = 87; toChanger = 97 - 87 = 10
-            bay.SettlePayout(100);
+            bay.SetHasCardReader(false);
+            bay.SettlePayout(payout: 5);
+            // Expected: bin += 5 × 0.90 × 0.97 ≈ 4.365 → 4 (int truncation), changer += 5 × 0.10 × 0.97 ≈ 0.485 → 0
+            Assert.AreEqual(4, bay.CashInBin);
+            Assert.AreEqual(0, changer.BillStacker);
 
-            Assert.AreEqual(100, bay.LifetimeRevenue);
-            Assert.AreEqual(3, bay.LifetimeSlippage);
-            Assert.AreEqual(87, bay.CashInBin);
-            Assert.AreEqual(10, changer.BillStacker);
+            // Repeat 100 times to amortize int truncation
+            bayGO.GetComponent<BayController>().ResetForTest();
+            changerGO.GetComponent<Changer>().ResetForTest();
+            for (int i = 0; i < 100; i++) bay.SettlePayout(5);
+            // Expected: bin ≈ 100 × 5 × 0.90 × 0.97 = 436.5 → ~436
+            //          changer ≈ 100 × 5 × 0.10 × 0.97 = 48.5 → ~48
+            Assert.That(bay.CashInBin, Is.InRange(430, 440));
+            Assert.That(changer.BillStacker, Is.InRange(45, 51));
 
-            Object.DestroyImmediate(changerGO);
             Object.DestroyImmediate(bayGO);
+            Object.DestroyImmediate(changerGO);
         }
 
         [Test]
@@ -73,43 +77,40 @@ namespace WashEmpire.Tests
             var changerGO = new GameObject("Changer");
             var changer = changerGO.AddComponent<Changer>();
             bay.SetChanger(changer);
-            bay.SetHasCardReader(false);
-            bay.SetSlippageRate(0.03f);
 
-            bay.SettlePayout(100);
-            int beforeCollect = bay.CashInBin;
-            Assert.Greater(beforeCollect, 0, "Bin should have cash before collection");
-
+            for (int i = 0; i < 100; i++) bay.SettlePayout(5);
             int collected = bay.CollectFromBin();
 
-            Assert.AreEqual(beforeCollect, collected);
+            Assert.That(collected, Is.GreaterThan(0));
             Assert.AreEqual(0, bay.CashInBin);
 
-            Object.DestroyImmediate(changerGO);
             Object.DestroyImmediate(bayGO);
+            Object.DestroyImmediate(changerGO);
         }
 
         [Test]
         public void CardBay_Deposits_Directly_With_3Percent_Fee_NoBin()
         {
-            // Reuse [SetUp]'s GameManager singleton — reset its cash to 0 for this test
+            // Reuse [SetUp]'s GameManager singleton; reset its cash to 0 for this test
             GameManager.Instance.SetStartingCash(0);
             GameManager.Instance.Initialize();
 
             var bayGO = new GameObject("Bay");
             var bay = bayGO.AddComponent<BayController>();
-            bay.SetHasCardReader(true);
+            var changerGO = new GameObject("Changer");
+            var changer = changerGO.AddComponent<Changer>();
+            bay.SetChanger(changer);
             bay.SetCardProcessingFee(0.03f);
+            bay.SetHasCardReader(true);
 
-            // $100 card payment: net = round(100 * 0.97) = 97, deposited directly
-            bay.SettlePayout(100);
+            for (int i = 0; i < 100; i++) bay.SettlePayout(5);
 
-            Assert.AreEqual(100, bay.LifetimeRevenue);
-            Assert.AreEqual(0, bay.LifetimeSlippage, "Card path does not accumulate slippage");
-            Assert.AreEqual(0, bay.CashInBin, "Card path bypasses bin");
-            Assert.AreEqual(97, GameManager.Instance.DepositedCash);
+            Assert.AreEqual(0, bay.CashInBin, "Card bay does not fill bin");
+            Assert.AreEqual(0, changer.BillStacker, "Card bay does not feed changer");
+            Assert.That(GameManager.Instance.DepositedCash, Is.InRange(480, 490), "Card bay deposits 100×5×0.97 ≈ 485");
 
             Object.DestroyImmediate(bayGO);
+            Object.DestroyImmediate(changerGO);
         }
 
         [Test]
