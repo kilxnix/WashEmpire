@@ -24,7 +24,7 @@ Tycoon games live or die on the *progression curve* — the felt rate at which t
 
 - **Lots owned:** 1 (the starter lot)
 - **Phase goal:** Stabilize the starter lot and reach consistent weekly profit
-- **Key mechanics in play:** basic upgrades, supply restocks, customer demand basics, single-lot management
+- **Key mechanics in play:** basic upgrades, supply restocks, customer demand basics, single-lot management, FP cash collection mandatory at week-end
 - **Mechanics locked:** employees beyond a single attendant, multiple-lot management, premium services, rivals' direct attention
 - **Learning curve:** the player learns the core economic loop — coin collection, supply costs, upgrade ROI
 - **Exit criteria:** $50k cash + 4 consecutive weeks of positive profit + lot at 60%+ condition rating
@@ -36,7 +36,7 @@ Tycoon games live or die on the *progression curve* — the felt rate at which t
 
 - **Lots owned:** 1–3
 - **Phase goal:** Successfully manage multiple lots and learn travel-between-locations workflow
-- **Key mechanics unlocked:** second lot acquisition, basic employee hiring (attendants, maintenance), city map navigation, neighborhood demographics matter
+- **Key mechanics unlocked:** second lot acquisition, basic employee hiring (attendants, maintenance), city map navigation, neighborhood demographics matter, option to skip FP cash collection (player chooses each week-end)
 - **Mechanics still locked:** premium services (laser/detail), manager delegation, full rival aggression, fleet contracts
 - **Rivals enter player awareness:** Tier 2 is when SudsCo starts paying attention. Aurora and Hydro are still expanding without regard to player.
 - **Learning curve:** the player learns multi-lot logistics, employee management basics, neighborhood matching
@@ -95,6 +95,7 @@ Tier promotion is *automatic* upon meeting exit criteria, but signaled clearly t
 - **System unlock screen** — visual showcase of newly available mechanics, framed as the player's growing capabilities
 - **Tutorial/hint pop** — soft guidance on the new tier's strategic considerations
 - **Difficulty adjustment** — rivals notice the player's growth and recalibrate (no number-bump, but threat detection delays decrease)
+- Tier 2 promotion event explicitly highlights the FP-skip unlock as a felt promotion.
 
 There is **no demotion** — once a tier is reached, it's reached, even if the player's cash drops below the floor. This prevents tier-flickering and preserves the unlock progression.
 

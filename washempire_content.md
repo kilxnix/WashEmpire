@@ -55,7 +55,7 @@ Per-bay upgrades that improve customer satisfaction, equipment longevity, and re
 | BAY_WAX_01 | Spray Wax Module | $3,800 | Adds wax option, satisfaction +10% | 2 |
 | BAY_WAX_02 | Hot Wax Module | $8,500 | Premium wax option, satisfaction +15% | 3 |
 | BAY_PAY_01 | Coin Acceptor Upgrade | $600 | Reduces meter jam crises | 1 |
-| BAY_PAY_02 | Card Reader | $2,800 | Enables card payment, +5% revenue ceiling | 2 |
+| BAY_PAY_02 | Card Reader | $2,800 | Bay's revenue auto-deposited (no FP collection). 3% processing fee. +5% revenue ceiling (existing convenience effect). | 1 |
 | BAY_PAY_03 | App Pay / Loyalty | $7,500 | App pay enabled, +10% revenue ceiling, repeat customer bonus | 4 |
 
 ### 2.3 Capacity Expansion
@@ -83,8 +83,8 @@ Cost reduction and operational efficiency upgrades.
 | BACK_RECLAIM_01 | Reclaim Water System | $25,000 | Water cost -65% | 3 |
 | BACK_BULK_01 | Bulk Chemical Storage | $8,000 | Variable cost -25% | 2 |
 | BACK_BULK_02 | Industrial Storage | $22,000 | Variable cost -40% | 4 |
-| BACK_SEC_01 | Security Cameras | $2,500 | Vandalism crises -50% | 2 |
-| BACK_SEC_02 | Premium Security System | $7,500 | Vandalism crises -75%, lower insurance | 3 |
+| BACK_SEC_01 | Security Cameras | $2,500 | Vandalism crises -50%. Slippage -50% relative. | 2 |
+| BACK_SEC_02 | Premium Security System | $7,500 | Vandalism crises -75%, lower insurance. Slippage -75% relative. | 3 |
 | BACK_OFFICE_01 | Office / Management Hub | $12,000 | Required for managers, employee comfort | 3 |
 | BACK_OFFICE_02 | Premium Office | $30,000 | Better employee retention, +scout effectiveness | 4 |
 | BACK_SOLAR_01 | Solar Panels | $40,000 | Electricity cost -75% | 4 |
@@ -102,6 +102,10 @@ Demand-boosting investments.
 | MARK_GRAND_01 | Grand Reopening | $3,000 | +30% demand for 2 weeks (one lot) | 3 |
 | MARK_LOYALTY_01 | Loyalty Program | $8,000 | Repeat customer rate +25%, ongoing | 3 |
 | MARK_CORP_01 | Corporate Outreach | $15,000 | Unlocks fleet contract bidding | 4 |
+
+### 2.5b Token Slippage (Cash-Flow Concept)
+
+Token slippage is the % of cash-paid revenue that never reaches the bin between bay and collection — tokens leave the lot in pockets, get lost on the ground, or kept as souvenirs. Tier-scaled: 3% (T1), 5% (T2), 8% (T3), 10% (T4), 12% (T5). Card-reader bays bypass slippage entirely with a 3% processing fee instead. Security upgrades reduce slippage relative: BACK_SEC_01 -50%, BACK_SEC_02 -75%. The FP cash-collection ritual is the surface where slippage becomes visible to the player — see `washempire_fpcollection.md` §5 for the ritual UX and §5.5 for the strategic loop across tiers.
 
 ### 2.6 Brand Identity Upgrades (Cosmetic, late-game)
 

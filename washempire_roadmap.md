@@ -22,7 +22,7 @@ Three principles guide this plan:
 | Phase | Goal | Duration (realistic) | Output |
 |-------|------|----------------------|--------|
 | 0 | Pre-production | ✅ Complete | Design docs (this set) |
-| 1 | Vertical slice | 9 weeks | Playable 30-min build, validates core loop |
+| 1 | Vertical slice | ~13 weeks (revised from 9w after Sprint 2 FP redesign — see `washempire_fpcollection.md` §8.1) | Playable 30-min build, validates core loop |
 | 2 | Core loop expansion | 4–6 months | Multi-lot game with employees, first rival |
 | 3 | Content & balance | 3–5 months | Full content suite, all rivals, full progression |
 | 4 | Polish & launch prep | 2–3 months | Launch-ready build with marketing in place |
@@ -52,7 +52,7 @@ Pre-production produced this complete document set:
 
 ---
 
-## 4. Phase 1 — Vertical Slice (Weeks 1–9)
+## 4. Phase 1 — Vertical Slice (Weeks 1–~13)
 
 ### 4.1 Goal
 Build the smallest playable version that validates the core loop. Detailed in `washempire_verticalslice.md`.
@@ -65,12 +65,14 @@ Build the smallest playable version that validates the core loop. Detailed in `w
 - Basic camera controls
 - **Sprint exit criteria:** car drives in, uses bay, leaves, +$5
 
-**Sprint 2 (Weeks 2–3): The Cycle**
+**Sprint 2 (Weeks 2–7.5): The Cycle + FP Cash Collection**
+- Sub-phased per `washempire_fpcollection.md` §8: 2A Time & Costs, 2B Bay Cash Accumulation, 2C Office & Stations Geometry, 2D Ritual State Machine, 2E Ritual UX, 2F Card Reader & Polish
 - Day/week timer, fast-forward, pause
 - Required-task system (cash collection)
-- Weekly review screen
-- Save/load (basic)
-- **Sprint exit criteria:** play 4 in-game weeks end-to-end with consistent math
+- FP cash-collection ritual (overhead → FP camera handoff via Cinemachine, NavMesh-walked stations: bay bins, changer, money counter, coin sifter, terminal)
+- Token slippage system, card-reader bypass
+- Weekly review screen, save/load v2
+- **Sprint exit criteria:** play 4 in-game weeks end-to-end with consistent math, FP ritual completes cleanly each week
 
 **Sprint 3 (Weeks 3–5): The Choices**
 - Upgrade panel UI
@@ -499,6 +501,9 @@ Major risks that could derail the project, with mitigation strategies.
 - **Mitigation:** Refactor sprints between major phases. Don't carry hacks across phase boundaries.
 - **Early signal:** simple changes taking unexpectedly long
 - **Response:** allocate refactor sprint before next feature work
+
+**Risk: Sprint 2 redesign mid-build (FP cash collection)**
+- A deliberate scope reframe with offsetting cuts (8→6 upgrades). Tracked in `washempire_fpcollection.md` §2.3. Pessimistic timeline 19w breaches §12 cutline; cutline order in §9.3 is the recovery path.
 
 ### 10.2 Market Risks
 

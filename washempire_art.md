@@ -300,6 +300,7 @@ Every lot consists of:
 - **Signage** — primary brand sign + per-bay tier signs
 - **Lighting** — pole lights, building-mounted floods
 - **Coin meters** — per bay, prominent visual element
+- **Office interior** — small walled-off building on the same lot, NavMesh continuous; contains money counter, coin sifter, and CRT terminal. See `washempire_fpcollection.md` §6.6.
 - **Detail elements** — trash cans, vending machines, optional benches, cigarette butts, oil stains
 
 ### 10.2 Lot Quality Levels (Visual States)
@@ -493,6 +494,18 @@ Each rival's lots must be instantly recognizable from the floating camera. Their
 - No fade-in/fade-out — replace with cuts or paper-flip animations
 - Sound effects on every UI interaction (paper rustle, stamp, click)
 
+### 13.6 Tray HUD (FP Ritual)
+
+Persistent bottom-left overlay during the FP cash-collection ritual. Lo-fi clipboard aesthetic matches the rest of the HUD: cream `#E8E0D0` paper with dark text, three rows for `Bills`, `Coins`, `Tokens` (Tokens at $0 in slice). Rows tick up live as the player empties stations and drain to $0 as the office counter and sifter run. Disappears at ritual end. See `washempire_fpcollection.md` §4.7.
+
+### 13.7 Office Terminal Receipt
+
+The office terminal renders as a CRT-styled screen displaying a printed-receipt layout: header `─── WEEK N DEPOSIT ───`, line items for Bills (counter) and Coins (sifter), a totalled `TOTAL DEPOSITED`, then theoretical revenue and slippage breakdown. Monospaced font, single `[ Continue ]` button. The `cameras would help` slippage hint sits under the slippage line when applicable. See `washempire_fpcollection.md` §4.6.
+
+### 13.8 Station Interaction Overlay
+
+Generic overlay invoked at each ritual station. Shows the station's interaction prompt (`Hold to empty`, `Click to run`) on a small clipboard slip pinned to the lower-center of the screen. Hold actions show a tick-up progress bar; click actions show a single click target. Overlay matches the cream + black aesthetic of all other HUD pieces.
+
 ---
 
 ## 14. Iconography
@@ -633,7 +646,14 @@ Each rival's lots must be instantly recognizable from the floating camera. Their
 ### 18.3 Camera Limitations
 - Cannot tilt below horizon
 - Cannot rotate vertically (no third-person dive)
+- Exception: during cash-collection ritual, the camera enters first-person mode at eye height (~1.7m). See `washempire_fpcollection.md` §3 for ritual scope. Default tycoon overhead camera resumes once the ritual ends.
 - Cannot pan beyond lot boundaries (in vertical slice — full game has city map for cross-lot navigation)
+
+### 18.4 First-Person Collection Mode
+
+During end-of-week cash collection, the overhead vcam yields to a first-person eye-height camera that follows an invisible NavMesh agent. Movement is click-to-walk; no avatar is rendered. Each ritual station (coin bin, changer, money counter, coin sifter, terminal) has a hand-placed station-anchor vcam that takes priority on arrival via Cinemachine blend.
+
+Blend durations are tight to keep the ritual under one minute: ~1s overhead → FP at start, ~0.5s FP → station-anchor at each station, ~0.5s station-anchor → FP on station completion, ~1s FP → overhead at ritual end. Office entry is an FP → FP transition through a door portal — no scene load, no fade. See `washempire_fpcollection.md` §6.5.
 
 ---
 

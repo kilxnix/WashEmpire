@@ -61,6 +61,7 @@ Three principles:
 - **Skill range:** Medium to very high — managers must be developed or hired at premium
 - **Wage range:** $1,500–$3,500 / week
 - **Critical mechanic:** A managed lot still earns revenue and incurs costs, but the player doesn't *do anything* there unless a crisis fires. This is what enables 10+ lot empires.
+- At Tier 3+, a manager assigned to a lot also runs that lot's FP cash-collection ritual autonomously each week — the player no longer visits the lot in person. Cash is deposited net of any slippage the manager couldn't prevent (security upgrades still apply).
 
 ### 2.5 Marketing/Scout
 **The strategic role. Late-game leverage.**

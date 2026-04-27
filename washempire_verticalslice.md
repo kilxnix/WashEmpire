@@ -70,7 +70,7 @@ If 2 or fewer: redesign before continuing.
 The only required task for the vertical slice: **end-of-week cash collection from coin meters.**
 - Cash accumulates in meters during the week
 - At week-end, "Collect Cash" task appears in task panel
-- Player clicks each bay's coin meter to collect
+- End-of-week cash collection runs as the FP ritual specified in `washempire_fpcollection.md`. The click is replaced by a walk-through-the-lot ritual visiting each coin bin, the changer, and the back-office counter and sifter.
 - Cash transfers to main account
 - Cannot fast-forward past Sunday → Monday transition without collecting
 
@@ -78,26 +78,25 @@ Reason for keeping this task: it's the *physical* moment in an otherwise abstrac
 
 ### 3.6 The Upgrade Tree (Vertical Slice Subset)
 
-Eight upgrades, no more, no less. These are the choices the player makes in 30 minutes:
+Six upgrades. These are the choices the player makes in 30 minutes:
 
 | # | Upgrade | Cost | Effect |
 |---|---------|------|--------|
 | 1 | Paint Job | $1,500 | Curb appeal +0.10 → demand +10% |
 | 2 | New Signage | $2,500 | Curb appeal +0.10 → demand +10% |
-| 3 | Better Dials (per bay) | $1,500 | Customer satisfaction +5%, demand +3% per upgraded bay |
+| 3 | Better Dials (per bay) | $1,500 | Satisfaction +5%, demand +3% |
 | 4 | Soap Upgrade (per bay) | $800 | Equipment condition decay -20% |
 | 5 | Add 3rd Bay | $10,000 | +1 bay capacity |
-| 6 | Add Vacuum Station | $2,500 | Secondary revenue +$80–$150/wk |
-| 7 | Lighting Upgrade | $2,000 | Curb appeal +0.10 → demand +10% |
-| 8 | Equipment Repair Kit | $500 | Restore one bay to 100% condition (consumable) |
+| 6 | Card Reader (per bay) | $2,800 | Auto-deposit, 3% fee, +5% revenue ceiling |
 
-Three of these (Paint, Signage, Lighting) stack into a curb appeal package.
-Two of these (Dials, Soap) are per-bay equipment upgrades.
+Vacuum Station, Lighting Upgrade, and Equipment Repair Kit are cut from the slice to offset the FP ritual scope addition (see `washempire_fpcollection.md` §2.3).
+
+Two (Paint, Signage) stack into a curb appeal package.
+Two (Dials, Soap) are per-bay equipment upgrades.
 One (Bay) is a capacity expansion.
-One (Vacuum) is a secondary revenue source.
-One (Repair Kit) is reactive maintenance.
+One (Card Reader) is the per-bay payment-method choice that opts out of the FP ritual at that bay.
 
-**This mix is deliberate.** It covers every category in the full game (cosmetic, equipment, capacity, secondary revenue, maintenance) at minimum scope. If this set is fun, the full game's wider tree will be too.
+**This mix is deliberate.** It covers cosmetic, equipment, capacity, and payment-method at minimum scope, and forces a real decision about the FP ritual via the Card Reader. If this set is fun, the full game's wider tree will be too.
 
 ### 3.7 Demand & Revenue Simulation
 - Use the formulas from `washempire_economy.md` Section 3
@@ -107,6 +106,8 @@ One (Repair Kit) is reactive maintenance.
 - No price elasticity in slice — price is fixed at $5
 
 Reason for fixing price: pricing is a *huge* design surface. Better to lock revenue per visit and let upgrades drive demand changes. Pricing returns in Phase 2.
+
+Token slippage of 3% is applied to cash-paid revenue per `washempire_fpcollection.md` §5. Card-reader bays bypass this with a 3% processing fee instead.
 
 ### 3.8 Crisis Event (One Type)
 - **Equipment breakdown**: 5–10% chance per week per bay below 50% condition
@@ -267,21 +268,19 @@ The order systems get built matters more than which systems exist. Build foundat
 
 **Cutline if behind schedule:** if Phase 1 is taking >3 weeks, the Unity foundation is wrong. Stop and reevaluate before continuing.
 
-### Phase 2 — The Cycle (Weeks 2–3)
-**Goal: the game has a heartbeat. Time advances, weeks pass, cash collection happens.**
+### Phase 2 — The Cycle (Weeks 2–7.5, ~5.5w realistic)
+**Goal: the game has a heartbeat. Time advances, weeks pass, the FP cash-collection ritual happens.**
 
-- [ ] Day/week tracker system
-- [ ] In-game time controller (pause, normal, 3x, 10x)
-- [ ] Day/time HUD display
-- [ ] Coin meter accumulation (cash builds up at bay, doesn't auto-transfer)
-- [ ] End-of-week trigger (Sunday → Monday)
-- [ ] Required-task panel UI
-- [ ] "Collect Cash" task generation per bay at week-end
-- [ ] Click-to-collect interaction on coin meters
-- [ ] Block fast-forward past Sunday → Monday until tasks complete
-- [ ] Weekly review screen (revenue, costs, profit, cash)
-- [ ] Fixed cost calculation (water, electricity, lease for the lot)
-- [ ] **Milestone build:** play 4 in-game weeks. Collect cash each week. See the weekly review. Math is consistent.
+Sub-phased per `washempire_fpcollection.md` §8:
+
+- **2A — Time & Costs (1w):** `TimeController`, fast-forward, pause, `LotEconomy` weekly costs, baseline weekly review (placeholder click-collect)
+- **2B — Bay Cash Accumulation (0.5w):** refactor `BayController` to accumulate `CashInBin`, route 90/10 to bay/changer with 3% slippage
+- **2C — Office & Stations Geometry (1w):** build office interior, place changer/counter/sifter/terminal stand-ins, NavMesh re-bake
+- **2D — Ritual State Machine (1.5w):** `RitualController`, `PlayerNavAgent`, FP camera with Cinemachine, station base + 6 concrete stations, hand-off
+- **2E — Ritual UX (1w):** Tray HUD, Next Station button, station overlays, terminal receipt screen with slippage breakdown
+- **2F — Card Reader & Polish (0.5w):** card reader integration, save/load v2, "skip ritual" gate (no-op in slice), bug fixes
+
+**Milestone build:** play 4 in-game weeks. Walk the FP ritual each week. See the weekly review. Math is consistent.
 
 ### Phase 3 — The Choices (Weeks 3–5)
 **Goal: upgrades exist and meaningfully change the lot.**
@@ -352,11 +351,20 @@ If players can't see what their actions did, the game feels dead. This is non-ne
 The vertical slice is "done" when **all of the following** are true:
 
 ### 8.1 Functional Completeness
-- [ ] All 8 upgrades buyable, functional, and visually distinct
+- [ ] All 6 upgrades buyable, functional, and visually distinct
 - [ ] At least 4 weeks of in-game time playable end-to-end
 - [ ] Save/load works, no data loss
 - [ ] No crashes in normal play
 - [ ] Performance: 60fps minimum on a mid-range PC
+- [ ] All 6 stations functional (BayBin × 2, Changer, OfficeDoor, MoneyCounter, CoinSifter, OfficeTerminal)
+- [ ] FP camera blends cleanly to/from overhead
+- [ ] Tray HUD updates per station
+- [ ] NextStation button advances agent
+- [ ] Receipt shows correct breakdown including slippage line
+- [ ] Card reader bypasses ritual for that bay
+- [ ] Weekly review opens after ritual
+- [ ] Save/load v2 round-trips without corruption (close and reopen Unity, cash persists)
+- [ ] Math from economy spec §8 worked example matches in-game observation within 10% (factoring 3% slippage)
 
 ### 8.2 Design Validation
 - [ ] First-time player can reach week 4 without external explanation
@@ -412,7 +420,7 @@ If schedule slips, cut features in this order. **Do not cut things higher on thi
 
 ### 10.2 Key Unity Features Used
 - NavMesh for car pathfinding
-- Cinemachine for the floating camera
+- Cinemachine for the floating camera and FP ritual camera blends (see `washempire_fpcollection.md` §6.5)
 - TextMeshPro for UI text (it's the de facto standard)
 - ScriptableObjects for upgrade definitions, crisis event definitions
 - Unity's Input System (new) for controls
@@ -483,14 +491,14 @@ For a solo dev with C# experience and existing trading-indicator-level code skil
 
 | Phase | Optimistic | Realistic | Pessimistic |
 |-------|-----------|-----------|-------------|
-| Phase 1: The Loop | 1 week | 2 weeks | 3 weeks |
-| Phase 2: The Cycle | 1 week | 1.5 weeks | 2.5 weeks |
-| Phase 3: The Choices | 2 weeks | 2.5 weeks | 4 weeks |
+| Phase 1: The Loop | 1 week | 2 weeks (✅ done) | 3 weeks |
+| Phase 2: The Cycle (with FP) | 4 weeks | 5.5 weeks | 9 weeks |
+| Phase 3: The Choices (6 upgrades) | 1.5 weeks | 2 weeks | 3 weeks |
 | Phase 4: Polish & Test | 1 week | 2 weeks | 3 weeks |
-| Phase 5: Iterate | 1 week | 1 week | 2 weeks |
-| **Total** | **6 weeks** | **9 weeks** | **14 weeks** |
+| Phase 5: Iterate | 0.5 weeks | 1 week | 1 week |
+| **Total** | **8 weeks** | **~12 weeks** | **19 weeks** |
 
-**Plan for 9 weeks. Treat 6 as best-case and 14 as the cutline at which to seriously reassess.**
+**Plan for ~12 weeks. Treat 8 as best-case and 14 as the cutline at which to seriously reassess. The pessimistic 19w breaches that cutline; cutline order is in `washempire_fpcollection.md` §9.3.**
 
 If timeline exceeds 14 weeks: the project may have scope or technical issues that aren't getting solved by more time. Step back and audit.
 

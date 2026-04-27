@@ -115,6 +115,20 @@ Demand is not flat:
 - **Seasonal:** spring +15%, summer baseline, fall +10%, winter -20%
 - **Random daily variance:** ±15% noise on top of all modifiers
 
+### 3.5 Token Slippage Per Tier
+
+% of cash-paid revenue lost between bay and bin (tokens leave the lot in pockets, get lost, kept as souvenirs). Card-reader bays bypass this with a 3% processing fee. See `washempire_fpcollection.md` §5.1.
+
+| Tier | Baseline slippage |
+|---|---|
+| 1 (slice) | 3% |
+| 2 | 5% |
+| 3 | 8% |
+| 4 | 10% |
+| 5 | 12% |
+
+Slippage is reduced by security upgrades: BACK_SEC_01 (Cameras) -50% relative, BACK_SEC_02 (Premium Security) -75% relative.
+
 ---
 
 ## 4. Pricing
@@ -185,6 +199,8 @@ Pricing wars are *zero-sum on demand* but *negative-sum on margin* — both lose
 | **Total fixed (with reclaim)** | **~$510** | **~$1,110** | **~$2,260** |
 
 Fixed costs scale with lot size and equipment density. Adding a bay or tunnel adds to baseline operating costs.
+
+Token slippage is a revenue-side leak — % of cash-paid revenue that never reaches the bin (customers pocket tokens, lose them, take them home). Tier-scaled per §3.5 below.
 
 ### 5.2 Variable Costs (per visit)
 
@@ -312,6 +328,19 @@ For tycoon feel, upgrades should generally pay back in **8–24 weeks** at Tier 
 - Payback: 3–5 weeks
 - **Verdict:** Dominant upgrade once player can afford it, but requires Tier 3 unlock and lot zoning capacity.
 
+**Card Reader ($2,800 per bay):**
+- Bay's revenue auto-deposits net of 3% processing fee. No FP collection labor.
+- At Tier 1 (3% slippage = 3% fee), purely a labor saver — no margin gain.
+- At Tier 2 (5% slippage), saves 2% relative on that bay's revenue. On a $400/wk bay, ~$8/wk net gain.
+- Payback at Tier 2: ~50 weeks on margin alone; faster when labor cost (per-week ritual time) is priced in.
+- **Verdict:** Tier 2+ investment. Slice price-equal to slippage by design — see `washempire_fpcollection.md` §5.4.
+
+**Security Cameras (BACK_SEC_01, $2,500):**
+- Reduces token slippage 50% relative AND reduces vandalism crises 50%.
+- At Tier 2 (5% baseline slippage → 2.5% with cameras) on a $400/wk bay: saves $10/wk slippage + ~$25/wk averaged crisis cost.
+- Payback at Tier 2: ~70 weeks on slippage alone; ~25 weeks when vandalism prevention is priced in.
+- **Verdict:** Tier 2+ investment, becomes mandatory at Tier 3+ where slippage hits 8%+. Cash + cameras beats card readers on margin once slippage > processing fee.
+
 ### 7.2 ROI Design Targets
 
 | Upgrade type | Target payback (weeks) | Notes |
@@ -355,6 +384,8 @@ To make the math concrete, here's a typical Tier 1 working-class lot:
 - **Total costs: $666/week**
 
 **Profit: $34/week.** Barely profitable. Player must invest in upgrades to grow.
+
+With the 3% Tier 1 slippage applied, cash actually deposited is ~$679/week, profit ~$13/week.
 
 **Week 1 player decision:** spend ~$5,000 on signage + paint to lift curb appeal from 0.7x to 1.0x:
 - New demand: 250 × 1.0 = 250 visits/week (but 70% basic = 175 basic, capacity still fine)
