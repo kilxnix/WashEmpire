@@ -23,6 +23,8 @@ namespace WashEmpire
 
         private void Update()
         {
+            if (RitualController.Instance != null && RitualController.Instance.IsActive) return;
+
             var keyboard = Keyboard.current;
             var mouse = Mouse.current;
             if (keyboard == null) return;
