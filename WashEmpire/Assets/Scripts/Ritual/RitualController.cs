@@ -145,6 +145,13 @@ namespace WashEmpire
 
         public void RegisterPlayerAgent(PlayerNavAgent agent) => player = agent;
         public void ClearPlayerAgent() => player = null;
+
+        public CollectionStation PeekNextStation()
+        {
+            int idx = stationIndex + 1;
+            if (idx >= 0 && idx < stations.Count) return stations[idx];
+            return null;
+        }
     }
 
     internal static class RitualMouse
