@@ -14,8 +14,14 @@ namespace WashEmpire
         public int Cash => DepositedCash;
 
         public event Action<int> OnCashChanged;
+        public event Action<int> OnPendingCashChanged;
 
-        public void Awake()
+        private void Awake()
+        {
+            Initialize();
+        }
+
+        internal void Initialize()
         {
             if (Instance != null && Instance != this)
             {
@@ -24,6 +30,11 @@ namespace WashEmpire
             }
             Instance = this;
             DepositedCash = startingCash;
+        }
+
+        internal static void ResetForTests()
+        {
+            Instance = null;
         }
 
         private void Start()
@@ -37,7 +48,7 @@ namespace WashEmpire
             OnCashChanged?.Invoke(DepositedCash);
         }
 
-        [System.Obsolete("Use Deposit() instead. Will be removed in Sprint 2.B.")]
+        [Obsolete("Use Deposit() instead. Will be removed in Sprint 2.B.")]
         public void AddCash(int amount) => Deposit(amount);
 
         public bool TrySpend(int amount)
@@ -48,11 +59,12 @@ namespace WashEmpire
             return true;
         }
 
-        public void SetPendingCash(int amount)
+        internal void SetPendingCash(int amount)
         {
-            PendingCash = amount;
+            PendingCash = Mathf.Max(0, amount);
+            OnPendingCashChanged?.Invoke(PendingCash);
         }
 
-        public void SetStartingCash(int amount) => startingCash = amount;
+        internal void SetStartingCash(int amount) => startingCash = amount;
     }
 }
