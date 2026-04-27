@@ -39,5 +39,18 @@ namespace WashEmpire.Tests
             Assert.AreEqual(1, callCount, "OnCashChanged must fire exactly once per Deposit");
             Assert.AreEqual(gm.DepositedCash, gm.Cash, "Cash backcompat alias must mirror DepositedCash");
         }
+
+        [Test]
+        public void Tier1_FixedCosts_Match_Economy_Spec()
+        {
+            // Per economy spec §5.1: Tier 1 lot fixed costs
+            // Lease 300 + Electricity 100 + Water 150 + Insurance 40 + Permits 20 = $610/week
+            var go = new GameObject();
+            var economy = go.AddComponent<LotEconomy>();
+            economy.ConfigureTier1();
+
+            Assert.AreEqual(610, economy.WeeklyFixedCosts);
+            Object.DestroyImmediate(go);
+        }
     }
 }
