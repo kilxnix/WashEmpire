@@ -9,10 +9,13 @@ namespace WashEmpire
 
         [SerializeField] private int startingCash = 20000;
 
-        public int Cash { get; private set; }
+        public int DepositedCash { get; private set; }
+        public int PendingCash { get; private set; }
+        public int Cash => DepositedCash;
+
         public event Action<int> OnCashChanged;
 
-        private void Awake()
+        public void Awake()
         {
             if (Instance != null && Instance != this)
             {
@@ -20,26 +23,33 @@ namespace WashEmpire
                 return;
             }
             Instance = this;
-            Cash = startingCash;
+            DepositedCash = startingCash;
         }
 
         private void Start()
         {
-            OnCashChanged?.Invoke(Cash);
+            OnCashChanged?.Invoke(DepositedCash);
         }
 
-        public void AddCash(int amount)
+        public void Deposit(int amount)
         {
-            Cash += amount;
-            OnCashChanged?.Invoke(Cash);
+            DepositedCash += amount;
+            OnCashChanged?.Invoke(DepositedCash);
         }
 
         public bool TrySpend(int amount)
         {
-            if (amount > Cash) return false;
-            Cash -= amount;
-            OnCashChanged?.Invoke(Cash);
+            if (amount > DepositedCash) return false;
+            DepositedCash -= amount;
+            OnCashChanged?.Invoke(DepositedCash);
             return true;
         }
+
+        public void SetPendingCash(int amount)
+        {
+            PendingCash = amount;
+        }
+
+        public void SetStartingCash(int amount) => startingCash = amount;
     }
 }
