@@ -7,8 +7,8 @@ namespace WashEmpire
     {
         public static TimeController Instance { get; private set; }
 
-        [SerializeField] private float secondsPerDay = 30f;
-        [SerializeField] private float speedMultiplier = 1f;
+        [SerializeField, Min(0.1f)] private float secondsPerDay = 30f;
+        [SerializeField, Range(0f, 100f)] private float speedMultiplier = 1f;
 
         private float dayProgress;
         private int dayIndex;
@@ -18,7 +18,7 @@ namespace WashEmpire
         public int DayOfWeek => dayIndex % 7;
         public float NormalizedDayProgress => dayProgress / secondsPerDay;
         public float SpeedMultiplier => speedMultiplier;
-        public bool IsPaused => Mathf.Approximately(speedMultiplier, 0f);
+        public bool IsPaused => speedMultiplier == 0f;
 
         public event Action<int> OnDayChanged;
         public event Action<int> OnWeekEnded;
@@ -52,6 +52,8 @@ namespace WashEmpire
 
         public void Tick(float realDeltaSeconds)
         {
+            if (secondsPerDay <= 0f) return;
+            if (realDeltaSeconds <= 0f) return;
             float scaled = realDeltaSeconds * speedMultiplier;
             dayProgress += scaled;
             while (dayProgress >= secondsPerDay)

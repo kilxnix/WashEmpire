@@ -41,10 +41,14 @@ namespace WashEmpire.Tests
             int weeksEnded = 0;
             tc.OnWeekEnded += w => weeksEnded++;
 
+            int dayChangeCount = 0;
+            tc.OnDayChanged += d => dayChangeCount++;
+
             tc.Tick(210f);
 
             Assert.AreEqual(1, weeksEnded, "OnWeekEnded must fire exactly once after a full week");
             Assert.AreEqual(1, tc.CurrentWeek);
+            Assert.AreEqual(7, dayChangeCount, "OnDayChanged must fire once per crossed day");
         }
 
         [Test]
