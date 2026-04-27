@@ -108,7 +108,22 @@ namespace WashEmpire
             if (player != null) Destroy(player.gameObject);
             player = null;
             SetOverheadActive(true);
+            SaveCurrentState();
             OnRitualCompleted?.Invoke();
+        }
+
+        private void OnApplicationQuit() => SaveCurrentState();
+
+        private void SaveCurrentState()
+        {
+            if (GameManager.Instance == null) return;
+            var data = new SaveData
+            {
+                version = 2,
+                deposited_cash = GameManager.Instance.DepositedCash,
+                current_day_index = TimeController.Instance != null ? TimeController.Instance.CurrentDayIndex : 0
+            };
+            SaveSystem.Save(data);
         }
 
         private void SetOverheadActive(bool active)
