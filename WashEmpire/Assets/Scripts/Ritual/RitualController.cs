@@ -15,6 +15,10 @@ namespace WashEmpire
         [SerializeField] private List<CollectionStation> stations = new();
         [SerializeField] private FPCameraController fpCamera;
 
+        [Header("Cinemachine VCam Priorities")]
+        [SerializeField] private Unity.Cinemachine.CinemachineCamera overheadVCam;
+        [SerializeField] private Unity.Cinemachine.CinemachineCamera fpVCam;
+
         public RitualState State { get; private set; } = RitualState.Idle;
         public bool IsActive => State != RitualState.Idle && State != RitualState.Done;
         public Tray Tray { get; private set; } = new Tray();
@@ -49,8 +53,18 @@ namespace WashEmpire
             Tray.Clear();
             stationIndex = -1;
             foreach (var s in stations) s?.Reset();
+
+            if (playerNavAgentPrefab != null && ritualEntryPoint != null)
+            {
+                var go = Instantiate(playerNavAgentPrefab, ritualEntryPoint.position, ritualEntryPoint.rotation);
+                player = go.GetComponent<PlayerNavAgent>();
+                if (fpCamera != null) fpCamera.SetTarget(player);
+            }
+
+            SetOverheadActive(false);
             State = RitualState.Walking;
             OnRitualStarted?.Invoke();
+            AdvanceToNextStation();
         }
 
         public void AdvanceToNextStation()
@@ -70,6 +84,7 @@ namespace WashEmpire
         {
             if (CurrentStation == null) return;
             CurrentStation.OnArrive(Tray);
+            if (CurrentStation.StationVCam != null) CurrentStation.StationVCam.Priority = 20;
             State = RitualState.AtStation;
             OnStationEntered?.Invoke(CurrentStation);
         }
@@ -79,6 +94,7 @@ namespace WashEmpire
         public void OnStationComplete()
         {
             if (CurrentStation == null) return;
+            if (CurrentStation.StationVCam != null) CurrentStation.StationVCam.Priority = 0;
             CurrentStation.OnLeave(Tray);
             OnStationExited?.Invoke(CurrentStation);
             CurrentStation = null;
@@ -89,7 +105,16 @@ namespace WashEmpire
         private void EndRitual()
         {
             State = RitualState.Done;
+            if (player != null) Destroy(player.gameObject);
+            player = null;
+            SetOverheadActive(true);
             OnRitualCompleted?.Invoke();
+        }
+
+        private void SetOverheadActive(bool active)
+        {
+            if (overheadVCam != null) overheadVCam.Priority = active ? 10 : 0;
+            if (fpVCam != null) fpVCam.Priority = active ? 0 : 10;
         }
 
         private void Update()

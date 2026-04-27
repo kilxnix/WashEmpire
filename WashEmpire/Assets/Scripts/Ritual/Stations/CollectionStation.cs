@@ -7,10 +7,12 @@ namespace WashEmpire
         [SerializeField] protected Transform entrancePoint;
         [SerializeField] protected Transform cameraAnchor;
         [SerializeField] protected string displayName = "Station";
+        [SerializeField] protected Unity.Cinemachine.CinemachineCamera stationVCam;
 
         public Transform EntrancePoint => entrancePoint != null ? entrancePoint : transform;
         public Transform CameraAnchor => cameraAnchor != null ? cameraAnchor : transform;
         public string DisplayName => displayName;
+        public Unity.Cinemachine.CinemachineCamera StationVCam => stationVCam;
         public bool IsComplete { get; protected set; }
 
         public abstract void Tick(StationInputContext input);
