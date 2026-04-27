@@ -18,11 +18,16 @@ namespace WashEmpire
         [SerializeField] private float cardProcessingFee = 0.03f;
         [SerializeField, Range(0f, 1f)] private float bayBinShare = 0.90f;
 
+        private float cashInBin;
+        private float lifetimeRevenue;
+        private float lifetimeSlippage;
+        private float cardCredit;
+
         public bool IsOccupied { get; private set; }
         public Transform ServiceSpot => serviceSpot != null ? serviceSpot : transform;
-        public int CashInBin { get; private set; }
-        public int LifetimeRevenue { get; private set; }
-        public int LifetimeSlippage { get; private set; }
+        public int CashInBin => Mathf.FloorToInt(cashInBin);
+        public int LifetimeRevenue => Mathf.FloorToInt(lifetimeRevenue);
+        public int LifetimeSlippage => Mathf.FloorToInt(lifetimeSlippage);
         public bool HasCardReader => hasCardReader;
 
         public bool TryReserve()
@@ -42,38 +47,49 @@ namespace WashEmpire
 
         public void SettlePayout(int amount)
         {
-            LifetimeRevenue += amount;
+            lifetimeRevenue += amount;
 
             if (hasCardReader)
             {
-                int net = Mathf.RoundToInt(amount * (1f - cardProcessingFee));
-                if (GameManager.Instance != null) GameManager.Instance.Deposit(net);
+                cardCredit += amount * (1f - cardProcessingFee);
+                int whole = Mathf.FloorToInt(cardCredit);
+                if (whole > 0)
+                {
+                    cardCredit -= whole;
+                    if (GameManager.Instance != null) GameManager.Instance.Deposit(whole);
+                }
                 return;
             }
 
             float netCashRevenue = amount * (1f - slippageRate);
-            int slippage = amount - Mathf.RoundToInt(netCashRevenue);
-            LifetimeSlippage += slippage;
+            lifetimeSlippage += amount - netCashRevenue;
 
-            int toBin = Mathf.RoundToInt(netCashRevenue * bayBinShare);
-            int toChanger = Mathf.RoundToInt(netCashRevenue) - toBin;
+            float toBin = netCashRevenue * bayBinShare;
+            float toChanger = netCashRevenue - toBin;
 
-            CashInBin += toBin;
+            cashInBin += toBin;
             if (changer != null) changer.AddBills(toChanger);
         }
 
         public int CollectFromBin()
         {
-            int collected = CashInBin;
-            CashInBin = 0;
+            int collected = Mathf.FloorToInt(cashInBin);
+            cashInBin -= collected;
             return collected;
         }
 
         // Test hooks
-        public void SetChanger(Changer c) => changer = c;
-        public void SetHasCardReader(bool v) => hasCardReader = v;
-        public void SetSlippageRate(float r) => slippageRate = r;
-        public void SetCardProcessingFee(float f) => cardProcessingFee = f;
-        public void ResetForTest() { CashInBin = 0; LifetimeRevenue = 0; LifetimeSlippage = 0; }
+        internal void SetChanger(Changer c) => changer = c;
+        internal void SetHasCardReader(bool v) => hasCardReader = v;
+        internal void SetSlippageRate(float r) => slippageRate = r;
+        internal void SetCardProcessingFee(float f) => cardProcessingFee = f;
+        internal void ResetForTest()
+        {
+            cashInBin = 0f;
+            lifetimeRevenue = 0f;
+            lifetimeSlippage = 0f;
+            cardCredit = 0f;
+            IsOccupied = false;
+        }
     }
 }

@@ -4,17 +4,19 @@ namespace WashEmpire
 {
     public class Changer : MonoBehaviour
     {
-        public int BillStacker { get; private set; }
+        private float bills;
 
-        public void AddBills(int amount) => BillStacker += amount;
+        public int BillStacker => Mathf.FloorToInt(bills);
+
+        public void AddBills(float amount) => bills += amount;
 
         public int CollectFromStacker()
         {
-            int collected = BillStacker;
-            BillStacker = 0;
+            int collected = Mathf.FloorToInt(bills);
+            bills -= collected;
             return collected;
         }
 
-        public void ResetForTest() => BillStacker = 0;
+        internal void ResetForTest() => bills = 0f;
     }
 }
