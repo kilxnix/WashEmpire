@@ -703,6 +703,8 @@ export function hydrateGameState(value: unknown): GameState | null {
     totalDriveBys: candidate.totalDriveBys ?? candidate.weekDriveBys ?? 0,
     weekLostRevenue: candidate.weekLostRevenue ?? 0,
     lifetimeLostRevenue: candidate.lifetimeLostRevenue ?? candidate.weekLostRevenue ?? 0,
+    lastTickAt: typeof candidate.lastTickAt === 'number' ? candidate.lastTickAt : Date.now(),
+    pendingOfflineSummary: candidate.pendingOfflineSummary ?? null,
     lastReview: candidate.lastReview ?? null,
   }
 }
@@ -1208,7 +1210,7 @@ function normalizeUpgrades(upgrades: Partial<UpgradeState> | undefined): Upgrade
     signage: Boolean(upgrades?.signage),
     coinCameras: Boolean(upgrades?.coinCameras),
     vacuumIsland: Boolean(upgrades?.vacuumIsland),
-    securityLights: Boolean(upgrades?.securityLights || legacy.bayLighting),
+    securityLights: Boolean(upgrades?.securityLights || legacy?.bayLighting),
     cardReader: Boolean(upgrades?.cardReader),
     loyaltyApp: Boolean(upgrades?.loyaltyApp),
     manager: Boolean(upgrades?.manager),

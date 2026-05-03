@@ -269,3 +269,43 @@ describe('advanceGame heartbeat', () => {
     expect(next.lastTickAt).toBeGreaterThan(0)
   })
 })
+
+import { hydrateGameState } from './simulation'
+
+describe('hydrateGameState — ad migration', () => {
+  it('discards rewardCooldownSeconds and lastReward', () => {
+    const old = {
+      version: 1,
+      ads: { rewardCooldownSeconds: 45, boostSeconds: 60, totalWatched: 3, totalRewardedCash: 500, lastReward: 200 },
+    }
+    const next = hydrateGameState(old)
+    expect(next).not.toBeNull()
+    expect((next!.ads as Partial<{ rewardCooldownSeconds: unknown; lastReward: unknown }>).rewardCooldownSeconds).toBeUndefined()
+    expect((next!.ads as Partial<{ lastReward: unknown }>).lastReward).toBeUndefined()
+    expect(next!.ads.boostSeconds).toBe(60)
+    expect(next!.ads.totalWatched).toBe(3)
+    expect(next!.ads.totalRewardedCash).toBe(500)
+  })
+
+  it('defaults missing slotsAvailable to 5', () => {
+    const old = { version: 1, ads: { boostSeconds: 0 } }
+    const next = hydrateGameState(old)
+    expect(next!.ads.slotsAvailable).toBe(5)
+    expect(next!.ads.nextSlotInSeconds).toBe(17_280)
+  })
+
+  it('clamps over-cap boostSeconds in old saves', () => {
+    const old = { version: 1, ads: { boostSeconds: 999_999 } }
+    const next = hydrateGameState(old)
+    expect(next!.ads.boostSeconds).toBe(43_200)
+  })
+
+  it('defaults lastTickAt to now and pendingOfflineSummary to null', () => {
+    const before = Date.now()
+    const next = hydrateGameState({ version: 1 })
+    const after = Date.now()
+    expect(next!.lastTickAt).toBeGreaterThanOrEqual(before)
+    expect(next!.lastTickAt).toBeLessThanOrEqual(after)
+    expect(next!.pendingOfflineSummary).toBeNull()
+  })
+})
