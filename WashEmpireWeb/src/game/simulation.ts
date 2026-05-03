@@ -576,6 +576,27 @@ export function demandMultiplier(
   return roundStat((1 + upgradeDemand + bayDemand + staffDemand + adDemand) * conditionDemand)
 }
 
+export function expectedHourlyRevenue(state: GameState): number {
+  if (state.bays.length === 0) return 0
+
+  const spawnPerSec = 1 / spawnInterval(state)
+
+  const avgPrice =
+    state.bays.reduce(
+      (sum, bay) => sum + bayWashPrice(state.upgrades, bay, marketPriceBonus(state)),
+      0,
+    ) / state.bays.length
+
+  const avgWandLevel = state.bays.reduce((sum, bay) => sum + bay.upgrades.wand, 0) / state.bays.length
+  const avgWashSeconds = Math.max(3.1, BASE_WASH_SECONDS * (1 - avgWandLevel * 0.055))
+  const washPerSec = state.bays.length / avgWashSeconds
+
+  // Throughput is bottlenecked by the slower of arrivals and bay capacity.
+  const effectivePerSec = Math.min(spawnPerSec, washPerSec)
+
+  return effectivePerSec * avgPrice * 3600 * CUSTOMERS_PER_VISIBLE_CAR
+}
+
 export function progressionProgress(state: GameState): number {
   const lotOwned = upgradeDefinitions.filter((upgrade) => state.upgrades[upgrade.id]).length
   const lotTotal = upgradeDefinitions.length

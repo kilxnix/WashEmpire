@@ -113,3 +113,40 @@ describe('advanceAds', () => {
     expect(next.boostSeconds).toBe(0)
   })
 })
+
+import { expectedHourlyRevenue } from './simulation'
+
+describe('expectedHourlyRevenue', () => {
+  it('returns a positive rate for the starting state', () => {
+    const state = createInitialState()
+    const rate = expectedHourlyRevenue(state)
+    expect(rate).toBeGreaterThan(0)
+    expect(Number.isFinite(rate)).toBe(true)
+  })
+
+  it('grows when bay wand upgrades are added (faster wash → more throughput)', () => {
+    const baseline = expectedHourlyRevenue(createInitialState())
+
+    const upgraded = createInitialState()
+    upgraded.bays = upgraded.bays.map((bay) => ({
+      ...bay,
+      upgrades: { ...bay.upgrades, wand: 4 },
+    }))
+    const upgradedRate = expectedHourlyRevenue(upgraded)
+
+    expect(upgradedRate).toBeGreaterThan(baseline)
+  })
+
+  it('grows when soap upgrades are added (higher price)', () => {
+    const baseline = expectedHourlyRevenue(createInitialState())
+
+    const upgraded = createInitialState()
+    upgraded.bays = upgraded.bays.map((bay) => ({
+      ...bay,
+      upgrades: { ...bay.upgrades, soap: 4 },
+    }))
+    const upgradedRate = expectedHourlyRevenue(upgraded)
+
+    expect(upgradedRate).toBeGreaterThan(baseline)
+  })
+})
