@@ -62,3 +62,54 @@ describe('watchAdForBoost', () => {
     expect(next.cash).toBe(state.cash)
   })
 })
+
+import { advanceAds } from './simulation'
+
+describe('advanceAds', () => {
+  function adsWith(overrides: Partial<import('./types').AdState> = {}) {
+    return {
+      slotsAvailable: 4,
+      nextSlotInSeconds: 17_280,
+      boostSeconds: 0,
+      totalWatched: 0,
+      totalRewardedCash: 0,
+      ...overrides,
+    }
+  }
+
+  it('counts the refill timer down', () => {
+    const next = advanceAds(adsWith({ slotsAvailable: 4, nextSlotInSeconds: 100 }), 30)
+    expect(next.nextSlotInSeconds).toBe(70)
+    expect(next.slotsAvailable).toBe(4)
+  })
+
+  it('refills one slot and re-arms the timer', () => {
+    const next = advanceAds(adsWith({ slotsAvailable: 4, nextSlotInSeconds: 10 }), 20)
+    expect(next.slotsAvailable).toBe(5)
+    expect(next.nextSlotInSeconds).toBe(17_280) // held at cap
+  })
+
+  it('refills multiple slots over a long offline window', () => {
+    const next = advanceAds(adsWith({ slotsAvailable: 0, nextSlotInSeconds: 17_280 }), 50_000)
+    // 50 000s / 17 280s = ~2.89 → 2 slots refilled, partial timer remaining
+    expect(next.slotsAvailable).toBe(2)
+    expect(next.nextSlotInSeconds).toBeGreaterThan(0)
+    expect(next.nextSlotInSeconds).toBeLessThan(17_280)
+  })
+
+  it('caps slot refill at 5', () => {
+    const next = advanceAds(adsWith({ slotsAvailable: 3, nextSlotInSeconds: 0 }), 1_000_000)
+    expect(next.slotsAvailable).toBe(5)
+    expect(next.nextSlotInSeconds).toBe(17_280)
+  })
+
+  it('burns boost on real seconds', () => {
+    const next = advanceAds(adsWith({ boostSeconds: 100 }), 30)
+    expect(next.boostSeconds).toBe(70)
+  })
+
+  it('floors boost at 0', () => {
+    const next = advanceAds(adsWith({ boostSeconds: 5 }), 30)
+    expect(next.boostSeconds).toBe(0)
+  })
+})

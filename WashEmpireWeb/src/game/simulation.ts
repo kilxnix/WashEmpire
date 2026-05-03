@@ -1005,9 +1005,27 @@ function hasAutoCollector(employees: EmployeeState): boolean {
   return employees.cashRunner || employees.bayTech || employees.nightManager
 }
 
-function advanceAds(ads: AdState, _realDeltaSeconds: number): AdState {
-  // TODO(Task 5): implement slot refill and boost decay
-  return ads
+export function advanceAds(ads: AdState, realDeltaSeconds: number): AdState {
+  let { slotsAvailable, nextSlotInSeconds, boostSeconds } = ads
+  boostSeconds = Math.max(0, boostSeconds - realDeltaSeconds)
+
+  if (slotsAvailable < AD_SLOTS_MAX) {
+    nextSlotInSeconds -= realDeltaSeconds
+    while (nextSlotInSeconds <= 0 && slotsAvailable < AD_SLOTS_MAX) {
+      slotsAvailable += 1
+      nextSlotInSeconds += AD_SLOT_REFILL_SECONDS
+    }
+    if (slotsAvailable === AD_SLOTS_MAX) {
+      nextSlotInSeconds = AD_SLOT_REFILL_SECONDS
+    }
+  }
+
+  return {
+    ...ads,
+    slotsAvailable,
+    nextSlotInSeconds,
+    boostSeconds,
+  }
 }
 
 function createStarterBays(template?: Partial<BayState>, cashBox?: CashBox): BayState[] {
