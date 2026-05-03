@@ -576,6 +576,10 @@ export function demandMultiplier(
   return roundStat((1 + upgradeDemand + bayDemand + staffDemand + adDemand) * conditionDemand)
 }
 
+export function cashMultiplier(state: GameState): number {
+  return state.ads.boostSeconds > 0 ? AD_BOOST_MULTIPLIER : 1
+}
+
 export function expectedHourlyRevenue(state: GameState): number {
   if (state.bays.length === 0) return 0
 
@@ -840,29 +844,47 @@ function createPayment(upgrades: UpgradeState, bay: BayState, priceBonus = 0, au
 }
 
 function settlePayment(state: GameState, car: Car): void {
-  const gross = paymentValue(car.payment) * CUSTOMERS_PER_VISIBLE_CAR
+  const baseGross = paymentValue(car.payment) * CUSTOMERS_PER_VISIBLE_CAR
   const bay = state.bays[car.bayIndex]
   if (!bay) return
+
+  const mult = cashMultiplier(state)
+  const gross = baseGross * mult
+  const boostBonus = gross - baseGross
 
   if (car.payment.kind === 'card') {
     const net = gross * (1 - CARD_FEE_RATE)
     state.cash = roundMoney(state.cash + net)
     state.weekRevenue = roundMoney(state.weekRevenue + gross)
     state.lifetimeRevenue = roundMoney(state.lifetimeRevenue + gross)
+    if (boostBonus > 0) {
+      state.ads = {
+        ...state.ads,
+        totalRewardedCash: roundMoney(state.ads.totalRewardedCash + boostBonus),
+      }
+    }
     finishWash(state, bay)
     return
   }
 
   const cashFeeRate = cashLeakRate(state, bay)
   bay.cashBox.bills = roundMoney(
-    bay.cashBox.bills + car.payment.bills * CUSTOMERS_PER_VISIBLE_CAR * (1 - cashFeeRate),
+    bay.cashBox.bills + car.payment.bills * CUSTOMERS_PER_VISIBLE_CAR * mult * (1 - cashFeeRate),
   )
   bay.cashBox.coins = roundMoney(
-    bay.cashBox.coins + car.payment.quarters * 0.25 * CUSTOMERS_PER_VISIBLE_CAR * (1 - cashFeeRate),
+    bay.cashBox.coins + car.payment.quarters * 0.25 * CUSTOMERS_PER_VISIBLE_CAR * mult * (1 - cashFeeRate),
   )
-  bay.cashBox.tokens = roundMoney(bay.cashBox.tokens + car.payment.tokens * CUSTOMERS_PER_VISIBLE_CAR)
+  bay.cashBox.tokens = roundMoney(
+    bay.cashBox.tokens + car.payment.tokens * CUSTOMERS_PER_VISIBLE_CAR * mult,
+  )
   state.weekRevenue = roundMoney(state.weekRevenue + gross)
   state.lifetimeRevenue = roundMoney(state.lifetimeRevenue + gross)
+  if (boostBonus > 0) {
+    state.ads = {
+      ...state.ads,
+      totalRewardedCash: roundMoney(state.ads.totalRewardedCash + boostBonus),
+    }
+  }
   finishWash(state, bay)
 }
 

@@ -150,3 +150,48 @@ describe('expectedHourlyRevenue', () => {
     expect(upgradedRate).toBeGreaterThan(baseline)
   })
 })
+
+import { cashMultiplier } from './simulation'
+
+describe('cashMultiplier', () => {
+  it('returns 1 when boost is off', () => {
+    const state = createInitialState()
+    expect(cashMultiplier(state)).toBe(1)
+  })
+
+  it('returns 3 when boost is active', () => {
+    let state = createInitialState()
+    state = { ...state, ads: { ...state.ads, boostSeconds: 100 } }
+    expect(cashMultiplier(state)).toBe(3)
+  })
+})
+
+import { startGame, advanceGame } from './simulation'
+
+describe('boost multiplier integration', () => {
+  it('triples weekRevenue from a settled wash when boost is active', () => {
+    let state = startGame(createInitialState(), 'Test Lot')
+    state = { ...state, ads: { ...state.ads, boostSeconds: 100 } }
+
+    // Force a car directly into the washing stage on bay 0, then advance enough
+    // game time for it to finish.
+    const carPayment = { kind: 'quarters' as const, quarters: 20, bills: 0, tokens: 0 } // = $5 base
+    state.cars = [{
+      id: 'test-car',
+      stage: 'washing',
+      progress: 0.99,
+      variant: 0,
+      color: '#fff',
+      bayIndex: 0,
+      originCityId: 'rustwater',
+      waitSeconds: 0,
+      payment: carPayment,
+      washSeconds: 5,
+    }]
+
+    const before = state.weekRevenue
+    const next = advanceGame(state, 0.1) // tick should finish the wash
+    // base gross = $5 * 2 customers = $10; with 3× boost = $30 → revenue +$30.
+    expect(next.weekRevenue - before).toBeCloseTo(30, 1)
+  })
+})
