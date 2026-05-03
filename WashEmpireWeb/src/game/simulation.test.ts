@@ -195,3 +195,77 @@ describe('boost multiplier integration', () => {
     expect(next.weekRevenue - before).toBeCloseTo(30, 1)
   })
 })
+
+import { reconcileOffline } from './simulation'
+
+describe('reconcileOffline', () => {
+  function frozenState() {
+    const state = createInitialState()
+    return { ...state, lastTickAt: 1_000_000 } // arbitrary fixed ms
+  }
+
+  it('ignores elapsed windows under 60 seconds', () => {
+    const state = frozenState()
+    const next = reconcileOffline(state, state.lastTickAt + 30_000) // 30s later
+    expect(next.cash).toBe(state.cash)
+    expect(next.pendingOfflineSummary).toBeNull()
+    expect(next.lastTickAt).toBe(state.lastTickAt + 30_000)
+  })
+
+  it('credits cash for the unboosted window, capped at 8h', () => {
+    const state = frozenState()
+    const tenHoursLater = state.lastTickAt + 10 * 3600 * 1000
+    const next = reconcileOffline(state, tenHoursLater)
+    expect(next.cash).toBeGreaterThan(state.cash)
+    expect(next.pendingOfflineSummary).not.toBeNull()
+    expect(next.pendingOfflineSummary!.unboostedSeconds).toBe(28_800) // 8h cap
+    expect(next.pendingOfflineSummary!.boostedSeconds).toBe(0)
+  })
+
+  it('credits boosted cash at 3× and uncaps for the boost window', () => {
+    let state = frozenState()
+    state = { ...state, ads: { ...state.ads, boostSeconds: 6 * 3600 } } // 6h boost banked
+
+    const tenHoursLater = state.lastTickAt + 10 * 3600 * 1000
+    const next = reconcileOffline(state, tenHoursLater)
+
+    expect(next.pendingOfflineSummary!.boostedSeconds).toBe(6 * 3600)
+    expect(next.pendingOfflineSummary!.unboostedSeconds).toBe(4 * 3600) // remaining 4h, under cap
+    expect(next.ads.boostSeconds).toBe(0)
+  })
+
+  it('clamps elapsed time at 24h hard cap', () => {
+    const state = frozenState()
+    const fiftyHoursLater = state.lastTickAt + 50 * 3600 * 1000
+    const next = reconcileOffline(state, fiftyHoursLater)
+    expect(next.pendingOfflineSummary!.elapsedSeconds).toBe(86_400)
+  })
+
+  it('clamps negative elapsed time to zero', () => {
+    const state = frozenState()
+    const earlier = state.lastTickAt - 5_000_000
+    const next = reconcileOffline(state, earlier)
+    expect(next.cash).toBe(state.cash)
+    expect(next.pendingOfflineSummary).toBeNull()
+  })
+
+  it('refills slots during long offline windows', () => {
+    let state = frozenState()
+    state = { ...state, ads: { ...state.ads, slotsAvailable: 0, nextSlotInSeconds: 17_280 } }
+
+    const tenHoursLater = state.lastTickAt + 10 * 3600 * 1000
+    const next = reconcileOffline(state, tenHoursLater)
+    // 10h / 4.8h = ~2.08 → 2 slots refilled
+    expect(next.ads.slotsAvailable).toBe(2)
+    expect(next.pendingOfflineSummary!.slotsRefilled).toBe(2)
+  })
+})
+
+describe('advanceGame heartbeat', () => {
+  it('updates lastTickAt every tick', () => {
+    let state = startGame(createInitialState(), 'Heartbeat Lot')
+    state = { ...state, lastTickAt: 0 }
+    const next = advanceGame(state, 0.05)
+    expect(next.lastTickAt).toBeGreaterThan(0)
+  })
+})

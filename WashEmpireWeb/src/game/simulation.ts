@@ -302,6 +302,7 @@ export function createInitialState(): GameState {
 export function advanceGame(input: GameState, realDeltaSeconds: number): GameState {
   let state = cloneState(input)
   state.ads = advanceAds(state.ads, realDeltaSeconds)
+  state.lastTickAt = Date.now()
 
   if (!state.gameStarted || state.collectRequired || state.speed === 0) return state
 
@@ -350,6 +351,38 @@ export function advanceGame(input: GameState, realDeltaSeconds: number): GameSta
     }
   }
 
+  return state
+}
+
+export function reconcileOffline(input: GameState, nowMs: number): GameState {
+  const elapsedRaw = (nowMs - input.lastTickAt) / 1000
+
+  if (elapsedRaw < OFFLINE_MIN_RECONCILE_SECONDS) {
+    return { ...input, lastTickAt: nowMs }
+  }
+
+  const elapsed = Math.min(OFFLINE_HARD_CAP_SECONDS, Math.max(0, elapsedRaw))
+  const state = cloneState(input)
+
+  const boostBefore = state.ads.boostSeconds
+  const slotsBefore = state.ads.slotsAvailable
+
+  state.ads = advanceAds(state.ads, elapsed)
+
+  const boostedT = Math.min(elapsed, boostBefore)
+  const unboostedT = Math.min(elapsed - boostedT, OFFLINE_UNBOOSTED_CAP_SECONDS)
+  const ratePerSec = (expectedHourlyRevenue(state) * OFFLINE_BASELINE_RATE_FRACTION) / 3600
+  const cashEarned = roundMoney(ratePerSec * (boostedT * AD_BOOST_MULTIPLIER + unboostedT))
+
+  state.cash = roundMoney(state.cash + cashEarned)
+  state.pendingOfflineSummary = {
+    elapsedSeconds: elapsed,
+    boostedSeconds: boostedT,
+    unboostedSeconds: unboostedT,
+    cashEarned,
+    slotsRefilled: state.ads.slotsAvailable - slotsBefore,
+  }
+  state.lastTickAt = nowMs
   return state
 }
 
