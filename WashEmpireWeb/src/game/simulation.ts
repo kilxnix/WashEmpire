@@ -367,11 +367,12 @@ export function reconcileOffline(input: GameState, nowMs: number): GameState {
   const boostBefore = state.ads.boostSeconds
   const slotsBefore = state.ads.slotsAvailable
 
+  const ratePerSec = (expectedHourlyRevenue(state) * OFFLINE_BASELINE_RATE_FRACTION) / 3600
+
   state.ads = advanceAds(state.ads, elapsed)
 
   const boostedT = Math.min(elapsed, boostBefore)
   const unboostedT = Math.min(elapsed - boostedT, OFFLINE_UNBOOSTED_CAP_SECONDS)
-  const ratePerSec = (expectedHourlyRevenue(state) * OFFLINE_BASELINE_RATE_FRACTION) / 3600
   const cashEarned = roundMoney(ratePerSec * (boostedT * AD_BOOST_MULTIPLIER + unboostedT))
 
   state.cash = roundMoney(state.cash + cashEarned)

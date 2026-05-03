@@ -69,7 +69,8 @@ function App() {
 
   useEffect(() => {
     const interval = window.setInterval(() => {
-      localStorage.setItem(SAVE_KEY, exportGameState(gameRef.current))
+      const snapshot = { ...gameRef.current, lastTickAt: Date.now() }
+      localStorage.setItem(SAVE_KEY, exportGameState(snapshot))
     }, 1500)
 
     return () => window.clearInterval(interval)
@@ -277,7 +278,7 @@ function App() {
       {game.collectRequired && game.lastReview && (
         <WeekReviewPanel state={game} onCollect={handleCollect} />
       )}
-      {game.pendingOfflineSummary && (
+      {game.gameStarted && game.pendingOfflineSummary && (
         <OfflineReturnPanel
           summary={game.pendingOfflineSummary}
           onDismiss={handleDismissOfflineSummary}
