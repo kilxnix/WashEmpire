@@ -30,3 +30,35 @@ describe('createInitialState — new fields', () => {
     expect(state.lastTickAt).toBeLessThanOrEqual(after)
   })
 })
+
+import { watchAdForBoost } from './simulation'
+
+describe('watchAdForBoost', () => {
+  it('decrements slot count and adds 2.4h of boost', () => {
+    const state = createInitialState()
+    const next = watchAdForBoost(state)
+    expect(next.ads.slotsAvailable).toBe(4)
+    expect(next.ads.boostSeconds).toBe(8_640)
+    expect(next.ads.totalWatched).toBe(1)
+  })
+
+  it('caps boost at 12 hours when stacking', () => {
+    let state = createInitialState()
+    state = { ...state, ads: { ...state.ads, boostSeconds: 40_000 } }
+    const next = watchAdForBoost(state)
+    expect(next.ads.boostSeconds).toBe(43_200)
+  })
+
+  it('returns the same state when no slots are available', () => {
+    let state = createInitialState()
+    state = { ...state, ads: { ...state.ads, slotsAvailable: 0 } }
+    const next = watchAdForBoost(state)
+    expect(next).toBe(state)
+  })
+
+  it('does not add instant cash', () => {
+    const state = createInitialState()
+    const next = watchAdForBoost(state)
+    expect(next.cash).toBe(state.cash)
+  })
+})

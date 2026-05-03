@@ -465,16 +465,17 @@ export function switchCityDistrict(input: GameState, cityId: CityId): GameState 
   return state
 }
 
-export function claimRewardedAd(input: GameState): GameState {
-  // TODO(Task 4): implement with new slot/boost system
-  return input
-}
+export function watchAdForBoost(input: GameState): GameState {
+  if (input.ads.slotsAvailable <= 0) return input
 
-export function rewardedAdCash(state: GameState): number {
-  const payBox = cashBoxValue(totalCashBox(state.bays))
-  const campaignBoost = state.upgrades.mobileCampaign ? 1.75 : 1
-  const baseline = 500 + state.week * 85
-  return roundMoney(Math.max(baseline, state.weekRevenue * 0.18, payBox * 0.75) * campaignBoost)
+  const state = cloneState(input)
+  state.ads = {
+    ...state.ads,
+    slotsAvailable: state.ads.slotsAvailable - 1,
+    boostSeconds: clampBoost(state.ads.boostSeconds + AD_BOOST_PER_WATCH_SECONDS),
+    totalWatched: state.ads.totalWatched + 1,
+  }
+  return state
 }
 
 export function bayUpgradeCost(upgradeId: BayUpgradeId, level: number, bayIndex: number): number {
