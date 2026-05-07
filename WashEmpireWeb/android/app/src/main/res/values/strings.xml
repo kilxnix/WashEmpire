@@ -1,0 +1,8 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Wash Empire</string>
+    <string name="title_activity_main">Wash Empire</string>
+    <string name="admob_app_id">ca-app-pub-0396642445880935~1557835307</string>
+    <string name="package_name">com.washempire.app</string>
+    <string name="custom_url_scheme">com.washempire.app</string>
+</resources>

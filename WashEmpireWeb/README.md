@@ -33,6 +33,18 @@ npm run build
 npm run lint
 ```
 
+Use Node `22.12+`. Node 21 is not supported by the current Vite/Rolldown toolchain, and the Android AdMob wrapper uses Capacitor packages that require Node 22+.
+
+## Itch.io Upload
+
+```powershell
+npm install
+npm run build
+Compress-Archive -Path dist\* -DestinationPath wash-empire-itch.zip -Force
+```
+
+Upload `wash-empire-itch.zip` as an HTML game. The Vite build uses relative asset paths, so `index.html`, `assets/`, `favicon.svg`, and `manifest.webmanifest` can live at the zip root.
+
 ## Demo Loop
 
 1. Cars enter the self-serve bays and customers spend time washing.
@@ -49,5 +61,24 @@ npm run lint
 
 ## Ad Hook
 
-The browser demo uses `window.WashEmpireAds.showRewardedAd()` when a host provides it. Without a host SDK,
-the app uses a short local fallback so the ad reward loop remains testable.
+The reward button calls `showRewardedAd()` before granting the boost. Resolution order:
+
+1. `window.WashEmpireAds.showRewardedAd()` when a custom native host provides it.
+2. `@capacitor-community/admob` when the app is running in the Android Capacitor APK.
+3. Browser-only local fallback so the itch/web demo remains testable.
+
+Production AdMob ids:
+
+```text
+Android app id: ca-app-pub-0396642445880935~1557835307
+Rewarded ad unit: ca-app-pub-0396642445880935/6253769968
+```
+
+The Android wrapper lives in `android/` after running:
+
+```powershell
+npm run android:sync
+npm run android:apk
+```
+
+Android builds require JDK 21 and Android SDK platform/build-tools 36. The native manifest includes `com.google.android.gms.ads.APPLICATION_ID` with the Android app id above. The web build prepares the rewarded unit, shows it, and grants the boost only when AdMob returns a reward.
