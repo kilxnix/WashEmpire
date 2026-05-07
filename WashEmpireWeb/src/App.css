@@ -670,6 +670,18 @@ button:disabled {
   .hud-actions button span {
     display: none;
   }
+
+  .hud-ad {
+    min-width: auto;
+  }
+
+  .hud-ad-line {
+    display: none;
+  }
+
+  .hud-ad-button {
+    min-width: 38px;
+  }
 }
 
 .offline-return {

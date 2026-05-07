@@ -24,6 +24,8 @@ export type CityId = 'rustwater' | 'harbor' | 'downtown' | 'skyway' | 'beltline'
 
 export type WashModel = 'selfServe' | 'conveyor'
 
+export type CityTheme = 'smallTown' | 'harbor' | 'downtown' | 'snow' | 'beltline'
+
 export interface Payment {
   kind: PaymentKind
   quarters: number
@@ -117,6 +119,8 @@ export interface WeekReview {
   week: number
   revenue: number
   costs: number
+  costsPaid: number
+  costsDue: number
   employeeWages: number
   profit: number
   cars: number
@@ -187,6 +191,8 @@ export interface CityDefinition {
   id: CityId
   name: string
   washModel: WashModel
+  theme: CityTheme
+  bayCount: number
   purchaseCost: number
   restoreBaseCost: number
   trafficMultiplier: number

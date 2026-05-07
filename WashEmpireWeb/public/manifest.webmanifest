@@ -1,0 +1,18 @@
+{
+  "name": "Wash Empire",
+  "short_name": "WashEmpire",
+  "description": "A mobile idle car wash builder about growing a self-serve wash empire.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#8db8d7",
+  "theme_color": "#8db8d7",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

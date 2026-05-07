@@ -334,6 +334,9 @@ function CollectionToast({ title, amount }: { title: string; amount: number }) {
 function WeekReviewPanel({ state, onCollect }: { state: GameState; onCollect: () => void }) {
   const review = state.lastReview
   if (!review) return null
+  const costsDue = review.costsDue ?? 0
+  const closeoutAction =
+    review.physicalDue > 0 ? 'Collect, pay costs, open' : costsDue > 0 ? 'Pay costs and open' : 'Open'
 
   return (
     <section className="week-review" aria-label="Weekly review">
@@ -347,6 +350,10 @@ function WeekReviewPanel({ state, onCollect }: { state: GameState; onCollect: ()
         <div>
           <dt>Total costs</dt>
           <dd>{money(review.costs)}</dd>
+        </div>
+        <div>
+          <dt>{costsDue > 0 ? 'Costs due' : 'Costs paid'}</dt>
+          <dd>{money(costsDue > 0 ? costsDue : review.costsPaid ?? review.costs)}</dd>
         </div>
         <div>
           <dt>Employee wages</dt>
@@ -374,7 +381,7 @@ function WeekReviewPanel({ state, onCollect }: { state: GameState; onCollect: ()
         </div>
       </dl>
       <button type="button" onClick={onCollect}>
-        {review.physicalDue > 0 ? 'Collect and open' : 'Open'} Week {state.week + 1}
+        {closeoutAction} Week {state.week + 1}
       </button>
     </section>
   )

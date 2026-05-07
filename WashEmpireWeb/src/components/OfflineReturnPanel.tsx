@@ -16,7 +16,7 @@ export function OfflineReturnPanel({ summary, onDismiss }: OfflineReturnPanelPro
           <dt>Boosted</dt>
           <dd>
             {formatDuration(summary.boostedSeconds)}
-            {summary.boostedSeconds > 0 ? <span className="offline-tag">3× rate</span> : null}
+            {summary.boostedSeconds > 0 ? <span className="offline-tag">3x rate</span> : null}
           </dd>
         </div>
         <div>

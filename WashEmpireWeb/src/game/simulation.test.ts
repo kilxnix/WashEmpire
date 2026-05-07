@@ -9,7 +9,7 @@ describe('simulation smoke', () => {
   })
 })
 
-describe('createInitialState — new fields', () => {
+describe('createInitialState - new fields', () => {
   it('starts with 5 ad slots and full refill timer', () => {
     const state = createInitialState()
     expect(state.ads.slotsAvailable).toBe(5)
@@ -91,7 +91,7 @@ describe('advanceAds', () => {
 
   it('refills multiple slots over a long offline window', () => {
     const next = advanceAds(adsWith({ slotsAvailable: 0, nextSlotInSeconds: 17_280 }), 50_000)
-    // 50 000s / 17 280s = ~2.89 → 2 slots refilled, partial timer remaining
+    // 50 000s / 17 280s = ~2.89 -> 2 slots refilled, partial timer remaining
     expect(next.slotsAvailable).toBe(2)
     expect(next.nextSlotInSeconds).toBeGreaterThan(0)
     expect(next.nextSlotInSeconds).toBeLessThan(17_280)
@@ -124,7 +124,12 @@ describe('expectedHourlyRevenue', () => {
     expect(Number.isFinite(rate)).toBe(true)
   })
 
-  it('grows when bay wand upgrades are added (faster wash → more throughput)', () => {
+  it('keeps the starter wash comfortably above weekly fixed costs', () => {
+    const expectedStarterWeek = expectedHourlyRevenue(createInitialState()) * (210 / 3600)
+    expect(expectedStarterWeek).toBeGreaterThan(700)
+  })
+
+  it('grows when bay wand upgrades are added (faster wash -> more throughput)', () => {
     const baseline = expectedHourlyRevenue(createInitialState())
 
     const upgraded = createInitialState()
@@ -166,7 +171,7 @@ describe('cashMultiplier', () => {
   })
 })
 
-import { startGame, advanceGame } from './simulation'
+import { startGame, advanceGame, collectPayBox } from './simulation'
 
 describe('boost multiplier integration', () => {
   it('triples weekRevenue from a settled wash when boost is active', () => {
@@ -191,8 +196,58 @@ describe('boost multiplier integration', () => {
 
     const before = state.weekRevenue
     const next = advanceGame(state, 0.1) // tick should finish the wash
-    // base gross = $5 * 2 customers = $10; with 3× boost = $30 → revenue +$30.
+    // base gross = $5 * 2 customers = $10; with 3x boost = $30 -> revenue +$30.
     expect(next.weekRevenue - before).toBeCloseTo(30, 1)
+  })
+})
+
+describe('weekly closeout economy', () => {
+  it('does not drain cash-on-hand before a manual collection is opened', () => {
+    let state = startGame(createInitialState(), 'Manual Lot')
+    state = {
+      ...state,
+      cash: 100,
+      clockSeconds: 209.99,
+      nextCarIn: 999,
+      weekRevenue: 1000,
+      bays: state.bays.map((bay, index) =>
+        index === 0 ? { ...bay, cashBox: { bills: 1000, coins: 0, tokens: 0 } } : bay,
+      ),
+    }
+
+    const reviewReady = advanceGame(state, 0.2)
+
+    expect(reviewReady.collectRequired).toBe(true)
+    expect(reviewReady.cash).toBe(100)
+    expect(reviewReady.lastReview!.physicalDue).toBe(1000)
+    expect(reviewReady.lastReview!.costsDue).toBe(520)
+
+    const nextWeek = collectPayBox(reviewReady)
+    expect(nextWeek.cash).toBe(580)
+    expect(nextWeek.week).toBe(2)
+  })
+
+  it('lets a hired collector settle weekly costs from the pay boxes automatically', () => {
+    let state = startGame(createInitialState(), 'Staffed Lot')
+    state = {
+      ...state,
+      cash: 100,
+      clockSeconds: 209.99,
+      nextCarIn: 999,
+      weekRevenue: 1000,
+      employees: { ...state.employees, cashRunner: true },
+      bays: state.bays.map((bay, index) =>
+        index === 0 ? { ...bay, cashBox: { bills: 1000, coins: 0, tokens: 0 } } : bay,
+      ),
+    }
+
+    const reviewReady = advanceGame(state, 0.2)
+
+    expect(reviewReady.collectRequired).toBe(true)
+    expect(reviewReady.cash).toBe(340)
+    expect(reviewReady.lastReview!.autoCollected).toBe(1000)
+    expect(reviewReady.lastReview!.costsPaid).toBe(760)
+    expect(reviewReady.lastReview!.costsDue).toBe(0)
   })
 })
 
@@ -222,7 +277,7 @@ describe('reconcileOffline', () => {
     expect(next.pendingOfflineSummary!.boostedSeconds).toBe(0)
   })
 
-  it('credits boosted cash at 3× and uncaps for the boost window', () => {
+  it('credits boosted cash at 3x and uncaps for the boost window', () => {
     let state = frozenState()
     state = { ...state, ads: { ...state.ads, boostSeconds: 6 * 3600 } } // 6h boost banked
 
@@ -255,7 +310,7 @@ describe('reconcileOffline', () => {
 
     const tenHoursLater = state.lastTickAt + 10 * 3600 * 1000
     const next = reconcileOffline(state, tenHoursLater)
-    // 10h / 4.8h = ~2.08 → 2 slots refilled
+    // 10h / 4.8h = ~2.08 -> 2 slots refilled
     expect(next.ads.slotsAvailable).toBe(2)
     expect(next.pendingOfflineSummary!.slotsRefilled).toBe(2)
   })
@@ -272,7 +327,7 @@ describe('advanceGame heartbeat', () => {
 
 import { hydrateGameState } from './simulation'
 
-describe('hydrateGameState — ad migration', () => {
+describe('hydrateGameState - ad migration', () => {
   it('discards rewardCooldownSeconds and lastReward', () => {
     const old = {
       version: 1,
@@ -307,5 +362,59 @@ describe('hydrateGameState — ad migration', () => {
     expect(next!.lastTickAt).toBeGreaterThanOrEqual(before)
     expect(next!.lastTickAt).toBeLessThanOrEqual(after)
     expect(next!.pendingOfflineSummary).toBeNull()
+  })
+})
+
+import { activeBayCount, buyBayUpgrade, buyCityDistrict, switchCityDistrict } from './simulation'
+
+describe('city bay management', () => {
+  it('uses the configured bay count for each travel district', () => {
+    let state = startGame(createInitialState(), 'District Test')
+    expect(activeBayCount(state)).toBe(3)
+
+    state = { ...state, cash: 1_000_000 }
+    state = buyCityDistrict(state, 'harbor')
+    expect(state.cityMap.currentCityId).toBe('harbor')
+    expect(activeBayCount(state)).toBe(3)
+
+    state = buyCityDistrict(state, 'downtown')
+    expect(state.cityMap.currentCityId).toBe('downtown')
+    expect(activeBayCount(state)).toBe(2)
+
+    state = buyCityDistrict(state, 'skyway')
+    expect(activeBayCount(state)).toBe(3)
+
+    state = buyCityDistrict(state, 'beltline')
+    expect(activeBayCount(state)).toBe(2)
+  })
+
+  it('does not upgrade inactive future bays in a smaller district', () => {
+    let state = startGame(createInitialState(), 'Small Bay Lot')
+    state = { ...state, cash: 1_000_000 }
+    state = buyCityDistrict(state, 'downtown')
+
+    const hiddenBayLevel = state.bays[2].upgrades.wand
+    const blocked = buyBayUpgrade(state, 2, 'wand')
+    expect(blocked).toBe(state)
+    expect(blocked.bays[2].upgrades.wand).toBe(hiddenBayLevel)
+
+    const upgraded = buyBayUpgrade(state, 1, 'wand')
+    expect(upgraded).not.toBe(state)
+    expect(upgraded.bays[1].upgrades.wand).toBe(state.bays[1].upgrades.wand + 1)
+  })
+
+  it('keeps owned lower-bay cities switchable and manageable', () => {
+    let state = startGame(createInitialState(), 'Travel Lot')
+    state = { ...state, cash: 1_000_000 }
+    state = buyCityDistrict(state, 'harbor')
+    state = buyCityDistrict(state, 'downtown')
+    state = switchCityDistrict(state, 'rustwater')
+
+    expect(state.cityMap.currentCityId).toBe('rustwater')
+    expect(activeBayCount(state)).toBe(3)
+
+    state = switchCityDistrict(state, 'harbor')
+    expect(state.cityMap.currentCityId).toBe('harbor')
+    expect(activeBayCount(state)).toBe(3)
   })
 })

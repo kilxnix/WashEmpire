@@ -16,6 +16,8 @@ import {
 import type { ChangeEvent } from 'react'
 import type { GameState, SpeedSetting } from '../game/types'
 import {
+  activeBayCount,
+  activeBays,
   averageCondition,
   activeQueueCount,
   cashBoxValue,
@@ -57,10 +59,12 @@ export function Hud({
   onReset,
   adLoading,
 }: HudProps) {
-  const cashBox = totalCashBox(state.bays)
+  const visibleBays = activeBays(state)
+  const visibleBayCount = activeBayCount(state)
+  const cashBox = totalCashBox(visibleBays)
   const due = cashBoxValue(cashBox)
-  const condition = averageCondition(state.bays)
-  const demand = demandMultiplier(state.upgrades, condition, state.bays, state.ads, state.employees)
+  const condition = averageCondition(visibleBays)
+  const demand = demandMultiplier(state.upgrades, condition, visibleBays, state.ads, state.employees)
   const progress = progressionProgress(state)
   const collectDisabled = due <= 0 && !state.collectRequired
   const adSlots = state.ads.slotsAvailable
@@ -84,7 +88,7 @@ export function Hud({
       <section className="hud-cluster hud-status" aria-label="Lot status">
         <strong>
           {money(state.cash)}
-          {adBoostActive && <span className="cash-boost-chip">3×</span>}
+          {adBoostActive && <span className="cash-boost-chip">3x</span>}
         </strong>
         <em>{state.locationName}</em>
         <span>
@@ -234,7 +238,7 @@ export function Hud({
         </div>
         <div>
           <span>{conveyor ? 'Lanes' : 'Bays'}</span>
-          <strong>{conveyor ? 2 : state.bays.length}</strong>
+          <strong>{conveyor ? 2 : visibleBayCount}</strong>
         </div>
         <div>
           <span>Cars</span>

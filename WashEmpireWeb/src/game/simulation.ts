@@ -25,14 +25,14 @@ const DAY_SECONDS = 30
 const WEEK_SECONDS = DAY_SECONDS * 7
 const BAY_COUNT = 4
 const CUSTOMERS_PER_VISIBLE_CAR = 2
-const BASE_PRICE = 5
+const BASE_PRICE = 6
 const BASE_WASH_SECONDS = 8.8
 const BASE_SPAWN_SECONDS = 1.8
 const BASE_QUEUE_SECONDS = 9.5
 const APPROACH_SECONDS = 7.2
 const ENTERING_SECONDS = 3.1
 const PASSING_SECONDS = 8.4
-const WEEKLY_FIXED_COSTS = 780
+const WEEKLY_FIXED_COSTS = 520
 const CARD_FEE_RATE = 0.03
 const AD_BOOST_PER_WATCH_SECONDS = 8_640
 const AD_BOOST_MAX_STACK_SECONDS = 43_200
@@ -45,7 +45,7 @@ const OFFLINE_HARD_CAP_SECONDS = 86_400
 const OFFLINE_MIN_RECONCILE_SECONDS = 60
 const DEFAULT_LOCATION_NAME = 'Wash Empire Auto Spa'
 
-const CAR_COLORS = ['#e8edf2', '#d6d1c8', '#94a3b8', '#37556f', '#1f2937', '#9b5f50']
+const CAR_COLORS = ['#f8fafc', '#dbe4ea', '#b8c3cc', '#334155', '#1f2937', '#8f1d1d']
 
 export const upgradeDefinitions: UpgradeDefinition[] = [
   {
@@ -209,30 +209,36 @@ export const cityDefinitions: CityDefinition[] = [
     id: 'rustwater',
     name: 'Rustwater Junction',
     washModel: 'selfServe',
+    theme: 'smallTown',
+    bayCount: 3,
     purchaseCost: 0,
     restoreBaseCost: 4500,
-    trafficMultiplier: 1,
+    trafficMultiplier: 1.2,
     patienceBonus: 0.02,
     priceBonus: 0,
-    story: 'Your first corner lot, rough but visible from the main road.',
-    visual: 'Starter district with older block walls and steady commuter traffic',
+    story: 'Your first small-city corner lot, rough but visible from the main road.',
+    visual: 'Starter streets, low buildings, slower traffic, and cheap restoration',
   },
   {
     id: 'harbor',
     name: 'Harbor Heights',
     washModel: 'selfServe',
+    theme: 'harbor',
+    bayCount: 3,
     purchaseCost: 42000,
     restoreBaseCost: 9000,
     trafficMultiplier: 1.28,
     patienceBonus: 0.08,
     priceBonus: 0.35,
     story: 'A run-down wash beside docks, apartments, and delivery routes.',
-    visual: 'Blue canal roads, salt-worn bays, and higher token use',
+    visual: 'Canals, warehouse blocks, salt-worn bays, and higher token use',
   },
   {
     id: 'downtown',
     name: 'Neon Downtown',
     washModel: 'selfServe',
+    theme: 'downtown',
+    bayCount: 2,
     purchaseCost: 115000,
     restoreBaseCost: 18000,
     trafficMultiplier: 1.62,
@@ -243,20 +249,24 @@ export const cityDefinitions: CityDefinition[] = [
   },
   {
     id: 'skyway',
-    name: 'Skyway Resort Row',
+    name: 'Frostpeak Resort Row',
     washModel: 'selfServe',
+    theme: 'snow',
+    bayCount: 3,
     purchaseCost: 260000,
     restoreBaseCost: 42000,
     trafficMultiplier: 2.05,
     patienceBonus: 0.18,
     priceBonus: 1.25,
-    story: 'A neglected resort-route wash where clean cars are part of the trip.',
-    visual: 'Floating resort roads, high patience, and late-game restoration value',
+    story: 'A neglected snowy resort-route wash where clean cars are part of the trip.',
+    visual: 'Snow berms, icy lots, patient travelers, and late-game restoration value',
   },
   {
     id: 'beltline',
     name: 'Beltline Express Tunnel',
     washModel: 'conveyor',
+    theme: 'beltline',
+    bayCount: 2,
     purchaseCost: 430000,
     restoreBaseCost: 70000,
     trafficMultiplier: 2.45,
@@ -318,12 +328,15 @@ export function advanceGame(input: GameState, realDeltaSeconds: number): GameSta
 
   if (state.clockSeconds >= WEEK_SECONDS) {
     const physicalDue = cashBoxValue(totalCashBox(state.bays))
-    const autoCollected = hasAutoCollector(state.employees) ? physicalDue : 0
+    const autoCollector = hasAutoCollector(state.employees)
+    const autoCollected = autoCollector ? physicalDue : 0
     const wageCost = employeeWeeklyWages(state.employees)
     const totalCosts = weeklyCosts(state)
+    const costsPaid = autoCollector ? totalCosts : 0
+    const costsDue = autoCollector ? 0 : totalCosts
 
-    if (autoCollected > 0) {
-      state.cash = roundMoney(state.cash + autoCollected)
+    if (autoCollector) {
+      state.cash = roundMoney(Math.max(0, state.cash + autoCollected - totalCosts))
       state.bays = emptyBayCashBoxes(state.bays)
     }
     if (state.employees.bayTech) {
@@ -336,11 +349,12 @@ export function advanceGame(input: GameState, realDeltaSeconds: number): GameSta
     state.clockSeconds = WEEK_SECONDS
     state.collectRequired = true
     state.speed = 0
-    state.cash = roundMoney(Math.max(0, state.cash - totalCosts))
     state.lastReview = {
       week: state.week,
       revenue: roundMoney(state.weekRevenue),
       costs: totalCosts,
+      costsPaid,
+      costsDue,
       employeeWages: wageCost,
       profit: roundMoney(state.weekRevenue - totalCosts),
       cars: state.weekCars,
@@ -405,8 +419,9 @@ export function startGame(input: GameState, locationName: string): GameState {
 export function collectPayBox(input: GameState): GameState {
   const state = cloneState(input)
   const collected = cashBoxValue(totalCashBox(state.bays))
+  const closeoutCostsDue = state.collectRequired ? state.lastReview?.costsDue ?? state.lastReview?.costs ?? 0 : 0
 
-  state.cash = roundMoney(state.cash + collected)
+  state.cash = roundMoney(Math.max(0, state.cash + collected - closeoutCostsDue))
   state.bays = emptyBayCashBoxes(state.bays)
 
   if (state.collectRequired) {
@@ -436,6 +451,8 @@ export function buyUpgrade(input: GameState, upgradeId: UpgradeId): GameState {
 }
 
 export function buyBayUpgrade(input: GameState, bayIndex: number, upgradeId: BayUpgradeId): GameState {
+  if (bayIndex < 0 || bayIndex >= activeBayCount(input)) return input
+
   const state = cloneState(input)
   const bay = state.bays[bayIndex]
   const def = bayUpgradeDefinitions.find((item) => item.id === upgradeId)
@@ -536,6 +553,16 @@ export function isConveyorCity(state: GameState): boolean {
   return currentCityDefinition(state).washModel === 'conveyor'
 }
 
+export function activeBayCount(state: GameState): number {
+  const city = currentCityDefinition(state)
+  const configured = city.bayCount || (city.washModel === 'conveyor' ? 2 : state.bays.length)
+  return Math.max(1, Math.min(state.bays.length, configured))
+}
+
+export function activeBays(state: GameState): BayState[] {
+  return state.bays.slice(0, activeBayCount(state))
+}
+
 export function currentCityDistrict(state: GameState): CityDistrictState {
   return (
     state.cityMap.districts.find((district) => district.id === state.cityMap.currentCityId) ??
@@ -554,7 +581,8 @@ export function cityTrafficMultiplier(state: GameState): number {
 }
 
 export function queueAppealChance(state: GameState): number {
-  const demand = demandMultiplier(state.upgrades, averageCondition(state.bays), state.bays, state.ads, state.employees)
+  const bays = activeBays(state)
+  const demand = demandMultiplier(state.upgrades, averageCondition(bays), bays, state.ads, state.employees)
   const district = currentCityDistrict(state)
   const def = currentCityDefinition(state)
   const attraction =
@@ -615,19 +643,29 @@ export function cashMultiplier(state: GameState): number {
 }
 
 export function expectedHourlyRevenue(state: GameState): number {
-  if (state.bays.length === 0) return 0
+  const activeBays = activeBayIndexes(state)
+    .map((bayIndex) => state.bays[bayIndex])
+    .filter((bay): bay is BayState => Boolean(bay))
+
+  if (activeBays.length === 0) return 0
 
   const spawnPerSec = 1 / spawnInterval(state)
+  const priceBonus = marketPriceBonus(state)
+  const automatic = isConveyorCity(state)
 
   const avgPrice =
-    state.bays.reduce(
-      (sum, bay) => sum + bayWashPrice(state.upgrades, bay, marketPriceBonus(state)),
-      0,
-    ) / state.bays.length
+    activeBays.reduce((sum, bay) => sum + bayWashPrice(state.upgrades, bay, priceBonus), 0) /
+    activeBays.length
 
-  const avgWandLevel = state.bays.reduce((sum, bay) => sum + bay.upgrades.wand, 0) / state.bays.length
-  const avgWashSeconds = Math.max(3.1, BASE_WASH_SECONDS * (1 - avgWandLevel * 0.055))
-  const washPerSec = state.bays.length / avgWashSeconds
+  const avgWashSeconds =
+    activeBays.reduce((sum, bay) => {
+      const price = bayWashPrice(state.upgrades, bay, priceBonus)
+      const payment: Payment = automatic
+        ? { kind: 'card', quarters: 0, bills: price, tokens: 0 }
+        : { kind: 'quarters', quarters: Math.round(price * 4), bills: 0, tokens: 0 }
+      return sum + washDurationForPayment(payment, state.upgrades, bay, priceBonus, automatic)
+    }, 0) / activeBays.length
+  const washPerSec = activeBays.length / avgWashSeconds
 
   // Throughput is bottlenecked by the slower of arrivals and bay capacity.
   const effectivePerSec = Math.min(spawnPerSec, washPerSec)
@@ -640,12 +678,13 @@ export function progressionProgress(state: GameState): number {
   const lotTotal = upgradeDefinitions.length
   const staffOwned = employeeDefinitions.filter((employee) => state.employees[employee.id]).length
   const staffTotal = employeeDefinitions.length
-  const bayOwned = state.bays.reduce(
+  const bays = activeBays(state)
+  const bayOwned = bays.reduce(
     (sum, bay) =>
       sum + bayUpgradeDefinitions.reduce((baySum, upgrade) => baySum + bay.upgrades[upgrade.id], 0),
     0,
   )
-  const bayTotal = state.bays.length * bayUpgradeDefinitions.reduce((sum, upgrade) => sum + upgrade.maxLevel, 0)
+  const bayTotal = bays.length * bayUpgradeDefinitions.reduce((sum, upgrade) => sum + upgrade.maxLevel, 0)
   const cityOwned = state.cityMap.districts.reduce(
     (sum, district) => sum + (district.owned ? 1 : 0) + district.restoration,
     0,
@@ -845,7 +884,7 @@ function createCar(state: GameState, bayIndex: number): Car {
 
 function createPassingCar(state: GameState): Car {
   const variant = state.nextCarId % CAR_COLORS.length
-  const fallbackBay = state.nextCarId % BAY_COUNT
+  const fallbackBay = state.nextCarId % activeBayCount(state)
   return {
     id: `car-${state.nextCarId}`,
     stage: 'passing',
@@ -998,7 +1037,7 @@ function findQueueBayIndex(state: GameState): number {
 }
 
 function activeBayIndexes(state: GameState): number[] {
-  const max = isConveyorCity(state) ? 2 : state.bays.length
+  const max = activeBayCount(state)
   return state.bays.slice(0, max).map((_, index) => index)
 }
 
@@ -1027,9 +1066,10 @@ function isBayOpenForQueue(state: GameState, bayIndex: number, carId: string): b
 }
 
 function spawnInterval(state: GameState): number {
+  const bays = activeBays(state)
   return (
     BASE_SPAWN_SECONDS /
-    (demandMultiplier(state.upgrades, averageCondition(state.bays), state.bays, state.ads, state.employees) *
+    (demandMultiplier(state.upgrades, averageCondition(bays), bays, state.ads, state.employees) *
       cityTrafficMultiplier(state))
   )
 }
