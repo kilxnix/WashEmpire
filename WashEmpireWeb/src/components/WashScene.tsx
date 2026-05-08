@@ -3,6 +3,7 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { ContactShadows, OrbitControls, Sky, Text } from '@react-three/drei'
 import type { BayState, Car, CityDefinition, CityDistrictState, CityTheme, GameState } from '../game/types'
 import { activeBayCount, cashBoxValue, cityDefinitions, currentCityDefinition, isConveyorCity, totalCashBox } from '../game/simulation'
+import { activeEnvironmentRewards, type EnvironmentRewardVisualId } from '../game/environmentRewards'
 
 interface WashSceneProps {
   state: GameState
@@ -335,6 +336,7 @@ function SelfServeWashSite({
 }) {
   const bayCount = activeBayCount(state)
   const bayXs = bayXPositions(bayCount)
+  const rewardIds = activeEnvironmentRewards(state.upgrades)
 
   return (
     <group>
@@ -344,6 +346,7 @@ function SelfServeWashSite({
       <LotRoadSurface theme={theme} />
       <LotPolishDetails theme={theme} />
       <PropertyCurbAppeal state={state} theme={theme} />
+      <UpgradeRewardLayer rewardIds={rewardIds} theme={theme} />
       {bayXs.map((x, index) => (
         <LanePaint key={`lane-${x}`} x={x} index={index} theme={theme} />
       ))}
@@ -353,8 +356,8 @@ function SelfServeWashSite({
       <RoadSign lit={state.upgrades.signage} painted={state.upgrades.paint} label={state.locationName} theme={theme} />
       <EmployeeParking state={state} />
       {state.collectRequired && (state.lastReview?.autoCollected ?? 0) > 0 && <StaffCollectionMarker />}
-      {state.upgrades.vacuumIsland && <VacuumIsland />}
-      {state.upgrades.laserWash && <LaserWashExpansion />}
+      {hasReward(rewardIds, 'vacuum-island-pad') && <VacuumIsland />}
+      {hasReward(rewardIds, 'touch-free-gantry') && <LaserWashExpansion />}
       {theme.id === 'snow' && <SnowLotDetails />}
       {theme.id === 'harbor' && <HarborLotDetails />}
       {theme.id === 'downtown' && <DowntownLotDetails />}
@@ -372,6 +375,7 @@ function ConveyorWashSite({
   theme: CityThemeSpec
 }) {
   const districtName = currentCityDefinition(state).name
+  const rewardIds = activeEnvironmentRewards(state.upgrades)
 
   return (
     <group>
@@ -381,6 +385,7 @@ function ConveyorWashSite({
       <Box name="auto-side-road" color={theme.road} position={[-6.3, 0.005, -0.1]} scale={[1.1, 0.05, 11.2]} />
       <LotRoadSurface theme={theme} automatic />
       <AutoCurbAppeal state={state} theme={theme} />
+      <UpgradeRewardLayer automatic rewardIds={rewardIds} theme={theme} />
       <Box name="auto-building-pad" color={theme.pad} position={[0, 0.04, 0.2]} scale={[6.7, 0.09, 9.2]} />
       <Box name="auto-left-wall" color={theme.wall} position={[-3.45, 1.08, 0.2]} scale={[0.18, 2.16, 8.9]} />
       <Box name="auto-right-wall" color={theme.wall} position={[3.45, 1.08, 0.2]} scale={[0.18, 2.16, 8.9]} />
@@ -402,6 +407,7 @@ function ConveyorWashSite({
       <RoadSign lit painted label="Beltline Express" theme={theme} />
       <EmployeeParking state={state} />
       {state.collectRequired && (state.lastReview?.autoCollected ?? 0) > 0 && <StaffCollectionMarker />}
+      {hasReward(rewardIds, 'vacuum-island-pad') && <VacuumIsland automatic />}
     </group>
   )
 }
@@ -670,6 +676,235 @@ function OfficeServiceYard({ state, theme }: { state: GameState; theme: CityThem
       {state.upgrades.securityLights && <TransparentBox name="service-yard-light" color="#fde68a" position={[5.9, 1.14, 4.58]} scale={[1.8, 0.6, 0.5]} opacity={0.12} />}
     </group>
   )
+}
+
+function UpgradeRewardLayer({
+  rewardIds,
+  theme,
+  automatic = false,
+}: {
+  rewardIds: readonly EnvironmentRewardVisualId[]
+  theme: CityThemeSpec
+  automatic?: boolean
+}) {
+  return (
+    <group>
+      {hasReward(rewardIds, 'fresh-paint-curbs') && <PaintRewardProps theme={theme} automatic={automatic} />}
+      {hasReward(rewardIds, 'camera-warning-decals') && <CameraRewardProps automatic={automatic} />}
+      {hasReward(rewardIds, 'parking-light-poles') && <SecurityLightRewardProps automatic={automatic} />}
+      {hasReward(rewardIds, 'tap-to-pay-window-decal') && <PaymentRewardProps automatic={automatic} />}
+      {hasReward(rewardIds, 'loyalty-window-decal') && <LoyaltyRewardProps automatic={automatic} />}
+      {hasReward(rewardIds, 'office-open-sign') && <ManagerRewardProps automatic={automatic} />}
+      {hasReward(rewardIds, 'mobile-campaign-billboard') && <MobileCampaignRewardProps automatic={automatic} />}
+      {hasReward(rewardIds, 'laser-menu-board') && <LaserRewardProps automatic={automatic} />}
+    </group>
+  )
+}
+
+function PaintRewardProps({ theme, automatic }: { theme: CityThemeSpec; automatic: boolean }) {
+  const frontZ = automatic ? -6.96 : -6.42
+  const rearZ = automatic ? 6.32 : 5.36
+  const paintX = automatic ? 4.75 : 5.14
+  const paintZ = automatic ? 4.62 : 4.18
+
+  return (
+    <group>
+      <group name="fresh-paint-curbs">
+        <Box name="fresh-paint-curb-front" color={theme.trim} position={[0, 0.25, frontZ]} scale={[automatic ? 10.9 : 13.1, 0.08, 0.08]} />
+        <Box name="fresh-paint-curb-rear" color={theme.trim} position={[0, 0.24, rearZ]} scale={[automatic ? 10.6 : 13.0, 0.08, 0.08]} />
+      </group>
+      <group name="paint-supply-cans" position={[paintX, 0, paintZ]}>
+        {['#0284c7', theme.trim, '#e5e7eb'].map((color, index) => (
+          <mesh key={`paint-can-${index}`} position={[index * 0.18, 0.18, 0]} castShadow>
+            <cylinderGeometry args={[0.08, 0.08, 0.28, 12]} />
+            <meshStandardMaterial color={color} roughness={0.55} />
+          </mesh>
+        ))}
+        <Box name="paint-drop-cloth" color="#e8e0d0" position={[0.18, 0.04, 0.16]} scale={[0.74, 0.035, 0.36]} />
+      </group>
+    </group>
+  )
+}
+
+function CameraRewardProps({ automatic }: { automatic: boolean }) {
+  const warningPosition: Vec3 = automatic ? [-4.42, 1.55, -4.36] : [-5.42, 1.35, -3.98]
+  const monitorPosition: Vec3 = automatic ? [6.0, 1.25, 1.92] : [6.6, 1.25, 1.86]
+
+  return (
+    <group>
+      <group name="camera-warning-decals" position={warningPosition}>
+        <Box name="camera-warning-sign" color="#facc15" position={[0, 0, 0]} scale={[0.68, 0.26, 0.05]} />
+        <Text color="#111827" fontSize={0.045} position={[-0.26, -0.01, -0.04]}>
+          CAMERAS
+        </Text>
+      </group>
+      <group name="office-security-monitor" position={monitorPosition}>
+        <Box name="security-monitor-case" color="#111827" position={[0, 0, 0]} scale={[0.36, 0.22, 0.05]} />
+        <Box name="security-monitor-glow" color="#22d3ee" position={[0, 0, -0.04]} scale={[0.28, 0.14, 0.02]} />
+      </group>
+    </group>
+  )
+}
+
+function SecurityLightRewardProps({ automatic }: { automatic: boolean }) {
+  const positions: Vec3[] = automatic
+    ? [
+        [-5.85, 0, -5.95],
+        [5.85, 0, -5.95],
+        [-5.85, 0, 5.5],
+        [5.85, 0, 5.5],
+      ]
+    : [
+        [-6.34, 0, -4.86],
+        [6.34, 0, -4.86],
+        [-6.34, 0, 4.42],
+        [6.34, 0, 4.42],
+      ]
+
+  return (
+    <group>
+      {positions.map((position, index) => (
+        <group name="parking-light-poles" key={`security-light-${index}`} position={position}>
+          <Box name={`security-light-pole-${index}`} color="#26323d" position={[0, 1.04, 0]} scale={[0.08, 2.08, 0.08]} />
+          <Box name={`security-light-head-${index}`} color="#fde68a" position={[0.18, 2.12, 0]} scale={[0.42, 0.12, 0.18]} />
+          <TransparentBox name={`security-light-cones-${index}`} color="#fde68a" position={[0.14, 1.2, 0]} scale={[1.3, 1.8, 0.82]} opacity={0.1} />
+        </group>
+      ))}
+    </group>
+  )
+}
+
+function PaymentRewardProps({ automatic }: { automatic: boolean }) {
+  const officePosition: Vec3 = automatic ? [5.4, 1.54, 0.42] : [6.82, 1.58, 0.72]
+
+  return (
+    <group>
+      <group name="tap-to-pay-window-decal" position={officePosition}>
+        <Box name="tap-decal-card" color="#22c55e" position={[0, 0, 0]} scale={[0.38, 0.22, 0.04]} />
+        <Text color="#052e16" fontSize={0.045} position={[-0.13, -0.01, -0.035]}>
+          TAP
+        </Text>
+      </group>
+    </group>
+  )
+}
+
+function LoyaltyRewardProps({ automatic }: { automatic: boolean }) {
+  const decalPosition: Vec3 = automatic ? [5.92, 1.48, 0.48] : [6.84, 1.38, 1.0]
+  const signPosition: Vec3 = automatic ? [3.75, 0, -6.28] : [3.92, 0, -5.8]
+  const phonePosition: Vec3 = automatic ? [2.94, 0, -6.2] : [3.16, 0, -5.72]
+
+  return (
+    <group>
+      <group name="loyalty-window-decal" position={decalPosition}>
+        <Box name="loyalty-decal-paper" color="#e8e0d0" position={[0, 0, 0]} scale={[0.34, 0.34, 0.04]} />
+        <Box name="loyalty-qr-ink" color="#111827" position={[0.02, 0, -0.035]} scale={[0.18, 0.18, 0.02]} />
+      </group>
+      <group name="perk-pickup-sign" position={signPosition}>
+        <Box name="perk-sign-post" color="#26323d" position={[0, 0.45, 0]} scale={[0.06, 0.9, 0.06]} />
+        <Box name="perk-sign-face" color="#10b981" position={[0, 0.92, -0.03]} scale={[0.78, 0.28, 0.06]} />
+        <Text color="#f8fafc" fontSize={0.06} position={[-0.28, 0.92, -0.08]}>
+          PERKS
+        </Text>
+      </group>
+      <group name="phone-coupon-stand" position={phonePosition}>
+        <Box name="coupon-stand-pole" color="#334155" position={[0, 0.42, 0]} scale={[0.06, 0.84, 0.06]} />
+        <Box name="coupon-phone-screen" color="#0f172a" position={[0, 0.93, -0.04]} scale={[0.28, 0.46, 0.06]} />
+        <Box name="coupon-phone-glow" color="#22d3ee" position={[0, 0.94, -0.08]} scale={[0.2, 0.32, 0.02]} />
+      </group>
+    </group>
+  )
+}
+
+function ManagerRewardProps({ automatic }: { automatic: boolean }) {
+  const signPosition: Vec3 = automatic ? [5.54, 1.86, 0.66] : [6.34, 1.84, 0.42]
+  const deskPosition: Vec3 = automatic ? [5.3, 1.2, 2.18] : [5.82, 1.18, 2.22]
+
+  return (
+    <group>
+      <group name="office-open-sign" position={signPosition}>
+        <Box name="open-sign-face" color="#22c55e" position={[0, 0, 0]} scale={[0.44, 0.16, 0.04]} />
+        <Text color="#052e16" fontSize={0.045} position={[-0.16, 0, -0.035]}>
+          OPEN
+        </Text>
+      </group>
+      <group name="manager-desk-light" position={deskPosition}>
+        <Box name="desk-lamp-stand" color="#111827" position={[0, -0.18, 0]} scale={[0.05, 0.36, 0.05]} />
+        <Box name="desk-lamp-glow" color="#fde68a" position={[0.12, 0.04, -0.02]} scale={[0.24, 0.1, 0.16]} />
+      </group>
+      <group name="staff-clipboard" position={[deskPosition[0] + 0.34, deskPosition[1] - 0.36, deskPosition[2] - 0.12]}>
+        <Box name="clipboard-paper" color="#e8e0d0" position={[0, 0, 0]} scale={[0.24, 0.04, 0.32]} />
+        <Box name="clipboard-clip" color="#64748b" position={[0, 0.04, -0.13]} scale={[0.16, 0.04, 0.04]} />
+      </group>
+    </group>
+  )
+}
+
+function MobileCampaignRewardProps({ automatic }: { automatic: boolean }) {
+  const boardPosition: Vec3 = automatic ? [-2.4, 0, -7.14] : [-2.8, 0, -6.58]
+  const placardZ = automatic ? -6.88 : -6.32
+
+  return (
+    <group>
+      <group name="mobile-campaign-billboard" position={boardPosition}>
+        <Box name="mobile-billboard-post-left" color="#26323d" position={[-0.52, 0.78, 0]} scale={[0.08, 1.56, 0.08]} />
+        <Box name="mobile-billboard-post-right" color="#26323d" position={[0.52, 0.78, 0]} scale={[0.08, 1.56, 0.08]} />
+        <Box name="mobile-billboard-face" color="#0f4f9c" position={[0, 1.42, -0.04]} scale={[1.44, 0.58, 0.08]} />
+        <Text color="#f8fafc" fontSize={0.08} position={[-0.5, 1.45, -0.1]}>
+          WASH DEALS
+        </Text>
+      </group>
+      <group name="phone-ad-placards">
+        {[-0.56, 0, 0.56].map((x, index) => (
+          <group key={`phone-ad-${index}`} position={[boardPosition[0] + x, 0, placardZ]}>
+            <Box name={`phone-ad-stand-${index}`} color="#334155" position={[0, 0.3, 0]} scale={[0.05, 0.6, 0.05]} />
+            <Box name={`phone-ad-card-${index}`} color={index === 1 ? '#22d3ee' : '#e8e0d0'} position={[0, 0.68, -0.02]} scale={[0.22, 0.34, 0.04]} />
+          </group>
+        ))}
+      </group>
+      <group name="roadside-coupon-banner" position={[boardPosition[0] + 1.42, 0, placardZ]}>
+        <Box name="coupon-banner-face" color="#facc15" position={[0, 0.78, 0]} scale={[0.88, 0.22, 0.04]} />
+        <Text color="#111827" fontSize={0.052} position={[-0.34, 0.78, -0.035]}>
+          COUPON
+        </Text>
+      </group>
+    </group>
+  )
+}
+
+function LaserRewardProps({ automatic }: { automatic: boolean }) {
+  const boardPosition: Vec3 = automatic ? [-3.44, 0, -5.52] : [5.92, 0, -1.75]
+  const markingZ = automatic ? -4.92 : -1.22
+
+  return (
+    <group>
+      <group name="laser-menu-board" position={boardPosition}>
+        <Box name="laser-menu-post" color="#26323d" position={[0, 0.58, 0]} scale={[0.08, 1.16, 0.08]} />
+        <Box name="laser-menu-face" color="#111827" position={[0, 1.08, -0.03]} scale={[0.82, 0.52, 0.06]} />
+        <Text color="#f472b6" fontSize={0.06} position={[-0.3, 1.16, -0.08]}>
+          LASER
+        </Text>
+        <Text color="#22d3ee" fontSize={0.05} position={[-0.26, 0.96, -0.08]}>
+          $9+
+        </Text>
+      </group>
+      <group name="laser-queue-markings">
+        {[0, 1, 2].map((index) => (
+          <Box
+            color={index % 2 === 0 ? '#f472b6' : '#22d3ee'}
+            key={`laser-mark-${index}`}
+            name={`laser-queue-marking-${index}`}
+            position={[boardPosition[0] + index * 0.42 - 0.42, 0.1, markingZ]}
+            scale={[0.24, 0.025, 0.08]}
+          />
+        ))}
+      </group>
+    </group>
+  )
+}
+
+function hasReward(rewardIds: readonly EnvironmentRewardVisualId[], visualId: EnvironmentRewardVisualId): boolean {
+  return rewardIds.includes(visualId)
 }
 
 function ParkingStalls({ theme }: { theme: CityThemeSpec }) {
@@ -3020,18 +3255,30 @@ function StaffCollectionMarker() {
   )
 }
 
-function VacuumIsland() {
+function VacuumIsland({ automatic = false }: { automatic?: boolean }) {
+  const position: Vec3 = automatic ? [6.35, 0, -3.45] : [6.2, 0, -3.15]
+  const stations = [
+    { id: 'left', x: -0.44, hoseTilt: -0.28 },
+    { id: 'right', x: 0.44, hoseTilt: 0.28 },
+  ] as const
+
   return (
-    <group position={[6.2, 0, -3.15]}>
-      {[0, 1].map((index) => (
-        <group key={index} position={[index * 0.72 - 0.36, 0, 0]}>
-          <Box name={`vacuum-post-${index}`} color="#0f4f9c" position={[0, 0.68, 0]} scale={[0.24, 1.35, 0.24]} />
-          <mesh position={[0.24, 1.2, 0.08]} rotation={[0.75, 0, 0.2]}>
+    <group position={position}>
+      <Box name="vacuum-island-pad" color="#5b554f" position={[0, 0.06, 0]} scale={[1.72, 0.08, 1.16]} />
+      <Box name="vacuum-mat-lines" color="#f8fafc" position={[0, 0.12, -0.34]} scale={[1.42, 0.025, 0.06]} />
+      <Box name="vacuum-mat-lines-rear" color="#f8fafc" position={[0, 0.12, 0.34]} scale={[1.42, 0.025, 0.06]} />
+      {stations.map((station) => (
+        <group key={station.id} position={[station.x, 0, 0]}>
+          <Box name={`vacuum-post-${station.id}`} color="#0f4f9c" position={[0, 0.68, 0]} scale={[0.28, 1.35, 0.28]} />
+          <Box name={`vacuum-face-${station.id}`} color="#e8e0d0" position={[0, 0.95, -0.16]} scale={[0.2, 0.36, 0.04]} />
+          <mesh name={`vacuum-hose-${station.id}`} position={[0.24 * Math.sign(station.x), 1.2, 0.08]} rotation={[0.75, 0, station.hoseTilt]}>
             <cylinderGeometry args={[0.025, 0.025, 0.95, 16]} />
             <meshStandardMaterial color="#111827" roughness={0.4} />
           </mesh>
+          <Box name={`vacuum-nozzle-${station.id}`} color="#111827" position={[0.34 * Math.sign(station.x), 0.7, 0.42]} rotation={[0, 0.2 * Math.sign(station.x), 0]} scale={[0.08, 0.22, 0.36]} />
         </group>
       ))}
+      <TransparentBox name="vacuum-dust-puff" color="#cbd5e1" position={[0.0, 0.38, 0.52]} scale={[1.2, 0.34, 0.22]} opacity={0.18} />
       <Text color="#ffffff" fontSize={0.12} position={[-0.48, 1.48, -0.18]}>
         VAC
       </Text>
