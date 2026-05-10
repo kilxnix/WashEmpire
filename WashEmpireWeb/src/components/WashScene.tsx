@@ -20,9 +20,9 @@ type SmoothPathSegment =
 
 const BAY_X = [-4.2, -1.4, 1.4, 4.2]
 const CONVEYOR_X = [-1.25, 1.25]
-const CAMERA_POSITION: Vec3 = [14.2, 16.6, 22.2]
-const MOBILE_CAMERA_POSITION: Vec3 = [14.6, 18.8, 25.8]
-const CAMERA_TARGET: Vec3 = [0, 0.1, -0.25]
+const CAMERA_POSITION: Vec3 = [10.8, 12.8, 17.6]
+const MOBILE_CAMERA_POSITION: Vec3 = [12.4, 16.2, 22.4]
+const CAMERA_TARGET: Vec3 = [0, 0.55, -0.6]
 const TRAFFIC_PALETTE = ['#f8fafc', '#dbe4ea', '#b8c3cc', '#334155', '#1f2937', '#8f1d1d']
 const CORNER_RADIUS = 0.62
 const CAR_LOOKAHEAD_DISTANCE = 0.48
@@ -237,8 +237,8 @@ export function WashScene({ state, onCollect, rideAlong = false }: WashSceneProp
       dpr={[1, 2]}
       gl={{ antialias: true, preserveDrawingBuffer: true }}
     >
-      <color attach="background" args={['#8db8d7']} />
-      <fog attach="fog" args={['#8db8d7', 34, 88]} />
+      <color attach="background" args={['#bfd8e8']} />
+      <fog attach="fog" args={['#bfd8e8', 30, 72]} />
       <Sky sunPosition={[12, 18, 8]} turbidity={3.4} rayleigh={0.8} mieCoefficient={0.004} mieDirectionalG={0.72} />
       <ambientLight intensity={0.64} />
       <directionalLight
@@ -259,7 +259,7 @@ export function WashScene({ state, onCollect, rideAlong = false }: WashSceneProp
           makeDefault
           maxPolarAngle={Math.PI * 0.48}
           minDistance={8}
-          maxDistance={92}
+          maxDistance={54}
           target={CAMERA_TARGET}
         />
       )}
@@ -346,6 +346,7 @@ function SelfServeWashSite({
       <LotRoadSurface theme={theme} />
       <LotPolishDetails theme={theme} />
       <PropertyCurbAppeal state={state} theme={theme} />
+      <WashFeatureDressing state={state} theme={theme} />
       <UpgradeRewardLayer rewardIds={rewardIds} theme={theme} />
       {bayXs.map((x, index) => (
         <LanePaint key={`lane-${x}`} x={x} index={index} theme={theme} />
@@ -385,6 +386,7 @@ function ConveyorWashSite({
       <Box name="auto-side-road" color={theme.road} position={[-6.3, 0.005, -0.1]} scale={[1.1, 0.05, 11.2]} />
       <LotRoadSurface theme={theme} automatic />
       <AutoCurbAppeal state={state} theme={theme} />
+      <AutoFeatureDressing state={state} theme={theme} />
       <UpgradeRewardLayer automatic rewardIds={rewardIds} theme={theme} />
       <Box name="auto-building-pad" color={theme.pad} position={[0, 0.04, 0.2]} scale={[6.7, 0.09, 9.2]} />
       <Box name="auto-left-wall" color={theme.wall} position={[-3.45, 1.08, 0.2]} scale={[0.18, 2.16, 8.9]} />
@@ -585,6 +587,107 @@ function AutoCurbAppeal({ state, theme }: { state: GameState; theme: CityThemeSp
   )
 }
 
+function WashFeatureDressing({ state, theme }: { state: GameState; theme: CityThemeSpec }) {
+  const bayCount = activeBayCount(state)
+  const restoration = state.cityMap.districts.find((item) => item.id === state.cityMap.currentCityId)?.restoration ?? 0
+  const polish = Math.min(1, 0.22 + restoration * 0.12)
+  const accent = state.upgrades.paint ? theme.trim : '#0f4f9c'
+
+  return (
+    <group>
+      <Box name="wash-front-showcase-asphalt" color="#161d24" position={[0, 0.072, -5.34]} scale={[12.8, 0.035, 1.12]} />
+      <Box name="wash-exit-showcase-asphalt" color="#1b232b" position={[0, 0.07, 4.25]} scale={[12.2, 0.035, 1.0]} />
+      <Box name="wash-center-concrete-plaza" color="#d0cbc1" position={[0, 0.09, -3.62]} scale={[10.8, 0.04, 0.92]} />
+      <Box name="wash-entry-blue-apron" color={accent} position={[0, 0.115, -4.72]} scale={[bayCount * 2.28, 0.035, 0.12]} />
+      <Box name="wash-entry-yellow-stop" color="#facc15" position={[0, 0.13, -4.2]} scale={[bayCount * 2.0, 0.026, 0.09]} />
+      <group name="wash-hero-front-sign" position={[0, 0, -3.35]}>
+        <Box name="wash-hero-sign-backplate" color="#0f172a" position={[0, 2.98, 0]} scale={[5.6, 0.44, 0.12]} />
+        <Box name="wash-hero-sign-trim" color={accent} position={[0, 3.25, -0.02]} scale={[5.85, 0.09, 0.16]} />
+        <Text color="#f8fafc" fontSize={0.24} position={[-2.22, 3.0, -0.09]}>
+          WASH EMPIRE
+        </Text>
+        <Text color={state.upgrades.signage ? '#fde68a' : '#b8c3cc'} fontSize={0.105} position={[1.52, 2.72, -0.1]}>
+          SELF-SERVE BAYS
+        </Text>
+        {state.upgrades.signage && (
+          <TransparentBox name="wash-hero-sign-light-wash" color="#fde68a" position={[0, 2.96, -0.16]} scale={[5.8, 0.72, 0.08]} opacity={0.12} />
+        )}
+      </group>
+      <PremiumLandscapeCorner name="front-left-premium" position={[-5.45, 0, -4.22]} theme={theme} />
+      <PremiumLandscapeCorner name="front-right-premium" position={[5.35, 0, -4.22]} theme={theme} mirrored />
+      <PremiumLandscapeCorner name="exit-left-premium" position={[-5.35, 0, 3.55]} theme={theme} />
+      <PremiumLandscapeCorner name="exit-right-premium" position={[5.35, 0, 3.55]} theme={theme} mirrored />
+      <group name="wash-customer-waiting-lane" position={[-6.08, 0, -1.05]}>
+        <Box name="waiting-lane-pavers" color="#c9c4ba" position={[0, 0.08, 0]} scale={[0.92, 0.04, 2.9]} />
+        <Box name="waiting-lane-bench" color="#8b6f55" position={[0, 0.38, -0.78]} scale={[0.72, 0.12, 0.24]} />
+        <Box name="waiting-lane-vending" color="#0f4f9c" position={[0.08, 0.55, 0.78]} scale={[0.36, 0.88, 0.28]} />
+        <Box name="waiting-lane-vending-window" color="#22d3ee" position={[0.08, 0.72, 0.62]} scale={[0.24, 0.32, 0.04]} />
+      </group>
+      <group name="wash-detail-service-rack" position={[6.62, 0, 2.92]}>
+        <Box name="detail-rack-base" color="#334155" position={[0, 0.48, 0]} scale={[0.72, 0.96, 0.24]} />
+        <Box name="detail-rack-towels" color="#f8fafc" position={[-0.22, 0.88, -0.15]} scale={[0.22, 0.3, 0.04]} />
+        <Box name="detail-rack-spray" color="#22c55e" position={[0.2, 0.74, -0.15]} scale={[0.14, 0.42, 0.04]} />
+      </group>
+      {state.upgrades.loyaltyApp && <Box name="loyalty-pickup-pavers" color="#10b981" position={[3.5, 0.1, -5.55]} scale={[1.1, 0.035, 0.18]} />}
+      {state.upgrades.manager && <Box name="managed-office-awning" color="#22c55e" position={[6.3, 2.18, 0.38]} scale={[1.8, 0.12, 0.18]} />}
+      {polish > 0.5 && <TransparentBox name="restored-lot-sheen" color="#ffffff" position={[0, 0.14, -0.2]} scale={[13.0, 0.02, 9.0]} opacity={0.035} />}
+    </group>
+  )
+}
+
+function AutoFeatureDressing({ state, theme }: { state: GameState; theme: CityThemeSpec }) {
+  return (
+    <group>
+      <Box name="auto-premium-entry-lane" color="#111827" position={[0, 0.08, -5.92]} scale={[8.4, 0.04, 1.05]} />
+      <Box name="auto-premium-exit-lane" color="#111827" position={[0, 0.08, 5.22]} scale={[8.4, 0.04, 1.05]} />
+      <Box name="auto-queue-lit-curb" color={theme.accent} position={[0, 0.12, -6.42]} scale={[7.4, 0.035, 0.1]} />
+      <Box name="auto-exit-lit-curb" color={theme.trim} position={[0, 0.12, 5.78]} scale={[7.4, 0.035, 0.1]} />
+      <group name="auto-express-front-identity" position={[0, 0, -4.48]}>
+        <Box name="auto-express-sign-panel" color="#0f172a" position={[0, 2.92, 0]} scale={[4.9, 0.42, 0.12]} />
+        <Text color="#f8fafc" fontSize={0.22} position={[-1.86, 2.92, -0.09]}>
+          WASH EMPIRE
+        </Text>
+        <Text color={theme.accent} fontSize={0.1} position={[1.36, 2.68, -0.1]}>
+          AUTOMATIC TUNNEL
+        </Text>
+      </group>
+      <PremiumLandscapeCorner name="auto-front-left-premium" position={[-4.95, 0, -5.52]} theme={theme} />
+      <PremiumLandscapeCorner name="auto-front-right-premium" position={[4.95, 0, -5.52]} theme={theme} mirrored />
+      {state.upgrades.securityLights && <TransparentBox name="auto-tunnel-light-glow" color="#fde68a" position={[0, 1.42, 0.32]} scale={[6.2, 2.0, 7.6]} opacity={0.08} />}
+    </group>
+  )
+}
+
+function PremiumLandscapeCorner({
+  name,
+  position,
+  theme,
+  mirrored = false,
+}: {
+  name: string
+  position: Vec3
+  theme: CityThemeSpec
+  mirrored?: boolean
+}) {
+  const sign = mirrored ? -1 : 1
+
+  return (
+    <group name={name} position={position} rotation={[0, mirrored ? Math.PI : 0, 0]}>
+      <Box name={`${name}-stone-bed`} color="#d7d1c6" position={[0, 0.13, 0]} scale={[1.52, 0.18, 0.52]} />
+      <Box name={`${name}-mulch`} color="#4a3b2f" position={[0, 0.24, 0]} scale={[1.36, 0.08, 0.38]} />
+      {[-0.46, 0.0, 0.42].map((x, index) => (
+        <mesh key={`${name}-shrub-${index}`} position={[x, 0.48, 0.02]} castShadow>
+          <sphereGeometry args={[0.18 + index * 0.015, 12, 8]} />
+          <meshStandardMaterial color={index === 1 ? theme.foliage : '#2f6f3e'} roughness={0.78} />
+        </mesh>
+      ))}
+      <Box name={`${name}-flower-band`} color={theme.accent} position={[0.28 * sign, 0.5, -0.22]} scale={[0.42, 0.07, 0.08]} />
+      <Box name={`${name}-bollard-a`} color="#facc15" position={[-0.86 * sign, 0.36, -0.06]} scale={[0.1, 0.72, 0.1]} />
+      <Box name={`${name}-bollard-b`} color="#facc15" position={[-1.12 * sign, 0.36, -0.06]} scale={[0.1, 0.72, 0.1]} />
+    </group>
+  )
+}
+
 function PropertyMonumentSign({
   label,
   faceColor,
@@ -690,6 +793,7 @@ function UpgradeRewardLayer({
   return (
     <group>
       {hasReward(rewardIds, 'fresh-paint-curbs') && <PaintRewardProps theme={theme} automatic={automatic} />}
+      {hasReward(rewardIds, 'lit-road-sign') && <SignageRewardProps theme={theme} automatic={automatic} />}
       {hasReward(rewardIds, 'camera-warning-decals') && <CameraRewardProps automatic={automatic} />}
       {hasReward(rewardIds, 'parking-light-poles') && <SecurityLightRewardProps automatic={automatic} />}
       {hasReward(rewardIds, 'tap-to-pay-window-decal') && <PaymentRewardProps automatic={automatic} />}
@@ -697,6 +801,41 @@ function UpgradeRewardLayer({
       {hasReward(rewardIds, 'office-open-sign') && <ManagerRewardProps automatic={automatic} />}
       {hasReward(rewardIds, 'mobile-campaign-billboard') && <MobileCampaignRewardProps automatic={automatic} />}
       {hasReward(rewardIds, 'laser-menu-board') && <LaserRewardProps automatic={automatic} />}
+    </group>
+  )
+}
+
+function SignageRewardProps({ theme, automatic }: { theme: CityThemeSpec; automatic: boolean }) {
+  const signPosition: Vec3 = automatic ? [-5.35, 1.12, -6.25] : [-6.0, 1.26, -4.95]
+  const topperZ = automatic ? -6.72 : -6.08
+
+  return (
+    <group>
+      <group name="lit-road-sign" position={signPosition}>
+        <TransparentBox name="lit-road-sign-glow" color="#fde68a" position={[0, 0.18, -0.16]} scale={[2.38, 0.86, 0.1]} opacity={0.2} />
+        <Box name="lit-road-sign-footlight" color="#fde68a" position={[0, -0.42, -0.08]} scale={[1.64, 0.06, 0.05]} />
+      </group>
+      <group name="directional-sign-toppers">
+        {[
+          { label: 'BAYS', x: -4.7, arrowX: 0.32 },
+          { label: 'EXIT', x: 4.55, arrowX: -0.32 },
+        ].map((sign, index) => (
+          <group key={`directional-topper-${sign.label}`} position={[sign.x, 0, topperZ]}>
+            <Box name={`directional-sign-post-${index}`} color="#26323d" position={[0, 0.42, 0]} scale={[0.06, 0.84, 0.06]} />
+            <Box name={`directional-sign-face-${index}`} color={theme.trim} position={[0, 0.86, -0.03]} scale={[0.78, 0.26, 0.06]} />
+            <Box
+              name={`directional-sign-arrow-${index}`}
+              color="#f8fafc"
+              position={[sign.arrowX, 0.86, -0.07]}
+              rotation={[0, 0, Math.PI / 4]}
+              scale={[0.18, 0.08, 0.035]}
+            />
+            <Text color="#f8fafc" fontSize={0.055} position={[-0.3, 0.86, -0.09]}>
+              {sign.label}
+            </Text>
+          </group>
+        ))}
+      </group>
     </group>
   )
 }
@@ -729,9 +868,30 @@ function PaintRewardProps({ theme, automatic }: { theme: CityThemeSpec; automati
 function CameraRewardProps({ automatic }: { automatic: boolean }) {
   const warningPosition: Vec3 = automatic ? [-4.42, 1.55, -4.36] : [-5.42, 1.35, -3.98]
   const monitorPosition: Vec3 = automatic ? [6.0, 1.25, 1.92] : [6.6, 1.25, 1.86]
+  const cameraPositions: Vec3[] = automatic
+    ? [
+        [-3.52, 2.24, -4.2],
+        [3.52, 2.24, 4.08],
+      ]
+    : [
+        [-5.72, 2.22, -2.94],
+        [5.72, 2.22, 2.7],
+      ]
 
   return (
     <group>
+      <group name="bay-security-cameras">
+        {cameraPositions.map((position, index) => (
+          <group key={`reward-camera-${index}`} position={position} rotation={[0, index === 0 ? 0.28 : -0.28, 0]}>
+            <Box name={`reward-camera-arm-${index}`} color="#26323d" position={[0, 0, 0]} scale={[0.42, 0.06, 0.06]} />
+            <Box name={`reward-camera-body-${index}`} color="#111827" position={[0.26, -0.04, 0]} scale={[0.2, 0.13, 0.16]} />
+            <mesh position={[0.39, -0.055, 0]} rotation={[0, 0, Math.PI / 2]}>
+              <cylinderGeometry args={[0.052, 0.052, 0.08, 18]} />
+              <meshStandardMaterial color="#020617" roughness={0.42} />
+            </mesh>
+          </group>
+        ))}
+      </group>
       <group name="camera-warning-decals" position={warningPosition}>
         <Box name="camera-warning-sign" color="#facc15" position={[0, 0, 0]} scale={[0.68, 0.26, 0.05]} />
         <Text color="#111827" fontSize={0.045} position={[-0.26, -0.01, -0.04]}>
@@ -763,6 +923,20 @@ function SecurityLightRewardProps({ automatic }: { automatic: boolean }) {
 
   return (
     <group>
+      <group name="bay-light-bars">
+        <Box
+          name="bay-light-bar-entry"
+          color="#fde68a"
+          position={[0, 2.32, automatic ? -4.24 : -2.74]}
+          scale={[automatic ? 6.8 : 10.4, 0.06, 0.08]}
+        />
+        <Box
+          name="bay-light-bar-exit"
+          color="#fde68a"
+          position={[0, 2.24, automatic ? 4.54 : 2.44]}
+          scale={[automatic ? 6.8 : 10.4, 0.05, 0.08]}
+        />
+      </group>
       {positions.map((position, index) => (
         <group name="parking-light-poles" key={`security-light-${index}`} position={position}>
           <Box name={`security-light-pole-${index}`} color="#26323d" position={[0, 1.04, 0]} scale={[0.08, 2.08, 0.08]} />
@@ -776,13 +950,29 @@ function SecurityLightRewardProps({ automatic }: { automatic: boolean }) {
 
 function PaymentRewardProps({ automatic }: { automatic: boolean }) {
   const officePosition: Vec3 = automatic ? [5.4, 1.54, 0.42] : [6.82, 1.58, 0.72]
+  const readerZ = automatic ? -5.22 : -4.62
 
   return (
     <group>
+      <group name="bay-card-readers">
+        {[-0.68, 0, 0.68].map((x, index) => (
+          <group key={`card-reader-stand-${index}`} position={[x, 0, readerZ]}>
+            <Box name={`reader-stand-post-${index}`} color="#334155" position={[0, 0.4, 0]} scale={[0.055, 0.8, 0.055]} />
+            <Box name={`reader-stand-face-${index}`} color="#0f172a" position={[0, 0.86, -0.03]} scale={[0.24, 0.34, 0.06]} />
+            <Box name={`reader-stand-light-${index}`} color="#22c55e" position={[0, 0.98, -0.075]} scale={[0.13, 0.05, 0.02]} />
+          </group>
+        ))}
+      </group>
       <group name="tap-to-pay-window-decal" position={officePosition}>
         <Box name="tap-decal-card" color="#22c55e" position={[0, 0, 0]} scale={[0.38, 0.22, 0.04]} />
         <Text color="#052e16" fontSize={0.045} position={[-0.13, -0.01, -0.035]}>
           TAP
+        </Text>
+      </group>
+      <group name="price-board-card-ready" position={[automatic ? 1.9 : 2.95, 1.42, automatic ? -6.34 : -6.18]}>
+        <Box name="price-board-card-badge" color="#22c55e" position={[0, 0, 0]} scale={[0.52, 0.16, 0.04]} />
+        <Text color="#052e16" fontSize={0.04} position={[-0.2, 0, -0.035]}>
+          CARD
         </Text>
       </group>
     </group>
@@ -1320,9 +1510,9 @@ function regionLabelsForTheme(
 }
 
 function DistrictParcelGrid({ theme }: { theme: CityThemeSpec }) {
-  const lineColor = theme.id === 'snow' ? '#f8fafc' : '#d8d2c7'
-  const verticals = [-23.8, -18.1, -12.1, -4.2, 4.2, 12.1, 18.1, 23.8]
-  const horizontals = [-15.0, -12.25, -3.2, 3.25, 12.25, 15.0]
+  const lineColor = theme.id === 'snow' ? '#cad8d7' : '#63705b'
+  const verticals = [-18.2, 0, 18.2]
+  const horizontals = [-12.6, 0.2, 12.6]
 
   return (
     <group>
@@ -1331,8 +1521,8 @@ function DistrictParcelGrid({ theme }: { theme: CityThemeSpec }) {
           color={lineColor}
           key={`parcel-v-${x}`}
           name={`parcel-v-${theme.id}-${x}`}
-          position={[x, -0.184, -0.35]}
-          scale={[0.055, 0.018, 32.4]}
+          position={[x, -0.188, -0.35]}
+          scale={[0.035, 0.014, 29.6]}
         />
       ))}
       {horizontals.map((z) => (
@@ -1340,8 +1530,8 @@ function DistrictParcelGrid({ theme }: { theme: CityThemeSpec }) {
           color={lineColor}
           key={`parcel-h-${z}`}
           name={`parcel-h-${theme.id}-${z}`}
-          position={[0, -0.184, z]}
-          scale={[51.0, 0.018, 0.055]}
+          position={[0, -0.188, z]}
+          scale={[45.4, 0.014, 0.035]}
         />
       ))}
     </group>
@@ -1578,14 +1768,8 @@ function CityRoadNetwork({ theme }: { theme: CityThemeSpec }) {
     { name: 'city-road-right-feed', position: [8.1, -0.16, 0.15], scale: [0.78, 0.08, 12.6] },
     { name: 'city-road-outer-left-feed', position: [-21.0, -0.16, 0.2], scale: [0.74, 0.08, 22.0] },
     { name: 'city-road-outer-right-feed', position: [21.2, -0.16, 0.2], scale: [0.74, 0.08, 22.0] },
-    { name: 'city-road-nw-diagonal', position: [-6.8, -0.155, -8.25], scale: [7.4, 0.08, 0.66], rotationY: -0.36 },
-    { name: 'city-road-ne-diagonal', position: [7.1, -0.155, -8.15], scale: [7.2, 0.08, 0.66], rotationY: 0.34 },
-    { name: 'city-road-sw-diagonal', position: [-6.6, -0.155, 8.0], scale: [7.4, 0.08, 0.66], rotationY: 0.31 },
-    { name: 'city-road-se-diagonal', position: [7.1, -0.155, 7.95], scale: [7.2, 0.08, 0.66], rotationY: -0.31 },
-    { name: 'city-road-far-nw-diagonal', position: [-17.1, -0.155, -14.4], scale: [9.4, 0.08, 0.62], rotationY: -0.36 },
-    { name: 'city-road-far-ne-diagonal', position: [17.1, -0.155, -14.25], scale: [9.4, 0.08, 0.62], rotationY: 0.36 },
-    { name: 'city-road-far-sw-diagonal', position: [-17.2, -0.155, 14.35], scale: [9.5, 0.08, 0.62], rotationY: 0.34 },
-    { name: 'city-road-far-se-diagonal', position: [17.2, -0.155, 14.25], scale: [9.5, 0.08, 0.62], rotationY: -0.34 },
+    { name: 'city-road-nw-diagonal', position: [-6.8, -0.155, -8.25], scale: [7.4, 0.08, 0.54], rotationY: -0.36 },
+    { name: 'city-road-se-diagonal', position: [7.1, -0.155, 7.95], scale: [7.2, 0.08, 0.54], rotationY: -0.31 },
   ]
 
   return (
@@ -1639,18 +1823,14 @@ function CityRoadNetwork({ theme }: { theme: CityThemeSpec }) {
 }
 
 function SecondaryStreetGrid({ theme }: { theme: CityThemeSpec }) {
-  const minorRoad = theme.id === 'snow' ? '#34424d' : theme.id === 'harbor' ? '#223441' : '#26313a'
+  const minorRoad = theme.id === 'snow' ? '#34424d' : theme.id === 'harbor' ? '#223441' : '#29313a'
   const roads: Array<{ name: string; position: Vec3; scale: Vec3; rotationY?: number }> = [
-    { name: 'minor-road-oldtown-a', position: [-18.1, -0.175, -13.15], scale: [10.4, 0.045, 0.34] },
-    { name: 'minor-road-oldtown-b', position: [-18.1, -0.175, 13.05], scale: [10.4, 0.045, 0.34] },
-    { name: 'minor-road-east-neighborhood-a', position: [18.1, -0.175, -13.15], scale: [10.4, 0.045, 0.34] },
-    { name: 'minor-road-east-neighborhood-b', position: [18.1, -0.175, 13.05], scale: [10.4, 0.045, 0.34] },
-    { name: 'minor-road-core-west', position: [-4.0, -0.175, -0.35], scale: [0.34, 0.045, 15.8] },
-    { name: 'minor-road-core-east', position: [4.0, -0.175, -0.35], scale: [0.34, 0.045, 15.8] },
-    { name: 'minor-road-civic-north', position: [0, -0.175, -13.2], scale: [16.0, 0.045, 0.34] },
-    { name: 'minor-road-civic-south', position: [0, -0.175, 13.0], scale: [16.0, 0.045, 0.34] },
-    { name: 'minor-road-west-alley', position: [-12.0, -0.176, -12.5], scale: [6.4, 0.045, 0.3], rotationY: 0.22 },
-    { name: 'minor-road-east-alley', position: [12.0, -0.176, 12.4], scale: [6.4, 0.045, 0.3], rotationY: -0.22 },
+    { name: 'minor-road-neighborhood-northwest', position: [-18.1, -0.176, -13.15], scale: [9.8, 0.045, 0.28] },
+    { name: 'minor-road-neighborhood-southeast', position: [18.1, -0.176, 13.05], scale: [9.8, 0.045, 0.28] },
+    { name: 'minor-road-core-west', position: [-4.0, -0.176, -0.35], scale: [0.28, 0.045, 13.8] },
+    { name: 'minor-road-core-east', position: [4.0, -0.176, -0.35], scale: [0.28, 0.045, 13.8] },
+    { name: 'minor-road-civic-north', position: [0, -0.176, -13.2], scale: [14.8, 0.045, 0.28] },
+    { name: 'minor-road-civic-south', position: [0, -0.176, 13.0], scale: [14.8, 0.045, 0.28] },
   ]
 
   return (
@@ -1682,19 +1862,19 @@ function SecondaryStreetGrid({ theme }: { theme: CityThemeSpec }) {
 }
 
 function MinorStreetLaneLines({ theme }: { theme: CityThemeSpec }) {
-  const stripe = theme.id === 'snow' ? '#e2e8f0' : '#dbe4ea'
+  const stripe = theme.id === 'snow' ? '#dbeafe' : '#94a3b8'
 
   return (
     <group>
       {[-13.15, 13.05].map((z) => (
         <group key={`minor-h-stripes-${z}`}>
-          {Array.from({ length: 12 }, (_, index) => (
+          {Array.from({ length: 7 }, (_, index) => (
             <Box
               color={stripe}
               key={`minor-h-stripe-${z}-${index}`}
               name={`minor-h-stripe-${z}-${index}`}
-              position={[-26.0 + index * 4.7, -0.092, z]}
-              scale={[0.55, 0.018, 0.035]}
+              position={[-19.5 + index * 6.5, -0.092, z]}
+              scale={[0.48, 0.014, 0.03]}
             />
           ))}
         </group>
@@ -1739,7 +1919,7 @@ function RoadSurfaceDetails({ theme }: { theme: CityThemeSpec }) {
 
 function RoadEdgeLines({ theme }: { theme: CityThemeSpec }) {
   const yellow = theme.stripe
-  const white = '#f8fafc'
+  const white = theme.id === 'snow' ? '#f8fafc' : '#9aa69c'
   return (
     <group>
       {[-10.05, -6.2, 6.75, 9.15].map((z) => (
@@ -1761,14 +1941,14 @@ function RoadEdgeLines({ theme }: { theme: CityThemeSpec }) {
 }
 
 function SidewalkGrid({ theme }: { theme: CityThemeSpec }) {
-  const concrete = theme.id === 'snow' ? '#e5edf0' : '#c9c4ba'
+  const concrete = theme.id === 'snow' ? '#e5edf0' : '#a9afa6'
   return (
     <group>
       {[
-        [0, -9.2, 45.0, 0.18],
-        [0, -11.0, 45.0, 0.18],
-        [0, 8.25, 45.0, 0.18],
-        [0, 10.1, 45.0, 0.18],
+        [0, -9.2, 31.0, 0.12],
+        [0, -11.0, 31.0, 0.12],
+        [0, 8.25, 31.0, 0.12],
+        [0, 10.1, 31.0, 0.12],
       ].map(([x, z, sx, sz], index) => (
         <Box
           color={concrete}
@@ -1779,12 +1959,12 @@ function SidewalkGrid({ theme }: { theme: CityThemeSpec }) {
         />
       ))}
       {[
-        [-14.15, -0.4, 0.18, 28.8],
-        [-16.05, -0.4, 0.18, 28.8],
-        [7.15, -0.4, 0.18, 12.6],
-        [9.05, -0.4, 0.18, 12.6],
-        [14.15, -0.4, 0.18, 28.8],
-        [16.05, -0.4, 0.18, 28.8],
+        [-14.15, -0.4, 0.12, 18.2],
+        [-16.05, -0.4, 0.12, 18.2],
+        [7.15, -0.4, 0.12, 10.8],
+        [9.05, -0.4, 0.12, 10.8],
+        [14.15, -0.4, 0.12, 18.2],
+        [16.05, -0.4, 0.12, 18.2],
       ].map(([x, z, sx, sz], index) => (
         <Box
           color={concrete}
@@ -1826,10 +2006,6 @@ function IntersectionCrosswalks({ theme }: { theme: CityThemeSpec }) {
     { name: 'wash-entry-east', position: [8.1, -0.045, -5.45], width: 1.18 },
     { name: 'wash-exit-west', position: [-8.1, -0.045, 6.02], width: 1.1 },
     { name: 'wash-exit-east', position: [8.1, -0.045, 7.48], width: 1.1 },
-    { name: 'north-main-west', position: [-15.1, -0.045, -9.15], rotationY: Math.PI / 2, width: 1.0 },
-    { name: 'north-main-east', position: [15.1, -0.045, -10.95], rotationY: Math.PI / 2, width: 1.0 },
-    { name: 'south-main-west', position: [-15.1, -0.045, 10.05], rotationY: Math.PI / 2, width: 1.0 },
-    { name: 'south-main-east', position: [15.1, -0.045, 8.28], rotationY: Math.PI / 2, width: 1.0 },
   ]
 
   return (
@@ -2044,13 +2220,13 @@ function StreetlightRow({ positions }: { positions: Array<[number, number]> }) {
 function RoadStripe({ color, z }: { color: string; z: number }) {
   return (
     <group>
-      {Array.from({ length: 20 }, (_, index) => (
+      {Array.from({ length: 14 }, (_, index) => (
         <Box
           color={color}
           key={index}
           name={`road-stripe-${z}-${index}`}
-          position={[-24.2 + index * 2.55, -0.09, z]}
-          scale={[0.82, 0.025, 0.055]}
+          position={[-22.0 + index * 3.4, -0.09, z]}
+          scale={[0.68, 0.02, 0.05]}
         />
       ))}
     </group>
@@ -2060,13 +2236,13 @@ function RoadStripe({ color, z }: { color: string; z: number }) {
 function VerticalRoadStripe({ color, x }: { color: string; x: number }) {
   return (
     <group>
-      {Array.from({ length: 13 }, (_, index) => (
+      {Array.from({ length: 9 }, (_, index) => (
         <Box
           color={color}
           key={index}
           name={`vertical-road-stripe-${x}-${index}`}
-          position={[x, -0.09, -15.6 + index * 2.55]}
-          scale={[0.055, 0.025, 0.82]}
+          position={[x, -0.09, -14.2 + index * 3.45]}
+          scale={[0.05, 0.02, 0.68]}
         />
       ))}
     </group>
@@ -2772,9 +2948,14 @@ function CityDistrictIsland({
   const trim = active ? theme.accent : owned ? theme.trim : '#64748b'
   const wall = owned ? theme.wall : '#9b9489'
   const footprint = 1 + restoration * 0.05
+  const scale = active ? 1 : 0.82
+
+  if (!active && !owned) {
+    return <LockedDistrictPreview city={city} position={position} theme={theme} />
+  }
 
   return (
-    <group position={position}>
+    <group position={position} scale={[scale, scale, scale]}>
       <Box name={`${city.id}-parcel`} color={owned ? theme.lot : '#57534e'} position={[0, -0.08, 0]} scale={[4.65, 0.12, 3.2]} />
       <Box name={`${city.id}-road-spur`} color={theme.road} position={[0, -0.02, -0.42]} scale={[4.1, 0.07, 0.55]} />
       <Box name={`${city.id}-wash-pad`} color={theme.pad} position={[-0.72, 0.05, 0.55]} scale={[1.65 * footprint, 0.08, 1.9]} />
@@ -2801,8 +2982,33 @@ function CityDistrictIsland({
       )}
       {theme.id === 'harbor' && <Box name={`${city.id}-dock`} color="#8b6f55" position={[1.52, 0.03, 0.9]} scale={[0.92, 0.06, 0.2]} />}
       {theme.id === 'beltline' && <Box name={`${city.id}-mini-conveyor`} color="#111827" position={[-0.72, 0.14, 0.55]} scale={[0.24, 0.08, 1.6]} />}
-      <DistrictMiniMapDetails city={city} owned={owned} restoration={restoration} theme={theme} />
+      {(active || restoration > 2) && <DistrictMiniMapDetails city={city} owned={owned} restoration={restoration} theme={theme} />}
       {active && <Box name={`${city.id}-active-glow`} color="#22d3ee" position={[0, 0.24, -1.75]} scale={[3.5, 0.08, 0.12]} />}
+    </group>
+  )
+}
+
+function LockedDistrictPreview({
+  city,
+  position,
+  theme,
+}: {
+  city: CityDefinition
+  position: Vec3
+  theme: CityThemeSpec
+}) {
+  return (
+    <group position={position} scale={[0.72, 0.72, 0.72]}>
+      <Box name={`${city.id}-locked-parcel`} color="#4b5563" position={[0, -0.06, 0]} scale={[3.85, 0.1, 2.54]} />
+      <Box name={`${city.id}-locked-pad`} color="#8b8a82" position={[-0.46, 0.05, 0.28]} scale={[1.15, 0.08, 1.36]} />
+      <Box name={`${city.id}-locked-wall`} color="#a8a29e" position={[-1.06, 0.42, 0.28]} scale={[0.12, 0.78, 1.28]} />
+      <Box name={`${city.id}-locked-sign`} color="#64748b" position={[1.08, 0.38, -0.62]} scale={[0.74, 0.24, 0.08]} />
+      <Text color="#e5e7eb" fontSize={0.1} position={[0.72, 0.38, -0.68]}>
+        {city.name.toUpperCase()}
+      </Text>
+      <Text color={theme.accent} fontSize={0.075} position={[-1.08, 0.8, -0.28]}>
+        LOCKED
+      </Text>
     </group>
   )
 }
@@ -3258,29 +3464,54 @@ function StaffCollectionMarker() {
 function VacuumIsland({ automatic = false }: { automatic?: boolean }) {
   const position: Vec3 = automatic ? [6.35, 0, -3.45] : [6.2, 0, -3.15]
   const stations = [
-    { id: 'left', x: -0.44, hoseTilt: -0.28 },
-    { id: 'right', x: 0.44, hoseTilt: 0.28 },
+    { id: 'left', postName: 'vacuum-post-left', hoseName: 'vacuum-hose-left', x: -0.58, hoseTilt: -0.36 },
+    { id: 'right', postName: 'vacuum-post-right', hoseName: 'vacuum-hose-right', x: 0.58, hoseTilt: 0.36 },
   ] as const
 
   return (
     <group position={position}>
-      <Box name="vacuum-island-pad" color="#5b554f" position={[0, 0.06, 0]} scale={[1.72, 0.08, 1.16]} />
-      <Box name="vacuum-mat-lines" color="#f8fafc" position={[0, 0.12, -0.34]} scale={[1.42, 0.025, 0.06]} />
-      <Box name="vacuum-mat-lines-rear" color="#f8fafc" position={[0, 0.12, 0.34]} scale={[1.42, 0.025, 0.06]} />
+      <Box name="vacuum-island-pad" color="#4b5563" position={[0, 0.06, 0]} scale={[2.35, 0.08, 1.52]} />
+      <Box name="vacuum-island-curb-front" color="#e5e7eb" position={[0, 0.16, -0.78]} scale={[2.44, 0.18, 0.08]} />
+      <Box name="vacuum-island-curb-back" color="#e5e7eb" position={[0, 0.16, 0.78]} scale={[2.44, 0.18, 0.08]} />
+      <Box name="vacuum-island-curb-left" color="#e5e7eb" position={[-1.22, 0.16, 0]} scale={[0.08, 0.18, 1.52]} />
+      <Box name="vacuum-island-curb-right" color="#e5e7eb" position={[1.22, 0.16, 0]} scale={[0.08, 0.18, 1.52]} />
+      <Box name="vacuum-mat-lines" color="#f8fafc" position={[-0.58, 0.12, -0.36]} scale={[0.72, 0.025, 0.06]} />
+      <Box name="vacuum-mat-lines-right" color="#f8fafc" position={[0.58, 0.12, -0.36]} scale={[0.72, 0.025, 0.06]} />
+      <Box name="vacuum-mat-lines-rear-left" color="#f8fafc" position={[-0.58, 0.12, 0.36]} scale={[0.72, 0.025, 0.06]} />
+      <Box name="vacuum-mat-lines-rear-right" color="#f8fafc" position={[0.58, 0.12, 0.36]} scale={[0.72, 0.025, 0.06]} />
+      <Box name="vacuum-canopy-left-post" color="#26323d" position={[-1.0, 0.86, -0.52]} scale={[0.08, 1.72, 0.08]} />
+      <Box name="vacuum-canopy-right-post" color="#26323d" position={[1.0, 0.86, -0.52]} scale={[0.08, 1.72, 0.08]} />
+      <Box name="vacuum-canopy-header" color="#0f4f9c" position={[0, 1.78, -0.52]} scale={[2.28, 0.22, 0.18]} />
       {stations.map((station) => (
         <group key={station.id} position={[station.x, 0, 0]}>
-          <Box name={`vacuum-post-${station.id}`} color="#0f4f9c" position={[0, 0.68, 0]} scale={[0.28, 1.35, 0.28]} />
+          <Box name={station.postName} color="#0f4f9c" position={[0, 0.68, 0]} scale={[0.32, 1.35, 0.32]} />
+          <Box name={`vacuum-post-trim-${station.id}`} color="#facc15" position={[0, 1.28, -0.01]} scale={[0.36, 0.09, 0.34]} />
           <Box name={`vacuum-face-${station.id}`} color="#e8e0d0" position={[0, 0.95, -0.16]} scale={[0.2, 0.36, 0.04]} />
-          <mesh name={`vacuum-hose-${station.id}`} position={[0.24 * Math.sign(station.x), 1.2, 0.08]} rotation={[0.75, 0, station.hoseTilt]}>
-            <cylinderGeometry args={[0.025, 0.025, 0.95, 16]} />
+          <Box name={`vacuum-coin-slot-${station.id}`} color="#111827" position={[0, 0.9, -0.2]} scale={[0.16, 0.04, 0.03]} />
+          <mesh name={station.hoseName} position={[0.03 * Math.sign(station.x), 1.22, 0.22]} rotation={[Math.PI / 2, 0, station.hoseTilt]}>
+            <torusGeometry args={[0.34, 0.025, 10, 28, Math.PI]} />
             <meshStandardMaterial color="#111827" roughness={0.4} />
           </mesh>
-          <Box name={`vacuum-nozzle-${station.id}`} color="#111827" position={[0.34 * Math.sign(station.x), 0.7, 0.42]} rotation={[0, 0.2 * Math.sign(station.x), 0]} scale={[0.08, 0.22, 0.36]} />
+          <Box
+            name={`vacuum-nozzle-${station.id}`}
+            color="#111827"
+            position={[0.38 * Math.sign(station.x), 0.62, 0.48]}
+            rotation={[0, 0.2 * Math.sign(station.x), 0]}
+            scale={[0.08, 0.22, 0.36]}
+          />
         </group>
       ))}
+      <group name="vacuum-service-car" position={[0, 0, 0.56]} rotation={[0, Math.PI / 2, 0]}>
+        <Box name="vacuum-car-body" color="#f8fafc" position={[0, 0.34, 0]} scale={[0.48, 0.3, 0.9]} />
+        <Box name="vacuum-car-cabin" color="#0f172a" position={[0, 0.56, -0.08]} scale={[0.38, 0.2, 0.42]} />
+        <Wheel x={-0.28} z={-0.32} />
+        <Wheel x={0.28} z={-0.32} />
+        <Wheel x={-0.28} z={0.32} />
+        <Wheel x={0.28} z={0.32} />
+      </group>
       <TransparentBox name="vacuum-dust-puff" color="#cbd5e1" position={[0.0, 0.38, 0.52]} scale={[1.2, 0.34, 0.22]} opacity={0.18} />
-      <Text color="#ffffff" fontSize={0.12} position={[-0.48, 1.48, -0.18]}>
-        VAC
+      <Text color="#ffffff" fontSize={0.11} position={[-0.7, 1.8, -0.65]}>
+        VACUUMS
       </Text>
     </group>
   )
@@ -3288,7 +3519,7 @@ function VacuumIsland({ automatic = false }: { automatic?: boolean }) {
 
 function LaserWashExpansion() {
   return (
-    <group position={[7.4, 0, 0.3]}>
+    <group name="touch-free-gantry" position={[7.4, 0, 0.3]}>
       <Box name="laser-pad" color="#c9c8c1" position={[0, 0.05, 0]} scale={[2.2, 0.08, 4.5]} />
       <Box name="laser-left-rail" color="#f8fafc" position={[-0.8, 1.1, 0.1]} scale={[0.13, 2.2, 0.13]} />
       <Box name="laser-right-rail" color="#f8fafc" position={[0.8, 1.1, 0.1]} scale={[0.13, 2.2, 0.13]} />
