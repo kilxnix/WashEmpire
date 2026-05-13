@@ -34,7 +34,7 @@ The game should communicate the fantasy immediately: a self-serve car wash busin
 ### L-001 Production Launch Audit Script
 
 - Owner: Release QA Team
-- Status: open
+- Status: complete
 - Automation OK: yes
 - Goal: Add a single launch audit command that runs visual reward audit, tests, build, and a browser smoke/screenshot pass.
 - Acceptance: `npm.cmd run audit:launch` exists and fails clearly when a required launch check fails.
@@ -43,7 +43,7 @@ The game should communicate the fantasy immediately: a self-serve car wash busin
 ### L-002 Mobile HUD Smoke Coverage
 
 - Owner: Release QA Team
-- Status: open
+- Status: complete
 - Automation OK: yes
 - Goal: Add an automated mobile viewport smoke check for start menu, game HUD, upgrades panel, and map panel.
 - Acceptance: screenshots are produced under `qa/` and the script checks that HUD controls are not missing.

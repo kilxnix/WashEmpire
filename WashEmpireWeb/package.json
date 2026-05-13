@@ -15,6 +15,8 @@
     "android:open": "cap open android",
     "android:apk": "npm run android:sync && cd android && gradlew assembleDebug",
     "audit:visual-rewards": "node scripts/visual-reward-audit.mjs",
+    "audit:smoke-ui": "node scripts/launch-smoke.mjs",
+    "audit:launch": "node scripts/launch-audit.mjs",
     "test": "vitest run",
     "test:watch": "vitest"
   },
