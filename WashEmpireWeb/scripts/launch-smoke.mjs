@@ -1,10 +1,11 @@
 import { existsSync, mkdirSync } from 'node:fs'
+import { createServer } from 'node:net'
 import { join } from 'node:path'
 import { spawn, spawnSync } from 'node:child_process'
 import { chromium } from 'playwright-core'
 
 const host = '127.0.0.1'
-const port = 4173
+const port = await getAvailablePort()
 const baseUrl = `http://${host}:${port}`
 const qaDir = join(process.cwd(), 'qa')
 
@@ -17,9 +18,14 @@ if (!browserPath) {
   throw new Error('[launch-smoke] No Chromium-based browser found. Install Chrome/Edge or set BROWSER_PATH.')
 }
 
-const preview = spawn(`npm.cmd run preview -- --host ${host} --port ${port} --strictPort`, {
+const viteBin = join(process.cwd(), 'node_modules', 'vite', 'bin', 'vite.js')
+if (!existsSync(viteBin)) {
+  throw new Error('[launch-smoke] Vite CLI is missing. Run npm install before smoke testing.')
+}
+
+const preview = spawn(process.execPath, [viteBin, 'preview', '--host', host, '--port', String(port), '--strictPort'], {
   stdio: 'ignore',
-  shell: true,
+  windowsHide: true,
 })
 
 try {
@@ -41,6 +47,24 @@ try {
 }
 
 console.log('[launch-smoke] Wrote screenshots to qa/.')
+
+function getAvailablePort() {
+  return new Promise((resolve, reject) => {
+    const server = createServer()
+    server.unref()
+    server.on('error', reject)
+    server.listen(0, host, () => {
+      const address = server.address()
+      server.close(() => {
+        if (!address || typeof address === 'string') {
+          reject(new Error('[launch-smoke] Could not reserve a local preview port.'))
+          return
+        }
+        resolve(address.port)
+      })
+    })
+  })
+}
 
 function detectBrowserPath() {
   const candidates = [

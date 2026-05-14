@@ -20,3 +20,34 @@ Append one entry per launch-worker run. Keep this file short, factual, and usefu
 - Verification: npm.cmd run audit:visual-rewards; npm.cmd run test; npm.cmd run build; npm.cmd run audit:launch
 - Result: Passed. Added a single launch audit command that fails at the first failing step and includes browser smoke screenshots for desktop, mobile start menu, mobile HUD, upgrades, and map.
 - Next: Start L-003 District Identity Pass.
+## Run 2026-05-13T00:35:28-04:00
+- Task: L-003 District Identity Pass
+- Team: Visual / Art
+- Changed: src/components/WashScene.tsx; docs/launch-pathway.md; docs/launch-run-log.md
+- Verification: npm.cmd run audit:visual-rewards; npm.cmd run test; npm.cmd run build; npm.cmd run audit:launch
+- Result: Passed. Added theme-specific minor-road density: downtown now renders extra cross/ring minor roads and snow removes two inner minor roads to read sparser.
+- Next: Continue L-003 with signage/prop tone deltas and capture district screenshots when visual deltas are larger.
+
+## Run 2026-05-13T22:00:20-04:00
+- Task: L-004 Road And Arrival Polish
+- Team: Gameplay
+- Changed: src/components/WashScene.tsx; docs/launch-pathway.md; docs/launch-run-log.md
+- Verification: npm.cmd run audit:visual-rewards (pass); npm.cmd run test (pass); npm.cmd run build (initial fail TS6133, pass after fix); npm.cmd run audit:launch (fail at browser smoke/screenshot: Vite preview exited early code 1)
+- Result: Advanced L-004 by rerouting passing traffic to perimeter roads so non-customer cars no longer pull into wash approach lanes; no commit because launch smoke verification failed.
+- Next: Release QA should fix scripts/launch-smoke.mjs preview startup failure, then rerun audit:launch and capture updated qa/ evidence.
+
+## Run 2026-05-14T05:09:15-04:00
+- Task: L-005 People Washing Cars Pass
+- Team: Visual / Art
+- Changed: src/components/WashScene.tsx; docs/launch-pathway.md; docs/launch-run-log.md
+- Verification: npm.cmd run audit:visual-rewards (pass); npm.cmd run test (pass); npm.cmd run build (pass); npm.cmd run audit:launch (fail at browser smoke/screenshot: Vite preview exited early code 1)
+- Result: Advanced L-005 by adding an occupied-bay header with soap/scrub/rinse label plus per-bay progress fill so wash state and time-in-bay read from the default camera; no commit because required launch audit failed.
+- Next: Release QA should repair scripts/launch-smoke.mjs preview startup, rerun audit:launch, and then continue L-005 with screenshot evidence of at least two active bays.
+
+## Run 2026-05-14T07:37:00-04:00
+- Task: Launch automation recovery
+- Team: Release QA
+- Changed: scripts/launch-smoke.mjs; docs/launch-pathway.md; docs/launch-run-log.md; src/components/WashScene.tsx
+- Verification: npm.cmd run audit:launch (pass: visual reward audit, tests, build, browser smoke/screenshots)
+- Result: Passed. Recovered the launch-worker deadlock by starting Vite preview directly through Node on an available local port, which avoids the stale fixed-port preview process that caused browser smoke to exit early.
+- Next: Commit the verified recovery patch so the next hourly launch worker starts from a clean WashEmpireWeb tree and continues the lowest-numbered in-progress task.

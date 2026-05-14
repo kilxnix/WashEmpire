@@ -1824,7 +1824,7 @@ function CityRoadNetwork({ theme }: { theme: CityThemeSpec }) {
 
 function SecondaryStreetGrid({ theme }: { theme: CityThemeSpec }) {
   const minorRoad = theme.id === 'snow' ? '#34424d' : theme.id === 'harbor' ? '#223441' : '#29313a'
-  const roads: Array<{ name: string; position: Vec3; scale: Vec3; rotationY?: number }> = [
+  const baseRoads: Array<{ name: string; position: Vec3; scale: Vec3; rotationY?: number }> = [
     { name: 'minor-road-neighborhood-northwest', position: [-18.1, -0.176, -13.15], scale: [9.8, 0.045, 0.28] },
     { name: 'minor-road-neighborhood-southeast', position: [18.1, -0.176, 13.05], scale: [9.8, 0.045, 0.28] },
     { name: 'minor-road-core-west', position: [-4.0, -0.176, -0.35], scale: [0.28, 0.045, 13.8] },
@@ -1832,6 +1832,23 @@ function SecondaryStreetGrid({ theme }: { theme: CityThemeSpec }) {
     { name: 'minor-road-civic-north', position: [0, -0.176, -13.2], scale: [14.8, 0.045, 0.28] },
     { name: 'minor-road-civic-south', position: [0, -0.176, 13.0], scale: [14.8, 0.045, 0.28] },
   ]
+  const roads = [...baseRoads]
+
+  if (theme.id === 'downtown') {
+    roads.push(
+      { name: 'minor-road-downtown-ring-west', position: [-10.9, -0.176, -0.35], scale: [0.26, 0.045, 20.0] },
+      { name: 'minor-road-downtown-ring-east', position: [10.9, -0.176, -0.35], scale: [0.26, 0.045, 20.0] },
+      { name: 'minor-road-downtown-cross-north', position: [0, -0.176, -5.7], scale: [18.0, 0.045, 0.24] },
+      { name: 'minor-road-downtown-cross-south', position: [0, -0.176, 5.4], scale: [18.0, 0.045, 0.24] },
+    )
+  }
+
+  if (theme.id === 'snow') {
+    const sparseNames = new Set(['minor-road-core-west', 'minor-road-core-east'])
+    for (let index = roads.length - 1; index >= 0; index -= 1) {
+      if (sparseNames.has(roads[index].name)) roads.splice(index, 1)
+    }
+  }
 
   return (
     <group>
@@ -3195,9 +3212,26 @@ function BayWashActivity({ bayIndex, car }: { bayIndex: number; car: Car }) {
   const sweep = (car.progress * 2.2) % 1
   const workerZ = lerp(-0.72, 0.84, sweep)
   const mistColor = car.progress < 0.38 ? '#bfdbfe' : car.progress < 0.7 ? '#f8fafc' : '#bae6fd'
+  const stageLabel = washStageLabel(car.progress)
 
   return (
     <group>
+      <group position={[0, 2.62, -2.42]}>
+        <Box name={`bay-${bayIndex + 1}-occupied-header`} color="#0f172a" position={[0, 0, 0]} scale={[1.52, 0.2, 0.08]} />
+        <Box name={`bay-${bayIndex + 1}-occupied-state`} color={mistColor} position={[-0.58, 0.01, -0.05]} scale={[0.14, 0.12, 0.04]} />
+        <Text color="#f8fafc" fontSize={0.092} anchorX="center" anchorY="middle" position={[0.1, 0.01, -0.05]}>
+          {stageLabel}
+        </Text>
+      </group>
+      <group position={[0, 2.43, -2.42]}>
+        <Box name={`bay-${bayIndex + 1}-occupied-progress-bg`} color="#0b1220" position={[0, 0, 0]} scale={[1.52, 0.1, 0.05]} />
+        <Box
+          name={`bay-${bayIndex + 1}-occupied-progress-fill`}
+          color={mistColor}
+          position={[-0.76 + car.progress * 0.76, 0.01, -0.01]}
+          scale={[1.52 * car.progress, 0.11, 0.04]}
+        />
+      </group>
       <TransparentBox
         name={`bay-${bayIndex + 1}-active-mist`}
         color={mistColor}
@@ -3515,6 +3549,12 @@ function VacuumIsland({ automatic = false }: { automatic?: boolean }) {
       </Text>
     </group>
   )
+}
+
+function washStageLabel(progress: number): string {
+  if (progress < 0.36) return 'SOAP'
+  if (progress < 0.68) return 'SCRUB'
+  return 'RINSE'
 }
 
 function LaserWashExpansion() {
@@ -3838,7 +3878,7 @@ function carPose(car: Car, state: GameState): { position: Vec3; rotationY: numbe
     return poseFromPath(arrivalRoute(car, x), ease(car.progress))
   }
   if (car.stage === 'passing') {
-    return poseFromPath(passByRoute(car, x), ease(car.progress))
+    return poseFromPath(passByRoute(car), ease(car.progress))
   }
   if (car.stage === 'queued') {
     return { position: [x, 0.02, -6.12], rotationY: Math.PI }
@@ -3936,20 +3976,26 @@ function arrivalRoute(car: Car, bayX: number): PathPoint[] {
   ]
 }
 
-function passByRoute(car: Car, bayX: number): PathPoint[] {
-  const entry = arrivalRoute(car, bayX)
-  const exitSign = bayX < 0 ? -1 : 1
-  const sideFeedX = exitSign < 0 ? -8.1 : 8.1
-  const outerFeedX = exitSign < 0 ? -15.1 : 15.1
-  const outerEndX = exitSign < 0 ? -21.0 : 21.2
+function passByRoute(car: Car): PathPoint[] {
+  const route = routeIndex(car)
+  const towardsNegative = route % 2 === 0
+  const nearOuterX = towardsNegative ? -21.0 : 21.2
+  const innerOuterX = towardsNegative ? -15.1 : 15.1
+  const sideFeedX = towardsNegative ? -8.1 : 8.1
+  const topRoadY = route < 2 ? 15.2 : 15.0
+  const topLaneY = 9.15
+  const bottomLaneY = -10.05
+  const bottomRoadY = -15.6
 
   return [
-    ...entry,
-    [sideFeedX, -6.2],
-    [sideFeedX, -10.05],
-    [outerFeedX, -10.05],
-    [outerEndX, -10.05],
-    [outerEndX, -15.6],
+    [nearOuterX, topRoadY],
+    [nearOuterX, topLaneY],
+    [innerOuterX, topLaneY],
+    [sideFeedX, topLaneY],
+    [sideFeedX, bottomLaneY],
+    [innerOuterX, bottomLaneY],
+    [nearOuterX, bottomLaneY],
+    [nearOuterX, bottomRoadY],
   ]
 }
 

@@ -21,7 +21,8 @@ The game should communicate the fantasy immediately: a self-serve car wash busin
 - Work only inside `C:\Users\whate\Documents\AI Locally\WashEmpire\WashEmpireWeb`.
 - Ignore unrelated Unity project changes in the parent repo.
 - Before editing, run `git status -sb -- WashEmpireWeb` from the repo root. If `WashEmpireWeb` is dirty, stop and report the blocker.
-- Pick exactly one task marked `Automation OK: yes` from the queue.
+- Pick exactly one task marked `in progress` or `open` and `Automation OK: yes` from the queue.
+- Prefer the lowest-numbered `in progress` task first; if none exist, pick the lowest-numbered `open` task.
 - Keep the patch small enough to verify in one run.
 - After edits, run `npm.cmd run audit:visual-rewards`, `npm.cmd run test`, and `npm.cmd run build`.
 - For visual/UI tasks, also run or add a browser screenshot check when practical and save evidence under `qa/`.
@@ -52,7 +53,7 @@ The game should communicate the fantasy immediately: a self-serve car wash busin
 ### L-003 District Identity Pass
 
 - Owner: Visual / Art Team
-- Status: open
+- Status: in progress
 - Automation OK: yes
 - Goal: Make the small city, snow city, and bustling/neon city read as unique locations without clutter.
 - Acceptance: each district has different ground treatment, props, signage tone, road density, and traffic feel.
@@ -61,7 +62,7 @@ The game should communicate the fantasy immediately: a self-serve car wash busin
 ### L-004 Road And Arrival Polish
 
 - Owner: Gameplay Team
-- Status: open
+- Status: in progress
 - Automation OK: yes
 - Goal: Cars should drive with purpose toward the car wash, queue if worthwhile, or drive by if not. Avoid aimless circulation as the dominant visual.
 - Acceptance: active customer cars visibly approach the wash entrance and non-customer traffic remains secondary.
@@ -70,7 +71,7 @@ The game should communicate the fantasy immediately: a self-serve car wash busin
 ### L-005 People Washing Cars Pass
 
 - Owner: Visual / Art Team
-- Status: open
+- Status: in progress
 - Automation OK: yes
 - Goal: Always make self-serve bays feel occupied when a customer is washing: person, wand, spray/foam/rinse state, and time-in-bay progress.
 - Acceptance: every occupied self-serve bay has a readable customer/wash action from the default camera.
