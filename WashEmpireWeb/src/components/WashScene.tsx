@@ -2398,6 +2398,10 @@ function HarborRoadsideDistrict({ theme }: { theme: CityThemeSpec }) {
 function DowntownRoadsideDistrict({ theme }: { theme: CityThemeSpec }) {
   return (
     <group>
+      <Box name="downtown-curb-neon-north" color="#f472b6" position={[-10.4, 0.08, -8.1]} scale={[3.6, 0.035, 0.08]} />
+      <Box name="downtown-curb-neon-south" color="#22d3ee" position={[10.2, 0.08, -8.05]} scale={[3.2, 0.035, 0.08]} />
+      <Box name="downtown-crosswalk-a" color="#e2e8f0" position={[-0.85, 0.01, -10.35]} scale={[1.3, 0.03, 0.11]} />
+      <Box name="downtown-crosswalk-b" color="#e2e8f0" position={[0.85, 0.01, -10.35]} scale={[1.3, 0.03, 0.11]} />
       <QuickMart position={[-12.0, -0.02, -6.2]} theme={theme} />
       <Diner position={[12.25, -0.02, -6.18]} theme={theme} />
       <ParkingGarage position={[-12.25, -0.02, 6.55]} theme={theme} />
@@ -2415,6 +2419,12 @@ function SnowRoadsideDistrict({ theme }: { theme: CityThemeSpec }) {
     <group>
       <Box name="snow-road-berm-north" color="#f8fafc" position={[0, -0.04, -8.55]} scale={[23.5, 0.05, 0.42]} />
       <Box name="snow-road-berm-south" color="#f8fafc" position={[0, -0.04, 8.22]} scale={[23.5, 0.05, 0.42]} />
+      {[-10.8, -6.4, -2.0, 2.4, 6.8, 11.2].map((x, index) => (
+        <group key={`snow-route-marker-${index}`} position={[x, 0, -8.9]}>
+          <Box name={`snow-route-post-${index}`} color="#64748b" position={[0, 0.36, 0]} scale={[0.06, 0.72, 0.06]} />
+          <Box name={`snow-route-cap-${index}`} color="#f97316" position={[0, 0.72, 0]} scale={[0.2, 0.16, 0.1]} />
+        </group>
+      ))}
       <FuelAndSaltStop position={[-12.0, -0.02, -6.2]} theme={theme} />
       <SkiRentalLodge position={[12.25, -0.02, -6.18]} theme={theme} />
       <AutoPartsStore position={[-12.25, -0.02, 6.55]} theme={theme} />

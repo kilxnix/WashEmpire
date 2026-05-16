@@ -58,6 +58,7 @@ The game should communicate the fantasy immediately: a self-serve car wash busin
 - Goal: Make the small city, snow city, and bustling/neon city read as unique locations without clutter.
 - Acceptance: each district has different ground treatment, props, signage tone, road density, and traffic feel.
 - Verify: desktop and mobile screenshots for each unlocked/current district.
+- Progress: Added downtown roadside neon curb/crosswalk accents and snow district route marker posts to increase visual contrast between districts.
 
 ### L-004 Road And Arrival Polish
 
