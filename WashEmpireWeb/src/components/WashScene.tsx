@@ -4,6 +4,7 @@ import { ContactShadows, OrbitControls, Sky, Text } from '@react-three/drei'
 import type { BayState, Car, CityDefinition, CityDistrictState, CityTheme, GameState } from '../game/types'
 import { activeBayCount, cashBoxValue, cityDefinitions, currentCityDefinition, isConveyorCity, totalCashBox } from '../game/simulation'
 import { activeEnvironmentRewards, type EnvironmentRewardVisualId } from '../game/environmentRewards'
+import { PrototypeAssetLayer } from './PrototypeAssetLayer'
 
 interface WashSceneProps {
   state: GameState
@@ -321,6 +322,7 @@ function Lot({ state, onCollect }: WashSceneProps) {
       ) : (
         <SelfServeWashSite state={state} onCollect={onCollect} theme={theme} />
       )}
+      <PrototypeAssetLayer />
     </group>
   )
 }

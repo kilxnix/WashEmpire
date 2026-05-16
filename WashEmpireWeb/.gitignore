@@ -12,6 +12,8 @@ dist
 dist-ssr
 qa
 *.local
+public/prototype-assets/assets/*
+!public/prototype-assets/assets/.gitkeep
 
 # Editor directories and files
 .vscode/*
