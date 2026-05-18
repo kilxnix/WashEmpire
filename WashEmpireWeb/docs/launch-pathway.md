@@ -8,6 +8,13 @@ Ship a mobile-first browser/Capacitor idle game that is ready for family-and-fri
 
 The game should communicate the fantasy immediately: a self-serve car wash business that grows from a humble local wash into a managed multi-location wash empire. Visual upgrades must be visible in the world, cars should feel purposeful, and each district should have a clear identity.
 
+## Art Direction
+
+- Target style: tycoon, city-focused tycoon, mobile diorama.
+- The car wash should be the hero object at default zoom, with the surrounding city supporting the fantasy instead of becoming visual noise.
+- Districts should use readable silhouettes and larger props first, then small details only where they reinforce the location identity.
+- Each city needs a distinct in-scene language: small city storefronts and civic details, harbor docks and boardwalks, neon downtown density, snow/lodge cues, and beltline/automatic wash infrastructure.
+
 ## Launch Gates
 
 - `G1 Demo Ready`: start menu, save/load, first district, upgrades, car flow, cash collection, ads fallback, and weekly loop are playable without intervention.
@@ -58,7 +65,7 @@ The game should communicate the fantasy immediately: a self-serve car wash busin
 - Goal: Make the small city, snow city, and bustling/neon city read as unique locations without clutter.
 - Acceptance: each district has different ground treatment, props, signage tone, road density, and traffic feel.
 - Verify: desktop and mobile screenshots for each unlocked/current district.
-- Progress: Added downtown roadside neon curb/crosswalk accents and snow district route marker posts to increase visual contrast between districts.
+- Progress: Added downtown roadside neon curb/crosswalk accents and snow district route marker posts to increase visual contrast between districts. Added a mobile diorama base frame, larger themed storefront/tower clusters, district anchor props, street lighting, and a stronger hero wash plaza so the car wash reads as the focal point from desktop and mobile cameras.
 
 ### L-004 Road And Arrival Polish
 

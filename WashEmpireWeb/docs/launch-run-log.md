@@ -59,3 +59,11 @@ Append one entry per launch-worker run. Keep this file short, factual, and usefu
 - Verification: npm.cmd run audit:visual-rewards (pass); npm.cmd run test (pass); npm.cmd run build (pass); npm.cmd run audit:smoke-ui (pass, screenshots refreshed under qa/)
 - Result: Passed. Added downtown roadside neon curb/crosswalk accents and snow roadside route marker posts so bustling and snow districts read more distinct at the lot-edge glance.
 - Next: Continue L-003 with additional signage tone and prop language differences across remaining districts.
+
+## Run 2026-05-18T19:08:51-04:00
+- Task: L-003 District Identity Pass
+- Team: Visual / Art
+- Changed: src/components/WashScene.tsx; docs/launch-pathway.md; docs/launch-run-log.md
+- Verification: npm.cmd run lint (pass); npm.cmd run audit:visual-rewards (pass); npm.cmd run test (pass); npm.cmd run build (pass); npm.cmd run audit:smoke-ui (pass, screenshots refreshed under qa/)
+- Result: Passed. Added the explicit tycoon/mobile diorama art direction to the pathway, a raised diorama base frame, larger themed city storefronts and anchors, stronger plaza/curb/landscape treatment around the car wash, and theme-specific silhouettes for small city, harbor, downtown, snow, and beltline.
+- Next: Continue L-003 and L-006 with fewer placeholder blocks, more upgrade-triggered physical props, and screenshots for each city before family testing.

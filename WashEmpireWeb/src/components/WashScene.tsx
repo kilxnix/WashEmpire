@@ -343,6 +343,7 @@ function SelfServeWashSite({
   return (
     <group>
       <Box name="lot" color={theme.lot} position={[0, -0.04, -0.3]} scale={[14.5, 0.08, 13.5]} />
+      <HeroWashPlaza theme={theme} />
       <Box name="front-road" color={theme.road} position={[0, 0.005, -5.25]} scale={[11.6, 0.05, 1.35]} />
       <Box name="exit-road" color={theme.road} position={[0, 0.005, 4.25]} scale={[11.6, 0.05, 1.35]} />
       <LotRoadSurface theme={theme} />
@@ -383,6 +384,7 @@ function ConveyorWashSite({
   return (
     <group>
       <Box name="auto-lot" color={theme.lot} position={[0, -0.04, -0.35]} scale={[15.4, 0.08, 13.9]} />
+      <HeroWashPlaza automatic theme={theme} />
       <Box name="auto-entry-road" color={theme.road} position={[0, 0.005, -5.85]} scale={[8.8, 0.05, 1.35]} />
       <Box name="auto-exit-road" color={theme.road} position={[0, 0.005, 5.28]} scale={[8.8, 0.05, 1.35]} />
       <Box name="auto-side-road" color={theme.road} position={[-6.3, 0.005, -0.1]} scale={[1.1, 0.05, 11.2]} />
@@ -446,6 +448,52 @@ function ConveyorLane({ x, index, clockSeconds }: { x: number; index: number; cl
       <Text color="#111827" fontSize={0.09} position={[-0.62, 0.42, -3.55]} rotation={[-Math.PI / 2, 0, 0]}>
         TIRE PULL
       </Text>
+    </group>
+  )
+}
+
+function HeroWashPlaza({ automatic = false, theme }: { automatic?: boolean; theme: CityThemeSpec }) {
+  const prefix = automatic ? 'auto-hero' : 'self-serve-hero'
+  const label = automatic ? 'AUTOMATIC WASH CAMPUS' : 'SELF SERVE CAR WASH'
+  const width = automatic ? 16.2 : 15.3
+  const depth = automatic ? 14.6 : 14.0
+  const entryZ = automatic ? -6.58 : -5.96
+  const exitZ = automatic ? 6.2 : 5.06
+  const curbColor = theme.id === 'snow' ? '#eef8fb' : '#d7d1c6'
+
+  return (
+    <group>
+      <Box name={`${prefix}-campus-pad`} color={theme.pad} position={[0, -0.014, -0.34]} scale={[width, 0.045, depth]} />
+      <Box name={`${prefix}-campus-inner`} color={theme.lot} position={[0, 0.012, -0.34]} scale={[width - 1.0, 0.036, depth - 1.0]} />
+      <Box name={`${prefix}-front-curb`} color={curbColor} position={[0, 0.105, entryZ]} scale={[width, 0.14, 0.18]} />
+      <Box name={`${prefix}-back-curb`} color={curbColor} position={[0, 0.105, exitZ]} scale={[width, 0.14, 0.18]} />
+      <Box name={`${prefix}-left-curb`} color={curbColor} position={[-width / 2, 0.105, -0.34]} scale={[0.18, 0.14, depth]} />
+      <Box name={`${prefix}-right-curb`} color={curbColor} position={[width / 2, 0.105, -0.34]} scale={[0.18, 0.14, depth]} />
+      <Box name={`${prefix}-front-accent`} color={theme.accent} position={[0, 0.205, entryZ - 0.16]} scale={[width - 1.3, 0.07, 0.08]} />
+      <Box name={`${prefix}-side-accent-left`} color={theme.trim} position={[-width / 2 + 0.22, 0.205, -0.34]} scale={[0.08, 0.07, depth - 1.2]} />
+      <Box name={`${prefix}-side-accent-right`} color={theme.trim} position={[width / 2 - 0.22, 0.205, -0.34]} scale={[0.08, 0.07, depth - 1.2]} />
+      <Text color="#f8fafc" fontSize={automatic ? 0.25 : 0.3} position={[-5.65, 0.13, entryZ - 0.52]} rotation={[-Math.PI / 2, 0, 0]}>
+        {label}
+      </Text>
+      <LandscapeBed name={`${prefix}-landscape-left`} position={[-width / 2 + 1.0, 0, entryZ + 0.82]} scale={[0.95, 1, 0.72]} theme={theme} />
+      <LandscapeBed name={`${prefix}-landscape-right`} position={[width / 2 - 1.0, 0, entryZ + 0.82]} scale={[0.95, 1, 0.72]} theme={theme} />
+      <BollardRow name={`${prefix}-entry-bollards`} count={6} start={[-2.0, 0, entryZ + 0.22]} step={[0.8, 0, 0]} />
+      {[
+        [-width / 2 + 0.62, exitZ - 0.82],
+        [width / 2 - 0.62, exitZ - 0.82],
+        [-width / 2 + 0.62, entryZ + 1.55],
+        [width / 2 - 0.62, entryZ + 1.55],
+      ].map(([x, z], index) => (
+        <group key={`${prefix}-campus-light-${index}`} position={[x, 0, z]}>
+          <Box name={`${prefix}-campus-light-pole-${index}`} color="#26323d" position={[0, 0.78, 0]} scale={[0.06, 1.56, 0.06]} />
+          <Box name={`${prefix}-campus-light-head-${index}`} color="#fde68a" position={[0, 1.58, 0]} scale={[0.26, 0.12, 0.26]} />
+        </group>
+      ))}
+      {automatic ? (
+        <Box name="auto-hero-queue-gate" color={theme.accent} position={[-4.2, 0.58, entryZ + 1.52]} scale={[1.2, 0.18, 0.12]} />
+      ) : (
+        <Box name="self-serve-hero-bay-menu-board" color="#0f172a" position={[-6.4, 0.92, -2.05]} scale={[0.12, 1.14, 0.78]} />
+      )}
     </group>
   )
 }
@@ -1289,9 +1337,11 @@ function FloatingCity({ state, theme }: { state: GameState; theme: CityThemeSpec
     <group>
       <Box name="city-mat" color={theme.ground} position={[0, -0.34, -0.3]} scale={[57.8, 0.22, 40.5]} />
       <Box name="city-mat-shadow" color={theme.underside} position={[0, -0.58, -0.3]} scale={[56.8, 0.18, 39.4]} />
+      <DioramaBaseFrame theme={theme} />
       <RegionalGroundPlan theme={theme} />
       <CityRoadNetwork theme={theme} />
       <CityLandmarks theme={theme} />
+      <TycoonCityDiorama theme={theme} />
       <Text color="#e0f2fe" fontSize={0.28} position={[-3.0, 0.12, -18.1]} rotation={[-Math.PI / 2, 0, 0]}>
         {activeCity.name.toUpperCase()}
       </Text>
@@ -1311,6 +1361,343 @@ function FloatingCity({ state, theme }: { state: GameState; theme: CityThemeSpec
           />
         )
       })}
+    </group>
+  )
+}
+
+function DioramaBaseFrame({ theme }: { theme: CityThemeSpec }) {
+  const rim = theme.id === 'snow' ? '#dbeafe' : theme.id === 'downtown' ? '#2f3a42' : '#3f4b3f'
+  const trim = theme.id === 'smallTown' ? '#d6b35f' : theme.accent
+
+  return (
+    <group>
+      <Box name="diorama-rim-north" color={rim} position={[0, -0.08, -20.78]} scale={[58.9, 0.32, 0.72]} />
+      <Box name="diorama-rim-south" color={rim} position={[0, -0.08, 20.18]} scale={[58.9, 0.32, 0.72]} />
+      <Box name="diorama-rim-west" color={rim} position={[-29.2, -0.08, -0.3]} scale={[0.72, 0.32, 41.0]} />
+      <Box name="diorama-rim-east" color={rim} position={[29.2, -0.08, -0.3]} scale={[0.72, 0.32, 41.0]} />
+      <Box name="diorama-trim-north" color={trim} position={[0, 0.09, -20.28]} scale={[55.2, 0.05, 0.08]} />
+      <Box name="diorama-trim-south" color={trim} position={[0, 0.09, 19.68]} scale={[55.2, 0.05, 0.08]} />
+      <Box name="diorama-trim-west" color={trim} position={[-28.7, 0.09, -0.3]} scale={[0.08, 0.05, 37.6]} />
+      <Box name="diorama-trim-east" color={trim} position={[28.7, 0.09, -0.3]} scale={[0.08, 0.05, 37.6]} />
+      {[
+        [-29.2, -20.78],
+        [29.2, -20.78],
+        [-29.2, 20.18],
+        [29.2, 20.18],
+      ].map(([x, z], index) => (
+        <RoadDisc color={rim} key={`diorama-foot-${index}`} name={`diorama-foot-${index}`} position={[x, 0.0, z]} radius={0.86} />
+      ))}
+      <Box name="diorama-front-title-plate" color="#0f172a" position={[0, 0.16, 19.35]} scale={[9.6, 0.08, 0.42]} />
+      <Text color="#f8fafc" fontSize={0.24} position={[-4.2, 0.24, 19.12]} rotation={[-Math.PI / 2, 0, 0]}>
+        MOBILE TYCOON DIORAMA
+      </Text>
+    </group>
+  )
+}
+
+function TycoonCityDiorama({ theme }: { theme: CityThemeSpec }) {
+  const labels = dioramaLabelsForTheme(theme)
+
+  return (
+    <group>
+      <DioramaStorefrontStrip labels={labels.north} name="north-frontage" position={[0, -0.02, -14.85]} theme={theme} />
+      <DioramaStorefrontStrip labels={labels.south} name="south-frontage" position={[0, -0.02, 14.25]} rotationY={Math.PI} theme={theme} />
+      <DioramaStorefrontStrip labels={labels.west} name="west-frontage" position={[-23.4, -0.02, -0.25]} rotationY={Math.PI / 2} theme={theme} />
+      <DioramaStorefrontStrip labels={labels.east} name="east-frontage" position={[23.4, -0.02, -0.25]} rotationY={-Math.PI / 2} theme={theme} />
+      <DioramaThemeAnchor theme={theme} />
+      <DioramaMedianParks theme={theme} />
+      <DioramaStreetLightGrid theme={theme} />
+    </group>
+  )
+}
+
+function dioramaLabelsForTheme(theme: CityThemeSpec): {
+  north: string[]
+  south: string[]
+  west: string[]
+  east: string[]
+} {
+  if (theme.id === 'downtown') {
+    return {
+      north: ['METRO', 'RAMEN', 'ARCADE', 'LOFTS'],
+      south: ['BOUTIQUE', 'PARKING', 'GYM', 'CAFE'],
+      west: ['BANK', 'HOTEL', 'CLINIC'],
+      east: ['MARKET', 'BAR', 'STUDIO'],
+    }
+  }
+
+  if (theme.id === 'snow') {
+    return {
+      north: ['LODGE', 'GEAR', 'COCOA', 'TUNE'],
+      south: ['CHAINS', 'INN', 'SKI SHOP', 'CAFE'],
+      west: ['PLOW', 'FUEL', 'RENTAL'],
+      east: ['CABINS', 'CLINIC', 'MARKET'],
+    }
+  }
+
+  if (theme.id === 'harbor') {
+    return {
+      north: ['FISH', 'PIER MART', 'CAFE', 'MARINA'],
+      south: ['BAIT', 'DOCKS', 'TACOS', 'MOTEL'],
+      west: ['FERRY', 'ICE', 'SUPPLY'],
+      east: ['BOATS', 'MARKET', 'HOTEL'],
+    }
+  }
+
+  if (theme.id === 'beltline') {
+    return {
+      north: ['LOGIX', 'FLEET', 'PARTS', 'GRILL'],
+      south: ['TIRE', 'MOTEL', 'STORAGE', 'DIESEL'],
+      west: ['DEPOT', 'LEASE', 'TOOLS'],
+      east: ['AUTO', 'WARE', 'TRUCK'],
+    }
+  }
+
+  return {
+    north: ['DINER', 'PHARMACY', 'PARTS', 'BANK'],
+    south: ['MART', 'MOTEL', 'COFFEE', 'SALON'],
+    west: ['LIBRARY', 'HARDWARE', 'CLINIC'],
+    east: ['PIZZA', 'MARKET', 'GARAGE'],
+  }
+}
+
+function DioramaStorefrontStrip({
+  labels,
+  name,
+  position,
+  rotationY = 0,
+  theme,
+}: {
+  labels: string[]
+  name: string
+  position: Vec3
+  rotationY?: number
+  theme: CityThemeSpec
+}) {
+  const offsetStart = -(labels.length - 1) * 1.15
+
+  return (
+    <group position={position} rotation={[0, rotationY, 0]}>
+      <Box name={`${name}-frontage-sidewalk`} color={theme.id === 'snow' ? '#eef8fb' : '#b8b2a7'} position={[0, 0.015, -0.92]} scale={[labels.length * 2.42, 0.05, 0.38]} />
+      <Box name={`${name}-frontage-curb`} color={theme.trim} position={[0, 0.09, -1.16]} scale={[labels.length * 2.34, 0.08, 0.08]} />
+      {labels.map((label, index) => (
+        <DioramaShop
+          key={`${name}-${label}`}
+          color={theme.blockTones[index % theme.blockTones.length]}
+          label={label}
+          name={`${name}-${index}`}
+          position={[offsetStart + index * 2.3, 0, 0]}
+          theme={theme}
+        />
+      ))}
+    </group>
+  )
+}
+
+function DioramaShop({
+  color,
+  label,
+  name,
+  position,
+  theme,
+}: {
+  color: string
+  label: string
+  name: string
+  position: Vec3
+  theme: CityThemeSpec
+}) {
+  const safeLabel = label.toLowerCase().replace(/\s+/g, '-')
+
+  return (
+    <group position={position}>
+      <Box name={`${name}-${safeLabel}-shop-lot`} color={theme.lot} position={[0, 0.0, 0.14]} scale={[1.92, 0.05, 1.38]} />
+      <Box name={`${name}-${safeLabel}-shop-body`} color={color} position={[0, 0.48, 0.2]} scale={[1.36, 0.96, 0.78]} />
+      <Box name={`${name}-${safeLabel}-shop-roof`} color="#26323d" position={[0, 1.04, 0.2]} scale={[1.52, 0.16, 0.92]} />
+      <Box name={`${name}-${safeLabel}-shop-awning`} color={theme.accent} position={[0, 0.72, -0.26]} scale={[1.42, 0.14, 0.14]} />
+      <Box name={`${name}-${safeLabel}-shop-door`} color="#0f172a" position={[-0.46, 0.34, -0.24]} scale={[0.25, 0.58, 0.06]} />
+      <Box name={`${name}-${safeLabel}-shop-window-a`} color="#bae6fd" position={[0.02, 0.44, -0.24]} scale={[0.3, 0.28, 0.05]} />
+      <Box name={`${name}-${safeLabel}-shop-window-b`} color="#bae6fd" position={[0.42, 0.44, -0.24]} scale={[0.3, 0.28, 0.05]} />
+      <Text color="#f8fafc" fontSize={0.085} position={[-0.58, 0.73, -0.34]}>
+        {label}
+      </Text>
+    </group>
+  )
+}
+
+function DioramaThemeAnchor({ theme }: { theme: CityThemeSpec }) {
+  if (theme.id === 'downtown') {
+    return (
+      <group>
+        <DioramaTowerBlock name="downtown-north-towers" position={[-13.2, -0.02, -13.2]} theme={theme} />
+        <DioramaTowerBlock name="downtown-east-towers" position={[17.6, -0.02, 11.6]} theme={theme} />
+        <Box name="downtown-neon-plaza" color="#2d2431" position={[15.8, -0.02, -13.55]} scale={[5.2, 0.05, 1.5]} />
+        <Box name="downtown-neon-plaza-pink" color="#f472b6" position={[15.8, 0.06, -14.14]} scale={[4.6, 0.06, 0.08]} />
+        <Box name="downtown-neon-plaza-cyan" color="#22d3ee" position={[15.8, 0.06, -12.96]} scale={[4.6, 0.06, 0.08]} />
+      </group>
+    )
+  }
+
+  if (theme.id === 'snow') {
+    return (
+      <group>
+        <Box name="snow-town-lodge-base" color="#c4a77f" position={[-13.5, 0.52, 12.4]} scale={[3.3, 1.04, 1.5]} />
+        <RotBox name="snow-town-lodge-roof" color="#334155" position={[-13.5, 1.2, 12.4]} rotationY={0.78} scale={[2.55, 0.28, 1.45]} />
+        <Text color="#f8fafc" fontSize={0.12} position={[-14.72, 0.72, 11.58]}>
+          WARM LODGE
+        </Text>
+        <EvergreenCluster name="snow-town-evergreens-a" position={[18.6, -0.02, 11.8]} theme={theme} />
+        <EvergreenCluster name="snow-town-evergreens-b" position={[18.8, -0.02, -12.2]} theme={theme} />
+        <Box name="snow-sculpted-bank-front" color="#f8fafc" position={[0, -0.01, -12.15]} scale={[6.8, 0.06, 0.34]} />
+        <Box name="snow-sculpted-bank-back" color="#f8fafc" position={[0, -0.01, 12.05]} scale={[6.8, 0.06, 0.34]} />
+      </group>
+    )
+  }
+
+  if (theme.id === 'harbor') {
+    return (
+      <group>
+        <Box name="harbor-diorama-canal" color={theme.water} position={[-24.2, -0.06, -0.4]} scale={[1.2, 0.06, 22.4]} />
+        <Box name="harbor-diorama-boardwalk" color="#8b6f55" position={[-22.75, 0.02, -0.4]} scale={[0.42, 0.06, 21.4]} />
+        <ContainerStack position={[-18.8, -0.01, 12.2]} theme={theme} />
+        <ContainerStack position={[18.8, -0.01, -12.2]} theme={theme} />
+        <Box name="harbor-ferry-terminal" color="#d7d1c6" position={[17.4, 0.5, 12.25]} scale={[2.35, 1.0, 1.1]} />
+        <Box name="harbor-ferry-roof" color={theme.trim} position={[17.4, 1.08, 12.25]} scale={[2.52, 0.18, 1.24]} />
+      </group>
+    )
+  }
+
+  if (theme.id === 'beltline') {
+    return (
+      <group>
+        <Box name="beltline-showroom-pad" color="#4b5563" position={[-15.9, -0.01, 12.55]} scale={[5.0, 0.05, 1.8]} />
+        <Box name="beltline-showroom" color="#c9c4ba" position={[-15.9, 0.48, 12.7]} scale={[2.9, 0.96, 1.0]} />
+        <Box name="beltline-showroom-roof" color={theme.trim} position={[-15.9, 1.04, 12.7]} scale={[3.1, 0.16, 1.16]} />
+        <Box name="beltline-fleet-yard" color="#4f4a45" position={[15.4, -0.01, -12.5]} scale={[5.2, 0.05, 1.82]} />
+        {[0, 1, 2, 3].map((index) => (
+          <Box
+            color={index % 2 === 0 ? '#f8fafc' : theme.accent}
+            key={`beltline-fleet-van-${index}`}
+            name={`beltline-fleet-van-${index}`}
+            position={[13.8 + index * 0.78, 0.24, -12.5]}
+            scale={[0.52, 0.32, 0.7]}
+          />
+        ))}
+        <DioramaTowerBlock compact name="beltline-industrial-stack-row" position={[20.2, -0.02, 2.0]} theme={theme} />
+      </group>
+    )
+  }
+
+  return (
+    <group>
+      <Box name="smalltown-town-square" color={theme.park} position={[13.2, -0.02, -12.6]} scale={[4.8, 0.05, 1.9]} />
+      <Box name="smalltown-gazebo-base" color="#f8fafc" position={[13.2, 0.16, -12.6]} scale={[0.92, 0.16, 0.92]} />
+      <mesh name="smalltown-gazebo-roof" position={[13.2, 0.62, -12.6]} castShadow>
+        <coneGeometry args={[0.72, 0.5, 6]} />
+        <meshStandardMaterial color={theme.trim} roughness={0.58} metalness={0.02} />
+      </mesh>
+      <Box name="smalltown-water-tower-ring" color="#d6b35f" position={[-18.8, 0.02, 12.4]} scale={[3.8, 0.05, 1.7]} />
+      <WaterTower position={[-18.8, -0.02, 12.4]} color={theme.trim} />
+      <NeighborhoodHomes position={[18.4, -0.02, 12.2]} theme={theme} />
+      <NeighborhoodHomes mirrored position={[-18.4, -0.02, -12.3]} theme={theme} />
+    </group>
+  )
+}
+
+function DioramaTowerBlock({
+  compact = false,
+  name,
+  position,
+  theme,
+}: {
+  compact?: boolean
+  name: string
+  position: Vec3
+  theme: CityThemeSpec
+}) {
+  const count = compact ? 5 : 8
+
+  return (
+    <group position={position}>
+      <Box name={`${name}-plaza`} color={theme.lot} position={[0, 0, 0]} scale={[compact ? 3.0 : 4.7, 0.05, compact ? 1.5 : 2.2]} />
+      {Array.from({ length: count }, (_, index) => {
+        const col = index % 4
+        const row = Math.floor(index / 4)
+        const height = (compact ? 0.75 : 1.05) + (index % 4) * 0.32
+        return (
+          <group key={`${name}-tower-${index}`} position={[-1.55 + col * 1.02, 0, -0.46 + row * 0.92]}>
+            <Box name={`${name}-tower-body-${index}`} color={index % 2 === 0 ? theme.skylineA : theme.skylineB} position={[0, height / 2, 0]} scale={[0.62, height, 0.54]} />
+            <Box name={`${name}-tower-cap-${index}`} color={theme.accent} position={[0, height + 0.06, 0]} scale={[0.68, 0.08, 0.6]} />
+            {[0.32, 0.62, 0.92].map((y, windowIndex) => (
+              <Box
+                color="#bae6fd"
+                key={`${name}-window-${index}-${windowIndex}`}
+                name={`${name}-tower-window-${index}-${windowIndex}`}
+                position={[-0.02, y, -0.29]}
+                scale={[0.38, 0.06, 0.035]}
+              />
+            ))}
+          </group>
+        )
+      })}
+    </group>
+  )
+}
+
+function EvergreenCluster({ name, position, theme }: { name: string; position: Vec3; theme: CityThemeSpec }) {
+  return (
+    <group position={position}>
+      {[
+        [-0.75, 0, -0.32],
+        [-0.18, 0, 0.28],
+        [0.48, 0, -0.12],
+        [0.92, 0, 0.42],
+      ].map(([x, y, z], index) => (
+        <group key={`${name}-${index}`} position={[x, y, z] as Vec3}>
+          <Box name={`${name}-trunk-${index}`} color="#704f34" position={[0, 0.2, 0]} scale={[0.12, 0.4, 0.12]} />
+          <mesh position={[0, 0.72, 0]} castShadow>
+            <coneGeometry args={[0.42, 0.96, 10]} />
+            <meshStandardMaterial color={theme.foliage} roughness={0.68} />
+          </mesh>
+        </group>
+      ))}
+    </group>
+  )
+}
+
+function DioramaMedianParks({ theme }: { theme: CityThemeSpec }) {
+  return (
+    <group>
+      <Box name="diorama-median-park-left" color={theme.park} position={[-6.1, -0.035, -12.4]} scale={[3.1, 0.05, 1.0]} />
+      <Box name="diorama-median-park-right" color={theme.park} position={[6.1, -0.035, 12.0]} scale={[3.1, 0.05, 1.0]} />
+      <EvergreenCluster name="diorama-park-left-trees" position={[-6.1, -0.02, -12.4]} theme={theme} />
+      <EvergreenCluster name="diorama-park-right-trees" position={[6.1, -0.02, 12.0]} theme={theme} />
+      <Box name="diorama-park-bench-left" color="#8b6f55" position={[-5.2, 0.18, -12.72]} scale={[0.64, 0.12, 0.18]} />
+      <Box name="diorama-park-bench-right" color="#8b6f55" position={[5.2, 0.18, 11.68]} scale={[0.64, 0.12, 0.18]} />
+    </group>
+  )
+}
+
+function DioramaStreetLightGrid({ theme }: { theme: CityThemeSpec }) {
+  const lightColor = theme.id === 'downtown' ? '#fef3c7' : theme.id === 'snow' ? '#e0f2fe' : '#fde68a'
+  const positions: Array<[number, number]> = [
+    [-13.5, -8.9],
+    [13.5, -8.9],
+    [-13.5, 8.0],
+    [13.5, 8.0],
+    [-23.9, -13.5],
+    [23.9, 13.0],
+  ]
+
+  return (
+    <group>
+      {positions.map(([x, z], index) => (
+        <group key={`diorama-light-${index}`} position={[x, 0, z]}>
+          <Box name={`diorama-light-pole-${index}`} color="#26323d" position={[0, 0.78, 0]} scale={[0.06, 1.56, 0.06]} />
+          <Box name={`diorama-light-arm-${index}`} color="#26323d" position={[0.28, 1.5, 0]} scale={[0.56, 0.06, 0.06]} />
+          <Box name={`diorama-light-glow-${index}`} color={lightColor} position={[0.58, 1.48, 0]} scale={[0.22, 0.12, 0.22]} />
+        </group>
+      ))}
     </group>
   )
 }
