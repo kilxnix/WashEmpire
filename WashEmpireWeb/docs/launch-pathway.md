@@ -79,6 +79,7 @@ The game should communicate the fantasy immediately: a self-serve car wash busin
 - Goal: Cars should drive with purpose toward the car wash, queue if worthwhile, or drive by if not. Avoid aimless circulation as the dominant visual.
 - Acceptance: active customer cars visibly approach the wash entrance and non-customer traffic remains secondary.
 - Verify: simulation tests or browser smoke notes plus screenshot/video evidence.
+- Progress: Reworked the road/sidewalk art treatment so it reads as a real frontage road: removed debug-like sidewalk grid lines, replaced giant ground road words with street-sign blades, simplified random asphalt patches, added continuous curbs, sidewalk slabs, driveway throats, curb cuts, no-parking curb paint, and clearer enter/exit frontage markings.
 
 ### L-005 People Washing Cars Pass
 
@@ -98,6 +99,7 @@ The game should communicate the fantasy immediately: a self-serve car wash busin
 - Acceptance: new reward ids are mapped in `environmentRewards.ts`, backed in `WashScene.tsx`, and audited.
 - Verify: `npm.cmd run audit:visual-rewards`.
 - Progress: Added per-bay scene-backed visual rewards for all six bay upgrade tracks: selector chips/readout, pressure wand hose reel and swivel arm, foam tanks and lines, rinse nozzles/gloss, dryer side blowers/air streams, and expanded vault cabinet/cassette. The visual reward audit now checks bay upgrade coverage too.
+- Progress: Added manager-upgrade staffing visuals near the office (staff training board and manager/staff parking sign) so people-ops progression reads in-scene from the default camera rather than only through UI.
 
 ### L-007 Economy Eight-Hour Balance Check
 

@@ -26,6 +26,8 @@ export type EnvironmentRewardVisualId =
   | 'office-open-sign'
   | 'manager-desk-light'
   | 'staff-clipboard'
+  | 'staff-training-board'
+  | 'manager-parking-sign'
   | 'mobile-campaign-billboard'
   | 'phone-ad-placards'
   | 'roadside-coupon-banner'
@@ -76,7 +78,7 @@ export const environmentRewardDefinitions: readonly EnvironmentRewardDefinition[
   },
   {
     upgradeId: 'manager',
-    visualIds: ['office-open-sign', 'manager-desk-light', 'staff-clipboard'],
+    visualIds: ['office-open-sign', 'manager-desk-light', 'staff-clipboard', 'staff-training-board', 'manager-parking-sign'],
   },
   {
     upgradeId: 'mobileCampaign',

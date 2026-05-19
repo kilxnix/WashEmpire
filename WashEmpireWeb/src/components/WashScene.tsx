@@ -849,6 +849,7 @@ function UpgradeRewardLayer({
       {hasReward(rewardIds, 'tap-to-pay-window-decal') && <PaymentRewardProps automatic={automatic} />}
       {hasReward(rewardIds, 'loyalty-window-decal') && <LoyaltyRewardProps automatic={automatic} />}
       {hasReward(rewardIds, 'office-open-sign') && <ManagerRewardProps automatic={automatic} />}
+      {hasReward(rewardIds, 'staff-training-board') && <ManagerStaffingRewardProps automatic={automatic} />}
       {hasReward(rewardIds, 'mobile-campaign-billboard') && <MobileCampaignRewardProps automatic={automatic} />}
       {hasReward(rewardIds, 'laser-menu-board') && <LaserRewardProps automatic={automatic} />}
     </group>
@@ -1075,6 +1076,34 @@ function ManagerRewardProps({ automatic }: { automatic: boolean }) {
       <group name="staff-clipboard" position={[deskPosition[0] + 0.34, deskPosition[1] - 0.36, deskPosition[2] - 0.12]}>
         <Box name="clipboard-paper" color="#e8e0d0" position={[0, 0, 0]} scale={[0.24, 0.04, 0.32]} />
         <Box name="clipboard-clip" color="#64748b" position={[0, 0.04, -0.13]} scale={[0.16, 0.04, 0.04]} />
+      </group>
+    </group>
+  )
+}
+
+function ManagerStaffingRewardProps({ automatic }: { automatic: boolean }) {
+  const boardPosition: Vec3 = automatic ? [6.18, 0, 3.58] : [6.66, 0, 3.72]
+  const signPosition: Vec3 = automatic ? [4.86, 0, 4.9] : [5.34, 0, 4.76]
+
+  return (
+    <group>
+      <group name="staff-training-board" position={boardPosition}>
+        <Box name="staff-training-board-post-left" color="#26323d" position={[-0.3, 0.66, 0]} scale={[0.06, 1.32, 0.06]} />
+        <Box name="staff-training-board-post-right" color="#26323d" position={[0.3, 0.66, 0]} scale={[0.06, 1.32, 0.06]} />
+        <Box name="staff-training-board-face" color="#0f4f9c" position={[0, 1.12, -0.04]} scale={[1.05, 0.56, 0.08]} />
+        <Text color="#f8fafc" fontSize={0.06} position={[-0.35, 1.18, -0.1]}>
+          STAFF TRAINING
+        </Text>
+        <Text color="#fde68a" fontSize={0.05} position={[-0.31, 1.0, -0.1]}>
+          NOW HIRING
+        </Text>
+      </group>
+      <group name="manager-parking-sign" position={signPosition}>
+        <Box name="manager-parking-sign-post" color="#334155" position={[0, 0.44, 0]} scale={[0.06, 0.88, 0.06]} />
+        <Box name="manager-parking-sign-face" color="#22c55e" position={[0, 0.84, -0.03]} scale={[0.72, 0.3, 0.06]} />
+        <Text color="#052e16" fontSize={0.055} position={[-0.26, 0.84, -0.08]}>
+          STAFF
+        </Text>
       </group>
     </group>
   )
@@ -2310,8 +2339,9 @@ function RoadSurfaceDetails({ theme }: { theme: CityThemeSpec }) {
       <IntersectionCrosswalks theme={theme} />
       <StopBars />
       <LaneDirectionArrows />
-      <RoadWearAndUtilities theme={theme} />
+      <RoadWearAndUtilities />
       <RoadTextMarkings theme={theme} />
+      <CarWashFrontageRoadDetails theme={theme} />
       <TrafficSignal position={[-8.1, 0, -6.2]} rotationY={0.4} />
       <TrafficSignal position={[8.1, 0, -6.2]} rotationY={-0.4} />
       <TrafficSignal position={[-8.1, 0, 6.75]} rotationY={2.74} />
@@ -2325,19 +2355,19 @@ function RoadSurfaceDetails({ theme }: { theme: CityThemeSpec }) {
 
 function RoadEdgeLines({ theme }: { theme: CityThemeSpec }) {
   const yellow = theme.stripe
-  const white = theme.id === 'snow' ? '#f8fafc' : '#9aa69c'
+  const curb = theme.id === 'snow' ? '#f8fafc' : '#b9b4aa'
   return (
     <group>
-      {[-10.05, -6.2, 6.75, 9.15].map((z) => (
+      {[-10.05, 9.15].map((z) => (
         <group key={`road-edge-horizontal-${z}`}>
-          <Box name={`road-edge-h-${z}-north`} color={white} position={[0, -0.075, z - 0.43]} scale={[44.4, 0.018, 0.035]} />
-          <Box name={`road-edge-h-${z}-south`} color={white} position={[0, -0.075, z + 0.43]} scale={[44.4, 0.018, 0.035]} />
+          <Box name={`road-curb-h-${z}-north`} color={curb} position={[0, -0.064, z - 0.52]} scale={[45.2, 0.04, 0.08]} />
+          <Box name={`road-curb-h-${z}-south`} color={curb} position={[0, -0.064, z + 0.52]} scale={[45.2, 0.04, 0.08]} />
         </group>
       ))}
-      {[-21.0, -15.1, -8.1, 8.1, 15.1, 21.2].map((x) => (
+      {[-21.0, 21.2].map((x) => (
         <group key={`road-edge-vertical-${x}`}>
-          <Box name={`road-edge-v-${x}-west`} color={white} position={[x - 0.42, -0.075, -0.35]} scale={[0.035, 0.018, 28.8]} />
-          <Box name={`road-edge-v-${x}-east`} color={white} position={[x + 0.42, -0.075, -0.35]} scale={[0.035, 0.018, 28.8]} />
+          <Box name={`road-curb-v-${x}-west`} color={curb} position={[x - 0.52, -0.064, -0.35]} scale={[0.08, 0.04, 29.6]} />
+          <Box name={`road-curb-v-${x}-east`} color={curb} position={[x + 0.52, -0.064, -0.35]} scale={[0.08, 0.04, 29.6]} />
         </group>
       ))}
       <Box name="center-turn-lane-main" color={yellow} position={[0, -0.065, -6.2]} scale={[10.5, 0.02, 0.045]} />
@@ -2348,13 +2378,14 @@ function RoadEdgeLines({ theme }: { theme: CityThemeSpec }) {
 
 function SidewalkGrid({ theme }: { theme: CityThemeSpec }) {
   const concrete = theme.id === 'snow' ? '#e5edf0' : '#a9afa6'
+  const curb = theme.id === 'snow' ? '#f8fafc' : '#d7d1c6'
   return (
     <group>
       {[
-        [0, -9.2, 31.0, 0.12],
-        [0, -11.0, 31.0, 0.12],
-        [0, 8.25, 31.0, 0.12],
-        [0, 10.1, 31.0, 0.12],
+        [0, -9.05, 43.8, 0.38],
+        [0, 8.15, 43.8, 0.38],
+        [0, -17.3, 51.4, 0.32],
+        [0, 16.45, 51.4, 0.32],
       ].map(([x, z, sx, sz], index) => (
         <Box
           color={concrete}
@@ -2365,12 +2396,10 @@ function SidewalkGrid({ theme }: { theme: CityThemeSpec }) {
         />
       ))}
       {[
-        [-14.15, -0.4, 0.12, 18.2],
-        [-16.05, -0.4, 0.12, 18.2],
-        [7.15, -0.4, 0.12, 10.8],
-        [9.05, -0.4, 0.12, 10.8],
-        [14.15, -0.4, 0.12, 18.2],
-        [16.05, -0.4, 0.12, 18.2],
+        [-20.15, -0.35, 0.38, 28.8],
+        [20.35, -0.35, 0.38, 28.8],
+        [-14.15, -0.35, 0.32, 17.0],
+        [14.15, -0.35, 0.32, 17.0],
       ].map(([x, z, sx, sz], index) => (
         <Box
           color={concrete}
@@ -2378,6 +2407,32 @@ function SidewalkGrid({ theme }: { theme: CityThemeSpec }) {
           name={`sidewalk-v-${index}`}
           position={[x, -0.105, z]}
           scale={[sx, 0.035, sz]}
+        />
+      ))}
+      {[
+        [0, -8.78, 43.4, 0.06],
+        [0, 7.88, 43.4, 0.06],
+        [-19.88, -0.35, 0.06, 28.4],
+        [20.08, -0.35, 0.06, 28.4],
+      ].map(([x, z, sx, sz], index) => (
+        <Box
+          color={curb}
+          key={`sidewalk-curb-${index}`}
+          name={`sidewalk-curb-${index}`}
+          position={[x, -0.056, z]}
+          scale={[sx, 0.04, sz]}
+        />
+      ))}
+      {[
+        [0, -6.2, 3.9, 1.18],
+        [0, 6.75, 3.9, 1.12],
+      ].map(([x, z, sx, sz], index) => (
+        <Box
+          color={theme.road}
+          key={`wash-driveway-throat-${index}`}
+          name={`wash-driveway-throat-${index}`}
+          position={[x, -0.052, z]}
+          scale={[sx, 0.036, sz]}
         />
       ))}
     </group>
@@ -2481,30 +2536,9 @@ function LaneArrow({ name, position, rotationY = 0 }: { name: string; position: 
   )
 }
 
-function RoadWearAndUtilities({ theme }: { theme: CityThemeSpec }) {
-  const patch = theme.id === 'snow' ? '#2f3b46' : '#303a43'
-  const seal = theme.id === 'downtown' || theme.id === 'beltline' ? '#0f172a' : '#1f2933'
-  const patches: Array<{ name: string; position: Vec3; scale: Vec3; rotationY?: number; color?: string }> = [
-    { name: 'entry-sawcut', position: [-2.1, -0.064, -6.18], scale: [1.55, 0.014, 0.18], rotationY: 0.04, color: patch },
-    { name: 'exit-sawcut', position: [2.1, -0.064, 6.72], scale: [1.35, 0.014, 0.16], rotationY: -0.08, color: patch },
-    { name: 'north-repair', position: [-12.4, -0.066, -10.05], scale: [1.18, 0.014, 0.22], rotationY: 0.1, color: seal },
-    { name: 'south-repair', position: [13.1, -0.066, 9.15], scale: [1.34, 0.014, 0.22], rotationY: -0.16, color: seal },
-    { name: 'west-feed-repair', position: [-8.08, -0.066, 2.2], scale: [0.2, 0.014, 1.0], rotationY: 0.04, color: seal },
-    { name: 'east-feed-repair', position: [8.08, -0.066, -2.0], scale: [0.2, 0.014, 1.0], rotationY: -0.06, color: seal },
-  ]
-
+function RoadWearAndUtilities() {
   return (
     <group>
-      {patches.map((item) => (
-        <RotBox
-          color={item.color ?? patch}
-          key={item.name}
-          name={`road-wear-${item.name}`}
-          position={item.position}
-          rotationY={item.rotationY}
-          scale={item.scale}
-        />
-      ))}
       {[
         [-6.4, -5.72],
         [6.4, -6.72],
@@ -2560,17 +2594,55 @@ function RoadTextMarkings({ theme }: { theme: CityThemeSpec }) {
 
   return (
     <group>
-      <Text color="#f8fafc" fontSize={0.28} position={[-5.9, -0.04, -6.2]} rotation={[-Math.PI / 2, 0, 0]}>
-        {labels.entry}
+      <RoadNameBlade label={labels.main} position={[-8.82, 0, -9.15]} rotationY={0.2} theme={theme} />
+      <RoadNameBlade label={labels.cross} position={[-14.18, 0, -7.38]} rotationY={Math.PI / 2} theme={theme} />
+      <RoadNameBlade label={labels.entry} position={[-5.5, 0, -5.42]} rotationY={0} theme={theme} compact />
+      <RoadNameBlade label={labels.exit} position={[5.42, 0, 5.92]} rotationY={Math.PI} theme={theme} compact />
+    </group>
+  )
+}
+
+function RoadNameBlade({
+  compact = false,
+  label,
+  position,
+  rotationY,
+  theme,
+}: {
+  compact?: boolean
+  label: string
+  position: Vec3
+  rotationY: number
+  theme: CityThemeSpec
+}) {
+  const width = compact ? 0.92 : 1.22
+  return (
+    <group position={position} rotation={[0, rotationY, 0]}>
+      <Box name={`${label}-road-blade-post`} color="#26323d" position={[0, 0.42, 0]} scale={[0.055, 0.84, 0.055]} />
+      <Box name={`${label}-road-blade-face`} color={theme.trim} position={[0, 0.84, -0.03]} scale={[width, 0.24, 0.06]} />
+      <Text color="#f8fafc" fontSize={compact ? 0.045 : 0.055} position={[-width * 0.38, 0.84, -0.08]}>
+        {label}
       </Text>
-      <Text color="#f8fafc" fontSize={0.24} position={[5.35, -0.04, 6.75]} rotation={[-Math.PI / 2, 0, Math.PI]}>
-        {labels.exit}
+    </group>
+  )
+}
+
+function CarWashFrontageRoadDetails({ theme }: { theme: CityThemeSpec }) {
+  return (
+    <group>
+      <Box name="frontage-left-turn-pocket" color={theme.road} position={[-3.25, -0.052, -5.25]} scale={[1.18, 0.035, 1.52]} />
+      <Box name="frontage-right-turn-pocket" color={theme.road} position={[3.25, -0.052, 4.25]} scale={[1.18, 0.035, 1.52]} />
+      <Box name="frontage-entry-curb-cut-left" color="#d7d1c6" position={[-2.35, -0.032, -5.96]} scale={[0.7, 0.05, 0.14]} />
+      <Box name="frontage-entry-curb-cut-right" color="#d7d1c6" position={[2.35, -0.032, -5.96]} scale={[0.7, 0.05, 0.14]} />
+      <Box name="frontage-exit-curb-cut-left" color="#d7d1c6" position={[-2.35, -0.032, 5.06]} scale={[0.7, 0.05, 0.14]} />
+      <Box name="frontage-exit-curb-cut-right" color="#d7d1c6" position={[2.35, -0.032, 5.06]} scale={[0.7, 0.05, 0.14]} />
+      <Box name="frontage-no-parking-red-left" color="#dc2626" position={[-4.52, -0.018, -5.92]} scale={[1.4, 0.03, 0.045]} />
+      <Box name="frontage-no-parking-red-right" color="#dc2626" position={[4.52, -0.018, 5.02]} scale={[1.4, 0.03, 0.045]} />
+      <Text color="#f8fafc" fontSize={0.1} position={[-1.82, -0.025, -5.24]} rotation={[-Math.PI / 2, 0, 0]}>
+        ENTER
       </Text>
-      <Text color="#facc15" fontSize={0.18} position={[0, -0.04, -10.05]} rotation={[-Math.PI / 2, 0, 0]}>
-        {labels.main}
-      </Text>
-      <Text color="#facc15" fontSize={0.18} position={[-15.1, -0.04, -2.8]} rotation={[-Math.PI / 2, 0, Math.PI / 2]}>
-        {labels.cross}
+      <Text color="#f8fafc" fontSize={0.1} position={[1.42, -0.025, 4.24]} rotation={[-Math.PI / 2, 0, Math.PI]}>
+        EXIT
       </Text>
     </group>
   )

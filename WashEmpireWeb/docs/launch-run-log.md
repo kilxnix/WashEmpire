@@ -107,3 +107,19 @@ Append one entry per launch-worker run. Keep this file short, factual, and usefu
 - Verification: npm.cmd run lint (pass); npm.cmd run audit:visual-rewards (pass: 10 lot upgrades, 31 lot reward props, 6 bay upgrades); npm.cmd run test (pass); npm.cmd run build (pass); npm.cmd run audit:launch (pass)
 - Result: Passed. Added per-bay visual reward props for selector, wand, soap, rinse, dryer, and vault upgrade tracks, plus an upgraded-bay QA screenshot showing those changes in-scene.
 - Next: Continue L-006 with employee/ad/marketing visible-state upgrades.
+
+## Run 2026-05-19T12:36:11-04:00
+- Task: L-006 Upgrade Reward Expansion
+- Team: Visual / Art
+- Changed: src/game/environmentRewards.ts; src/components/WashScene.tsx; docs/launch-pathway.md; docs/launch-run-log.md
+- Verification: npm.cmd run audit:visual-rewards (pass: 10 lot upgrades, 33 lot reward props, 6 bay upgrades); npm.cmd run test (pass); npm.cmd run build (pass); npm.cmd run audit:smoke-ui (pass, screenshots written under qa/)
+- Result: Passed. Added manager-upgrade staffing reward props (staff training board and manager parking sign) and mapped them in environment rewards so office/staff expansion is visible in-scene.
+- Next: Continue L-006 with additional employee/security/ad-upgrade lot props that are visible from the default mobile camera.
+
+## Run 2026-05-19T16:36:21-04:00
+- Task: L-004 Road And Arrival Polish
+- Team: Visual / Art
+- Changed: src/components/WashScene.tsx; docs/launch-pathway.md; docs/launch-run-log.md; qa/road-frontage-cleanup.png
+- Verification: npm.cmd run lint (pass); npm.cmd run audit:visual-rewards (pass: 10 lot upgrades, 33 lot reward props, 6 bay upgrades); npm.cmd run test (pass); npm.cmd run build (pass); npm.cmd run audit:launch (pass)
+- Result: Passed. Removed the debug-like sidewalk grid feel and giant road words, then replaced them with curb/sidewalk slabs, driveway throats, curb cuts, no-parking curb paint, street-sign blades, and clearer car wash entry/exit frontage markings.
+- Next: Continue with tighter city block placement and parking-lot polish.
