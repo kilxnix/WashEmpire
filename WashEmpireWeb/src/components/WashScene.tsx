@@ -3772,6 +3772,7 @@ function SelfServeBay({
       {bay.upgrades.rinse > 0 && <RinseRail level={bay.upgrades.rinse} />}
       {bay.upgrades.dryer > 0 && <DryerBoom level={bay.upgrades.dryer} />}
       {bay.upgrades.vault > 0 && <VaultMarker level={bay.upgrades.vault} />}
+      <BayUpgradeRewardSet bay={bay} theme={theme} />
       {bay.upgrades.rinse + bay.upgrades.dryer + bay.upgrades.selector > 5 && (
         <Box name={`bay-${bay.id}-premium-strip`} color="#22d3ee" position={[0, 2.34, -2.65]} scale={[2.05, 0.07, 0.09]} />
       )}
@@ -3943,6 +3944,171 @@ function VaultMarker({ level }: { level: number }) {
       <Text color="#111827" fontSize={0.045} position={[-0.09, 0, -0.24]} rotation={[0, -Math.PI / 2, 0]}>
         Lv{level}
       </Text>
+    </group>
+  )
+}
+
+function BayUpgradeRewardSet({ bay, theme }: { bay: BayState; theme: CityThemeSpec }) {
+  const levels = bay.upgrades
+  const totalLevel = levels.selector + levels.wand + levels.soap + levels.rinse + levels.dryer + levels.vault
+  if (totalLevel <= 0) return null
+
+  return (
+    <group>
+      <BayLevelRail bayId={bay.id} levels={levels} />
+      {levels.selector > 0 && <SelectorUpgradeProps bayId={bay.id} level={levels.selector} theme={theme} />}
+      {levels.wand > 0 && <WandUpgradeProps bayId={bay.id} level={levels.wand} />}
+      {levels.soap > 0 && <SoapUpgradeProps bayId={bay.id} level={levels.soap} theme={theme} />}
+      {levels.rinse > 0 && <RinseUpgradeProps bayId={bay.id} level={levels.rinse} />}
+      {levels.dryer > 0 && <DryerUpgradeProps bayId={bay.id} level={levels.dryer} />}
+      {levels.vault > 0 && <VaultUpgradeProps bayId={bay.id} level={levels.vault} />}
+    </group>
+  )
+}
+
+function BayLevelRail({ bayId, levels }: { bayId: number; levels: BayState['upgrades'] }) {
+  const entries: Array<{ id: keyof BayState['upgrades']; color: string; label: string }> = [
+    { id: 'selector', color: '#f97316', label: 'SEL' },
+    { id: 'wand', color: '#2563eb', label: 'PSI' },
+    { id: 'soap', color: '#10b981', label: 'FOAM' },
+    { id: 'rinse', color: '#38bdf8', label: 'RINSE' },
+    { id: 'dryer', color: '#facc15', label: 'DRY' },
+    { id: 'vault', color: '#22c55e', label: 'SAFE' },
+  ]
+
+  return (
+    <group position={[0, 2.2, -2.54]}>
+      <Box name={`bay-${bayId}-upgrade-rail-bg`} color="#0f172a" position={[0, 0, 0]} scale={[2.18, 0.18, 0.08]} />
+      {entries.map((entry, index) => {
+        const level = levels[entry.id]
+        return (
+          <group key={`bay-${bayId}-upgrade-rail-${entry.id}`} position={[-0.92 + index * 0.37, 0, -0.06]}>
+            <Box
+              name={`bay-${bayId}-${entry.id}-upgrade-chip`}
+              color={level > 0 ? entry.color : '#334155'}
+              position={[0, 0.01, 0]}
+              scale={[0.28, 0.11, 0.04]}
+            />
+            <Box
+              name={`bay-${bayId}-${entry.id}-upgrade-fill`}
+              color={level > 0 ? '#f8fafc' : '#64748b'}
+              position={[-0.1 + level * 0.017, 0.014, -0.025]}
+              scale={[Math.max(0.025, level * 0.034), 0.03, 0.02]}
+            />
+            <Text color="#f8fafc" fontSize={0.033} anchorX="center" anchorY="middle" position={[0, 0.012, -0.045]}>
+              {entry.label}
+            </Text>
+          </group>
+        )
+      })}
+    </group>
+  )
+}
+
+function SelectorUpgradeProps({ bayId, level, theme }: { bayId: number; level: number; theme: CityThemeSpec }) {
+  return (
+    <group>
+      <group position={[-1.16, 1.34, -1.16]} rotation={[0, Math.PI / 2, 0]}>
+        <Box name={`bay-${bayId}-selector-upgrade-face`} color="#0f172a" position={[0, 0, 0]} scale={[0.48, 0.34, 0.05]} />
+        {Array.from({ length: Math.min(6, level + 2) }, (_, index) => (
+          <mesh key={`bay-${bayId}-selector-upgrade-dial-${index}`} position={[-0.18 + (index % 3) * 0.18, 0.06 - Math.floor(index / 3) * 0.12, -0.04]} rotation={[Math.PI / 2, 0, 0]}>
+            <cylinderGeometry args={[0.04, 0.04, 0.03, 20]} />
+            <meshStandardMaterial color={[theme.accent, '#22c55e', '#facc15'][index % 3]} roughness={0.42} />
+          </mesh>
+        ))}
+        {level >= 3 && <Box name={`bay-${bayId}-selector-led-readout`} color="#22d3ee" position={[0.02, -0.17, -0.04]} scale={[0.32, 0.06, 0.03]} />}
+      </group>
+      {level >= 5 && (
+        <group position={[0, 0, -2.28]}>
+          <Box name={`bay-${bayId}-selector-floor-menu-bg`} color="#111827" position={[0, 0.158, 0]} scale={[0.9, 0.024, 0.24]} />
+          <Text color="#f8fafc" fontSize={0.07} position={[-0.36, 0.18, -0.08]} rotation={[-Math.PI / 2, 0, 0]}>
+            PRO MENU
+          </Text>
+        </group>
+      )}
+    </group>
+  )
+}
+
+function WandUpgradeProps({ bayId, level }: { bayId: number; level: number }) {
+  return (
+    <group>
+      <mesh name={`bay-${bayId}-wand-upgrade-hose-reel`} position={[-1.16, 1.3, -2.12]} rotation={[Math.PI / 2, 0, 0]} castShadow>
+        <torusGeometry args={[0.22 + level * 0.014, 0.035, 12, 36]} />
+        <meshStandardMaterial color={level >= 4 ? '#2563eb' : '#1e3a8a'} roughness={0.42} />
+      </mesh>
+      <Box name={`bay-${bayId}-wand-upgrade-swivel-arm`} color="#1d4ed8" position={[-0.72, 1.98, -1.45]} rotation={[0, 0.15, -0.2]} scale={[0.82 + level * 0.05, 0.06, 0.06]} />
+      <Box name={`bay-${bayId}-wand-upgrade-gun-rack`} color="#0f172a" position={[-1.12, 0.86, -2.0]} scale={[0.12, 0.38, 0.16]} />
+      {level >= 4 && <Box name={`bay-${bayId}-second-wand-hook`} color="#60a5fa" position={[1.12, 1.0, -1.92]} scale={[0.09, 0.42, 0.13]} />}
+    </group>
+  )
+}
+
+function SoapUpgradeProps({ bayId, level, theme }: { bayId: number; level: number; theme: CityThemeSpec }) {
+  return (
+    <group position={[0.9, 0, -1.8]}>
+      {Array.from({ length: Math.min(3, Math.ceil(level / 2)) }, (_, index) => (
+        <group key={`bay-${bayId}-soap-tank-${index}`} position={[0, 0, index * 0.32]}>
+          <mesh castShadow>
+            <cylinderGeometry args={[0.16 + level * 0.006, 0.16 + level * 0.006, 0.58 + level * 0.035, 24]} />
+            <meshStandardMaterial color={index % 2 === 0 ? '#10b981' : theme.accent} roughness={0.42} />
+          </mesh>
+          <Box name={`bay-${bayId}-soap-tank-band-${index}`} color="#f8fafc" position={[0, 0.06, 0]} scale={[0.34, 0.06, 0.04]} />
+        </group>
+      ))}
+      <Box name={`bay-${bayId}-soap-line-wall`} color="#22c55e" position={[0.24, 1.04, 0.24]} scale={[0.05, 1.42, 0.05]} />
+      {level >= 3 && <TransparentBox name={`bay-${bayId}-foam-preview`} color="#f8fafc" position={[-0.42, 0.58, 0.18]} scale={[0.48, 0.22, 0.58]} opacity={0.32} />}
+      {level >= 5 && <Box name={`bay-${bayId}-premium-foam-canister`} color="#facc15" position={[0.35, 0.46, -0.24]} scale={[0.18, 0.74, 0.18]} />}
+    </group>
+  )
+}
+
+function RinseUpgradeProps({ bayId, level }: { bayId: number; level: number }) {
+  return (
+    <group>
+      <Box name={`bay-${bayId}-rinse-wall-manifold`} color="#0284c7" position={[1.14, 1.28, 0.6]} scale={[0.08, 0.82, 0.18]} />
+      {Array.from({ length: Math.min(5, level) }, (_, index) => (
+        <Box
+          color="#7dd3fc"
+          key={`bay-${bayId}-rinse-nozzle-${index}`}
+          name={`bay-${bayId}-rinse-nozzle-${index}`}
+          position={[0.92, 1.58, -1.0 + index * 0.48]}
+          scale={[0.32, 0.045, 0.045]}
+        />
+      ))}
+      {level >= 4 && <TransparentBox name={`bay-${bayId}-spot-free-rinse-gloss`} color="#bae6fd" position={[0, 0.18, 1.16]} scale={[1.2, 0.026, 1.45]} opacity={0.36} />}
+    </group>
+  )
+}
+
+function DryerUpgradeProps({ bayId, level }: { bayId: number; level: number }) {
+  return (
+    <group>
+      <Box name={`bay-${bayId}-dryer-side-blower-left`} color="#0f766e" position={[-1.08, 1.22, 2.0]} scale={[0.18, 0.58, 0.22]} />
+      <Box name={`bay-${bayId}-dryer-side-blower-right`} color="#0f766e" position={[1.08, 1.22, 2.0]} scale={[0.18, 0.58, 0.22]} />
+      {Array.from({ length: Math.min(4, level) }, (_, index) => (
+        <TransparentBox
+          key={`bay-${bayId}-dryer-air-stream-${index}`}
+          name={`bay-${bayId}-dryer-air-stream-${index}`}
+          color="#dbeafe"
+          position={[-0.45 + index * 0.3, 1.08, 1.72 + index * 0.12]}
+          scale={[0.12, 0.06, 0.8]}
+          opacity={0.18}
+        />
+      ))}
+      {level >= 5 && <Box name={`bay-${bayId}-dryer-exit-status`} color="#facc15" position={[0, 2.05, 2.42]} scale={[1.18, 0.1, 0.07]} />}
+    </group>
+  )
+}
+
+function VaultUpgradeProps({ bayId, level }: { bayId: number; level: number }) {
+  return (
+    <group position={[-1.12, 0, 0.45]}>
+      <Box name={`bay-${bayId}-vault-expanded-cabinet`} color={level >= 4 ? '#facc15' : '#475569'} position={[0, 0.84, 0]} scale={[0.2, 1.12 + level * 0.03, 0.72]} />
+      <Box name={`bay-${bayId}-vault-token-cassette`} color="#22c55e" position={[-0.07, 0.6, -0.38]} scale={[0.08, 0.28 + level * 0.035, 0.05]} />
+      <Box name={`bay-${bayId}-vault-bill-door`} color="#111827" position={[-0.07, 1.12, -0.38]} scale={[0.09, 0.24, 0.05]} />
+      {level >= 3 && <Box name={`bay-${bayId}-vault-drop-safe-base`} color="#26323d" position={[0.08, 0.2, 0.18]} scale={[0.28, 0.34, 0.36]} />}
+      {level >= 5 && <TransparentBox name={`bay-${bayId}-vault-active-glow`} color="#22c55e" position={[-0.12, 0.86, -0.46]} scale={[0.11, 1.0, 0.08]} opacity={0.2} />}
     </group>
   )
 }

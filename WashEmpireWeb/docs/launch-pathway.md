@@ -92,11 +92,12 @@ The game should communicate the fantasy immediately: a self-serve car wash busin
 ### L-006 Upgrade Reward Expansion
 
 - Owner: Visual / Art Team
-- Status: open
+- Status: in progress
 - Automation OK: yes
 - Goal: Expand visual rewards beyond the current 31 props so bay upgrades, vacuum island, employees, security, signage, and ad/marketing upgrades all visibly improve the lot.
 - Acceptance: new reward ids are mapped in `environmentRewards.ts`, backed in `WashScene.tsx`, and audited.
 - Verify: `npm.cmd run audit:visual-rewards`.
+- Progress: Added per-bay scene-backed visual rewards for all six bay upgrade tracks: selector chips/readout, pressure wand hose reel and swivel arm, foam tanks and lines, rinse nozzles/gloss, dryer side blowers/air streams, and expanded vault cabinet/cassette. The visual reward audit now checks bay upgrade coverage too.
 
 ### L-007 Economy Eight-Hour Balance Check
 

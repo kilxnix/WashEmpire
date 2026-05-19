@@ -99,3 +99,11 @@ Append one entry per launch-worker run. Keep this file short, factual, and usefu
 - Verification: npm.cmd run lint (pass); npm.cmd run audit:visual-rewards (pass); npm.cmd run test (pass); npm.cmd run build (pass); npm.cmd run audit:smoke-ui (pass); npm.cmd run audit:launch (pass)
 - Result: Passed. Replaced repeated mini city placeholder blocks with real parcel-style storefront clusters including parking aprons, sidewalks, curbs, awnings, windows, parked micro-cars, streetlights, and trees; repaired the mobile map smoke step and added WebGL settle time so screenshots validate the rendered scene instead of a blank first frame.
 - Next: Continue L-006 with upgrade-triggered exterior rewards for bay/equipment upgrades, then capture city-specific screenshots for snow, downtown, harbor, and automatic districts.
+
+## Run 2026-05-19T11:37:24-04:00
+- Task: L-006 Upgrade Reward Expansion
+- Team: Visual / Art
+- Changed: src/components/WashScene.tsx; scripts/visual-reward-audit.mjs; docs/launch-pathway.md; docs/launch-run-log.md; qa/bay-upgrade-visual-pass.png
+- Verification: npm.cmd run lint (pass); npm.cmd run audit:visual-rewards (pass: 10 lot upgrades, 31 lot reward props, 6 bay upgrades); npm.cmd run test (pass); npm.cmd run build (pass); npm.cmd run audit:launch (pass)
+- Result: Passed. Added per-bay visual reward props for selector, wand, soap, rinse, dryer, and vault upgrade tracks, plus an upgraded-bay QA screenshot showing those changes in-scene.
+- Next: Continue L-006 with employee/ad/marketing visible-state upgrades.

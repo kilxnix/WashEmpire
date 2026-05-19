@@ -33,6 +33,12 @@ const lotUpgradeSection = getSection(
 )
 const upgradeIds = unique([...lotUpgradeSection.matchAll(/id:\s*'([^']+)'/g)].map((match) => match[1]))
 const coveredUpgradeIds = unique([...environmentRewards.matchAll(/upgradeId:\s*'([^']+)'/g)].map((match) => match[1]))
+const bayUpgradeSection = getSection(
+  simulation,
+  'export const bayUpgradeDefinitions',
+  'export const employeeDefinitions',
+)
+const bayUpgradeIds = unique([...bayUpgradeSection.matchAll(/id:\s*'([^']+)'/g)].map((match) => match[1]))
 
 const visualIdSection = getSection(
   environmentRewards,
@@ -43,8 +49,26 @@ const visualIds = unique([...visualIdSection.matchAll(/'([^']+)'/g)].map((match)
 
 const missingUpgradeMappings = upgradeIds.filter((id) => !coveredUpgradeIds.includes(id))
 const missingSceneVisuals = visualIds.filter((id) => !washScene.includes(id))
+const bayVisualMarkers = {
+  selector: ['SelectorUpgradeProps', 'selector-upgrade-face'],
+  wand: ['WandUpgradeProps', 'wand-upgrade-hose-reel'],
+  soap: ['SoapUpgradeProps', 'soap-tank'],
+  rinse: ['RinseUpgradeProps', 'rinse-nozzle'],
+  dryer: ['DryerUpgradeProps', 'dryer-air-stream'],
+  vault: ['VaultUpgradeProps', 'vault-expanded-cabinet'],
+}
+const missingBayVisualMappings = bayUpgradeIds.filter((id) => !bayVisualMarkers[id])
+const missingBaySceneVisuals = bayUpgradeIds.flatMap((id) => {
+  const markers = bayVisualMarkers[id] ?? []
+  return markers.filter((marker) => !washScene.includes(marker)).map((marker) => `${id}:${marker}`)
+})
 
-if (missingUpgradeMappings.length > 0 || missingSceneVisuals.length > 0) {
+if (
+  missingUpgradeMappings.length > 0 ||
+  missingSceneVisuals.length > 0 ||
+  missingBayVisualMappings.length > 0 ||
+  missingBaySceneVisuals.length > 0
+) {
   console.error('Visual reward audit failed.')
 
   if (missingUpgradeMappings.length > 0) {
@@ -55,9 +79,17 @@ if (missingUpgradeMappings.length > 0 || missingSceneVisuals.length > 0) {
     console.error(`Missing scene-backed visual ids: ${missingSceneVisuals.join(', ')}`)
   }
 
+  if (missingBayVisualMappings.length > 0) {
+    console.error(`Missing bay upgrade visual mappings: ${missingBayVisualMappings.join(', ')}`)
+  }
+
+  if (missingBaySceneVisuals.length > 0) {
+    console.error(`Missing bay upgrade scene markers: ${missingBaySceneVisuals.join(', ')}`)
+  }
+
   process.exit(1)
 }
 
 console.log(
-  `Visual reward audit passed: ${upgradeIds.length} lot upgrades map to ${visualIds.length} scene-backed reward props.`,
+  `Visual reward audit passed: ${upgradeIds.length} lot upgrades map to ${visualIds.length} scene-backed reward props; ${bayUpgradeIds.length} bay upgrades have scene-backed reward props.`,
 )
