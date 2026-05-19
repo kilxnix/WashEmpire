@@ -66,6 +66,10 @@ The game should communicate the fantasy immediately: a self-serve car wash busin
 - Acceptance: each district has different ground treatment, props, signage tone, road density, and traffic feel.
 - Verify: desktop and mobile screenshots for each unlocked/current district.
 - Progress: Added downtown roadside neon curb/crosswalk accents and snow district route marker posts to increase visual contrast between districts. Added a mobile diorama base frame, larger themed storefront/tower clusters, district anchor props, street lighting, and a stronger hero wash plaza so the car wash reads as the focal point from desktop and mobile cameras.
+- Progress: Added theme-specific district gateway landmarks at the city approach edge (small city monument square, harbor dock crane/canal edge, downtown neon gateway bands, snow berm marker set, beltline service-road fleet row) to strengthen per-city silhouettes from the default play camera.
+- Progress: Added larger theme-specific gateway sign silhouettes (small town timber arch, harbor lighthouse marker, downtown neon header pylons, snow pass arch, beltline overhead service beam) to improve city identification from default camera distance.
+- Progress: Added city-specific roadside district marquee signs (main street shops, fish market row, neon arcade boulevard, summit lodge way, fleet service corridor) to strengthen business-tone identity near the lot edge from default camera framing.
+- Progress: Replaced repeated placeholder cube clusters with parcel-style mini storefront blocks: parking aprons, sidewalks, curbs, awnings, windows, small parked cars, streetlights, and trees now surround the wash in every district.
 
 ### L-004 Road And Arrival Polish
 

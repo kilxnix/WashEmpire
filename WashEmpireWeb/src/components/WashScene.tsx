@@ -2684,6 +2684,7 @@ function CityLandmarks({ theme }: { theme: CityThemeSpec }) {
       <Pond color={theme.water} position={[-20.5, -0.1, -0.6]} scale={[1.2, 1, 0.76]} />
       <Pond color={theme.water} position={[20.4, -0.1, -0.8]} scale={[1.36, 1, 0.82]} />
       <RoadsideBusinessDistrict theme={theme} />
+      <DistrictGatewayLandmarks theme={theme} />
       <Park position={[-3.8, -0.1, 8.05]} theme={theme} />
       <Park position={[4.7, -0.1, -9.15]} theme={theme} />
       <Park position={[-18.1, -0.1, -3.5]} theme={theme} />
@@ -2702,6 +2703,85 @@ function CityLandmarks({ theme }: { theme: CityThemeSpec }) {
       <SkylineCluster position={[23.0, -0.02, -12.0]} theme={theme} />
       <SkylineCluster position={[-23.0, -0.02, 12.0]} theme={theme} />
       <ThemeLandmarks theme={theme} />
+    </group>
+  )
+}
+
+function DistrictGatewayLandmarks({ theme }: { theme: CityThemeSpec }) {
+  if (theme.id === 'downtown') {
+    return (
+      <group>
+        <Box name="downtown-gateway-plaza" color="#2d2431" position={[0, -0.03, -12.55]} scale={[5.1, 0.05, 0.95]} />
+        <Box name="downtown-gateway-pylon-west" color="#1f2937" position={[-2.45, 0.84, -12.6]} scale={[0.28, 1.58, 0.22]} />
+        <Box name="downtown-gateway-pylon-east" color="#1f2937" position={[2.45, 0.84, -12.6]} scale={[0.28, 1.58, 0.22]} />
+        <Box name="downtown-gateway-header" color="#111827" position={[0, 1.46, -12.6]} scale={[5.2, 0.24, 0.18]} />
+        <Box name="downtown-gateway-band-pink" color="#f472b6" position={[0, 0.62, -12.92]} scale={[4.5, 0.14, 0.1]} />
+        <Box name="downtown-gateway-band-cyan" color="#22d3ee" position={[0, 0.42, -12.18]} scale={[4.5, 0.14, 0.1]} />
+        <Box name="downtown-gateway-header-neon-pink" color="#f472b6" position={[0, 1.5, -12.82]} scale={[4.8, 0.08, 0.08]} />
+        <Box name="downtown-gateway-header-neon-cyan" color="#22d3ee" position={[0, 1.38, -12.38]} scale={[4.8, 0.08, 0.08]} />
+      </group>
+    )
+  }
+
+  if (theme.id === 'snow') {
+    return (
+      <group>
+        <Box name="snow-gateway-berm" color="#f8fafc" position={[0, -0.035, -12.5]} scale={[5.5, 0.06, 0.9]} />
+        <Box name="snow-gateway-arch-west" color="#94a3b8" position={[-2.1, 0.76, -12.56]} scale={[0.2, 1.34, 0.2]} />
+        <Box name="snow-gateway-arch-east" color="#94a3b8" position={[2.1, 0.76, -12.56]} scale={[0.2, 1.34, 0.2]} />
+        <Box name="snow-gateway-arch-top" color="#cbd5e1" position={[0, 1.34, -12.56]} scale={[4.35, 0.18, 0.2]} />
+        {[-1.6, 0, 1.6].map((x, index) => (
+          <group key={`snow-gateway-marker-${index}`} position={[x, 0, -12.9]}>
+            <Box name={`snow-gateway-post-${index}`} color="#64748b" position={[0, 0.36, 0]} scale={[0.08, 0.72, 0.08]} />
+            <Box name={`snow-gateway-cap-${index}`} color="#f97316" position={[0, 0.74, 0]} scale={[0.24, 0.14, 0.12]} />
+          </group>
+        ))}
+      </group>
+    )
+  }
+
+  if (theme.id === 'harbor') {
+    return (
+      <group>
+        <Box name="harbor-gateway-dock" color="#8b6f55" position={[0, -0.02, -12.55]} scale={[5.1, 0.08, 0.7]} />
+        <Box name="harbor-gateway-water" color={theme.water} position={[0, -0.08, -13.05]} scale={[4.8, 0.04, 0.52]} />
+        <Box name="harbor-gateway-lighthouse-base" color="#e2e8f0" position={[2.05, 0.64, -12.62]} scale={[0.48, 1.28, 0.38]} />
+        <Box name="harbor-gateway-lighthouse-cap" color="#dc2626" position={[2.05, 1.36, -12.62]} scale={[0.56, 0.18, 0.46]} />
+        <Box name="harbor-gateway-lighthouse-light" color="#fde68a" position={[2.05, 1.24, -12.4]} scale={[0.18, 0.12, 0.1]} />
+        <Box name="harbor-gateway-crane-post" color="#334155" position={[-1.9, 0.62, -12.5]} scale={[0.16, 1.24, 0.16]} />
+        <Box name="harbor-gateway-crane-arm" color="#facc15" position={[-1.15, 1.1, -12.5]} scale={[1.5, 0.1, 0.1]} />
+      </group>
+    )
+  }
+
+  if (theme.id === 'beltline') {
+    return (
+      <group>
+        <Box name="beltline-gateway-service-road" color="#0f172a" position={[0, -0.08, -12.55]} scale={[5.8, 0.04, 0.42]} />
+        <Box name="beltline-gateway-overhead-beam" color="#1f2937" position={[0.15, 1.02, -12.55]} scale={[5.2, 0.16, 0.2]} />
+        <Box name="beltline-gateway-support-west" color="#4b5563" position={[-2.35, 0.58, -12.55]} scale={[0.28, 0.96, 0.22]} />
+        <Box name="beltline-gateway-support-east" color="#4b5563" position={[2.65, 0.58, -12.55]} scale={[0.28, 0.96, 0.22]} />
+        {[-1.6, 0.2, 2.0].map((x, index) => (
+          <Box
+            key={`beltline-gateway-van-${index}`}
+            name={`beltline-gateway-van-${index}`}
+            color={index === 1 ? theme.accent : '#f8fafc'}
+            position={[x, 0.22, -12.55]}
+            scale={[0.62, 0.32, 0.3]}
+          />
+        ))}
+      </group>
+    )
+  }
+
+  return (
+    <group>
+      <Box name="smalltown-gateway-square" color={theme.park} position={[0, -0.03, -12.6]} scale={[5.0, 0.05, 1.0]} />
+      <Box name="smalltown-gateway-arch-west" color="#9a3412" position={[-2.2, 0.62, -12.56]} scale={[0.22, 1.06, 0.22]} />
+      <Box name="smalltown-gateway-arch-east" color="#9a3412" position={[2.2, 0.62, -12.56]} scale={[0.22, 1.06, 0.22]} />
+      <Box name="smalltown-gateway-arch-top" color="#b45309" position={[0, 1.12, -12.56]} scale={[4.5, 0.16, 0.2]} />
+      <Box name="smalltown-gateway-monument-base" color="#d7d1c6" position={[0, 0.24, -12.55]} scale={[0.62, 0.48, 0.48]} />
+      <Box name="smalltown-gateway-monument-cap" color={theme.trim} position={[0, 0.58, -12.55]} scale={[0.42, 0.2, 0.42]} />
     </group>
   )
 }
@@ -2732,18 +2812,94 @@ function SkylineCluster({ position, theme, dense = false }: { position: Vec3; th
 }
 
 function MiniBlock({ position, tone, lotColor = '#65724f' }: { position: Vec3; tone: string; lotColor?: string }) {
+  const id = position.map((value) => String(value).replace('-', 'm').replace('.', 'p')).join('-')
+  const storefronts = ['MARKET', 'CAFE', 'AUTO', 'LEASE']
+  const roofColor = '#26323d'
+  const curbColor = '#d7d1c6'
+
   return (
     <group position={position}>
-      {Array.from({ length: 4 }, (_, index) => (
-        <Box
-          color={tone}
-          key={index}
-          name={`mini-building-${position.join('-')}-${index}`}
-          position={[-0.72 + (index % 2) * 1.0, 0.22 + index * 0.035, -0.36 + Math.floor(index / 2) * 0.82]}
-          scale={[0.52, 0.48 + index * 0.12, 0.44]}
-        />
-      ))}
-      <Box name={`mini-block-lot-${position.join('-')}`} color={lotColor} position={[0, -0.035, 0.05]} scale={[2.25, 0.05, 1.82]} />
+      <Box name={`mini-block-lot-${id}`} color={lotColor} position={[0, -0.035, 0.05]} scale={[2.65, 0.055, 2.08]} />
+      <Box name={`mini-block-parking-apron-${id}`} color="#3f4547" position={[0, 0.006, -0.72]} scale={[2.32, 0.042, 0.62]} />
+      <Box name={`mini-block-service-apron-${id}`} color="#4b5563" position={[0.02, 0.006, 0.96]} scale={[2.1, 0.038, 0.42]} />
+      <Box name={`mini-block-front-sidewalk-${id}`} color={curbColor} position={[0, 0.028, -1.08]} scale={[2.78, 0.052, 0.2]} />
+      <Box name={`mini-block-back-sidewalk-${id}`} color={curbColor} position={[0, 0.028, 1.11]} scale={[2.46, 0.052, 0.16]} />
+      <Box name={`mini-block-front-curb-${id}`} color="#facc15" position={[0, 0.07, -1.2]} scale={[2.4, 0.034, 0.045]} />
+      <Box name={`mini-block-driveway-${id}`} color="#0f172a" position={[0.74, 0.052, -1.04]} scale={[0.52, 0.026, 0.32]} />
+      <ParkingLines name={`mini-block-parking-${id}`} position={[0, 0.052, -0.72]} spaces={4} rotationY={0} />
+      {storefronts.map((label, index) => {
+        const x = -0.62 + (index % 2) * 1.18
+        const z = -0.02 + Math.floor(index / 2) * 0.74
+        const safeLabel = label.toLowerCase()
+
+        return (
+          <group key={`mini-block-store-${id}-${label}`} position={[x, 0, z]}>
+            <Box
+              name={`mini-building-${id}-${safeLabel}-body`}
+              color={index % 2 === 0 ? tone : '#d7d1c6'}
+              position={[0, 0.38 + index * 0.018, 0]}
+              scale={[0.82, 0.72 + index * 0.05, 0.5]}
+            />
+            <Box name={`mini-building-${id}-${safeLabel}-roof`} color={roofColor} position={[0, 0.79 + index * 0.018, 0]} scale={[0.92, 0.12, 0.6]} />
+            <Box name={`mini-building-${id}-${safeLabel}-awning`} color={index % 2 === 0 ? '#0ea5e9' : '#b45309'} position={[0, 0.58, -0.28]} scale={[0.86, 0.1, 0.08]} />
+            <Box name={`mini-building-${id}-${safeLabel}-door`} color="#111827" position={[-0.28, 0.29, -0.29]} scale={[0.17, 0.42, 0.04]} />
+            <Box name={`mini-building-${id}-${safeLabel}-window-a`} color="#bae6fd" position={[0.06, 0.42, -0.3]} scale={[0.18, 0.2, 0.04]} />
+            <Box name={`mini-building-${id}-${safeLabel}-window-b`} color="#bae6fd" position={[0.31, 0.42, -0.3]} scale={[0.18, 0.2, 0.04]} />
+            <Text color="#f8fafc" fontSize={0.045} position={[-0.33, 0.59, -0.35]}>
+              {label}
+            </Text>
+          </group>
+        )
+      })}
+      <MiniParcelCar name={`mini-block-car-a-${id}`} color="#f8fafc" position={[-0.72, 0, -0.72]} rotationY={Math.PI / 2} />
+      <MiniParcelCar name={`mini-block-car-b-${id}`} color="#0ea5e9" position={[0.42, 0, 0.96]} rotationY={-Math.PI / 2} />
+      <ParcelStreetLight name={`mini-block-light-a-${id}`} position={[-1.18, 0, -1.05]} />
+      <ParcelStreetLight name={`mini-block-light-b-${id}`} position={[1.18, 0, 1.0]} />
+      <MiniParcelTree name={`mini-block-tree-a-${id}`} position={[-1.06, 0, 0.62]} />
+      <MiniParcelTree name={`mini-block-tree-b-${id}`} position={[1.08, 0, -0.12]} />
+    </group>
+  )
+}
+
+function MiniParcelCar({
+  name,
+  color,
+  position,
+  rotationY,
+}: {
+  name: string
+  color: string
+  position: Vec3
+  rotationY: number
+}) {
+  return (
+    <group position={position} rotation={[0, rotationY, 0]}>
+      <Box name={`${name}-body`} color={color} position={[0, 0.16, 0]} scale={[0.28, 0.18, 0.52]} />
+      <Box name={`${name}-cabin`} color="#1e293b" position={[0, 0.28, -0.04]} scale={[0.2, 0.14, 0.24]} />
+      <Box name={`${name}-front-light`} color="#fde68a" position={[0, 0.18, -0.28]} scale={[0.2, 0.035, 0.025]} />
+      <Box name={`${name}-rear-light`} color="#b91c1c" position={[0, 0.18, 0.28]} scale={[0.2, 0.035, 0.025]} />
+      <Box name={`${name}-shadow`} color="#111827" position={[0, 0.04, 0]} scale={[0.35, 0.02, 0.64]} />
+    </group>
+  )
+}
+
+function ParcelStreetLight({ name, position }: { name: string; position: Vec3 }) {
+  return (
+    <group position={position}>
+      <Box name={`${name}-pole`} color="#26323d" position={[0, 0.5, 0]} scale={[0.045, 1.0, 0.045]} />
+      <Box name={`${name}-head`} color="#fde68a" position={[0.12, 1.02, 0]} scale={[0.24, 0.08, 0.1]} />
+    </group>
+  )
+}
+
+function MiniParcelTree({ name, position }: { name: string; position: Vec3 }) {
+  return (
+    <group position={position}>
+      <Box name={`${name}-trunk`} color="#7c4a25" position={[0, 0.16, 0]} scale={[0.08, 0.32, 0.08]} />
+      <mesh name={`${name}-canopy`} position={[0, 0.42, 0]} castShadow receiveShadow>
+        <coneGeometry args={[0.22, 0.46, 8]} />
+        <meshStandardMaterial color="#254d2c" roughness={0.72} />
+      </mesh>
     </group>
   )
 }
@@ -2756,6 +2912,7 @@ function RoadsideBusinessDistrict({ theme }: { theme: CityThemeSpec }) {
 
   return (
     <group>
+      <DistrictMarquee label="MAIN ST SHOPS" color="#b45309" position={[0, -0.02, -10.95]} />
       <GasStation position={[-12.0, -0.02, -6.2]} theme={theme} />
       <Diner position={[12.25, -0.02, -6.18]} theme={theme} />
       <AutoPartsStore position={[-12.25, -0.02, 6.55]} theme={theme} />
@@ -2771,6 +2928,7 @@ function RoadsideBusinessDistrict({ theme }: { theme: CityThemeSpec }) {
 function HarborRoadsideDistrict({ theme }: { theme: CityThemeSpec }) {
   return (
     <group>
+      <DistrictMarquee label="FISH MARKET ROW" color="#0e7490" position={[0, -0.02, -10.95]} />
       <Box name="harbor-waterfront-channel" color={theme.water} position={[-17.4, -0.08, -6.2]} scale={[0.42, 0.05, 8.4]} />
       <GasStation position={[-12.0, -0.02, -6.2]} theme={theme} />
       <SeafoodMarket position={[12.25, -0.02, -6.18]} theme={theme} />
@@ -2787,6 +2945,7 @@ function HarborRoadsideDistrict({ theme }: { theme: CityThemeSpec }) {
 function DowntownRoadsideDistrict({ theme }: { theme: CityThemeSpec }) {
   return (
     <group>
+      <DistrictMarquee label="NEON ARCADE BLVD" color="#ec4899" position={[0, -0.02, -10.95]} />
       <Box name="downtown-curb-neon-north" color="#f472b6" position={[-10.4, 0.08, -8.1]} scale={[3.6, 0.035, 0.08]} />
       <Box name="downtown-curb-neon-south" color="#22d3ee" position={[10.2, 0.08, -8.05]} scale={[3.2, 0.035, 0.08]} />
       <Box name="downtown-crosswalk-a" color="#e2e8f0" position={[-0.85, 0.01, -10.35]} scale={[1.3, 0.03, 0.11]} />
@@ -2806,6 +2965,7 @@ function DowntownRoadsideDistrict({ theme }: { theme: CityThemeSpec }) {
 function SnowRoadsideDistrict({ theme }: { theme: CityThemeSpec }) {
   return (
     <group>
+      <DistrictMarquee label="SUMMIT LODGE WAY" color="#0f766e" position={[0, -0.02, -10.95]} />
       <Box name="snow-road-berm-north" color="#f8fafc" position={[0, -0.04, -8.55]} scale={[23.5, 0.05, 0.42]} />
       <Box name="snow-road-berm-south" color="#f8fafc" position={[0, -0.04, 8.22]} scale={[23.5, 0.05, 0.42]} />
       {[-10.8, -6.4, -2.0, 2.4, 6.8, 11.2].map((x, index) => (
@@ -2829,6 +2989,7 @@ function SnowRoadsideDistrict({ theme }: { theme: CityThemeSpec }) {
 function BeltlineRoadsideDistrict({ theme }: { theme: CityThemeSpec }) {
   return (
     <group>
+      <DistrictMarquee label="FLEET SERVICE CORR" color="#f59e0b" position={[0, -0.02, -10.95]} />
       <Box name="beltline-service-road" color="#111827" position={[0, -0.08, -12.0]} scale={[48.0, 0.035, 0.32]} />
       <DistributionCenter position={[-12.0, -0.02, -6.2]} theme={theme} />
       <FastFoodDriveThru position={[12.25, -0.02, -6.18]} theme={theme} />
@@ -3400,6 +3561,26 @@ function CityDistrictIsland({
       {theme.id === 'beltline' && <Box name={`${city.id}-mini-conveyor`} color="#111827" position={[-0.72, 0.14, 0.55]} scale={[0.24, 0.08, 1.6]} />}
       {(active || restoration > 2) && <DistrictMiniMapDetails city={city} owned={owned} restoration={restoration} theme={theme} />}
       {active && <Box name={`${city.id}-active-glow`} color="#22d3ee" position={[0, 0.24, -1.75]} scale={[3.5, 0.08, 0.12]} />}
+    </group>
+  )
+}
+
+function DistrictMarquee({
+  label,
+  color,
+  position,
+}: {
+  label: string
+  color: string
+  position: Vec3
+}) {
+  return (
+    <group position={position}>
+      <Box name={`${label}-marquee-base`} color="#1f2937" position={[0, 0.64, 0]} scale={[4.2, 0.28, 0.18]} />
+      <Box name={`${label}-marquee-face`} color={color} position={[0, 0.66, -0.1]} scale={[4.0, 0.22, 0.08]} />
+      <Text color="#f8fafc" fontSize={0.14} position={[-1.8, 0.66, -0.16]}>
+        {label}
+      </Text>
     </group>
   )
 }

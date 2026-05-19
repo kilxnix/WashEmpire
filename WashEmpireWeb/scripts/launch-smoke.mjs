@@ -130,6 +130,7 @@ async function runDesktopCheck(browser, url) {
       throw new Error('[launch-smoke] HUD did not appear after starting game on desktop.')
     }
 
+    await waitForSceneSettle(page, 'desktop')
     await page.screenshot({ path: join(qaDir, 'launch-smoke-desktop.png'), fullPage: true })
   } finally {
     await context.close()
@@ -159,8 +160,8 @@ async function runMobileCheck(browser, url) {
     const hud = page.locator('[aria-label="Wash Empire controls"]')
     await ensureHudFromStartMenu(page, hud, 'mobile')
 
-    const upgradesButton = page.getByRole('button', { name: /upgrades/i })
-    const mapButton = page.getByRole('button', { name: /map/i })
+    const upgradesButton = page.locator('button[title="Upgrades"]').first()
+    const mapButton = page.locator('button[title="City map"]').first()
     if (!(await upgradesButton.isVisible().catch(() => false)) || !(await mapButton.isVisible().catch(() => false))) {
       await startFromMenu(page, 'mobile')
     }
@@ -168,6 +169,7 @@ async function runMobileCheck(browser, url) {
       throw new Error('[launch-smoke] Core HUD actions (Upgrades/Map) are missing on mobile.')
     }
 
+    await waitForSceneSettle(page, 'mobile')
     await page.screenshot({ path: join(qaDir, 'launch-smoke-mobile-hud.png'), fullPage: true })
 
     const upgradesPanel = page.locator('aside.upgrade-drawer[aria-hidden="false"]')
@@ -177,8 +179,10 @@ async function runMobileCheck(browser, url) {
     }
     await page.screenshot({ path: join(qaDir, 'launch-smoke-mobile-upgrades.png'), fullPage: true })
 
-    const closeUpgrades = page.getByRole('button', { name: /close upgrades/i })
-    await closeUpgrades.click()
+    const closeUpgrades = page.locator('button[title="Close upgrades"]').first()
+    await closeUpgrades.click({ force: true })
+    await page.locator('aside.upgrade-drawer[aria-hidden="true"]').waitFor({ state: 'attached', timeout: 4_000 }).catch(() => null)
+    await page.waitForTimeout(300)
 
     const mapPanel = page.locator('aside.city-drawer[aria-hidden="false"]')
     const mapOpened = await openHudPanel(page, mapButton, mapPanel)
@@ -205,19 +209,29 @@ async function ensureHudFromStartMenu(page, hudLocator, mode) {
 
 async function openHudPanel(page, button, panel) {
   for (let attempt = 0; attempt < 3; attempt += 1) {
+    await button.scrollIntoViewIfNeeded().catch(() => null)
     await button.click({ force: true })
-    await page.waitForTimeout(250)
+    await page.waitForTimeout(400)
     if (await panel.isVisible().catch(() => false)) return true
   }
 
   return false
 }
 
+async function waitForSceneSettle(page, mode) {
+  await page.locator('canvas').waitFor({ state: 'visible', timeout: 8_000 })
+  await page.waitForFunction(() => {
+    const canvas = document.querySelector('canvas')
+    return Boolean(canvas && canvas.clientWidth > 0 && canvas.clientHeight > 0)
+  }, null, { timeout: 8_000 })
+  await page.waitForTimeout(mode === 'mobile' ? 3_600 : 3_200)
+}
+
 async function startFromMenu(page, mode) {
   const continueButton = page.getByRole('button', { name: /continue/i })
   if (await continueButton.isVisible().catch(() => false)) {
     await continueButton.click()
-    await page.waitForTimeout(1000)
+    await page.waitForTimeout(mode === 'mobile' ? 1_800 : 1_500)
     return
   }
 
@@ -227,5 +241,5 @@ async function startFromMenu(page, mode) {
   }
 
   await openWashButton.click()
-  await page.waitForTimeout(1200)
+  await page.waitForTimeout(mode === 'mobile' ? 2_200 : 1_800)
 }
