@@ -22,6 +22,7 @@ The game should communicate the fantasy immediately: a self-serve car wash busin
 - `G3 Itch Ready`: production build works from zipped `dist`, desktop/mobile screenshots are current, and the README publish path is accurate.
 - `G4 App Store Prep`: Capacitor Android build works, rewarded-ad hook is guarded, privacy/store checklist is documented, and app icons/screenshots are ready.
 - `G5 Content Runway`: three distinct locations are playable with different demand, bay count, visuals, and upgrade strategy: small city, snow city, bustling/neon city.
+- `G6 Performance Ready`: launch audit includes a WebGL steady-state budget check and fails if geometry or texture counts grow during 10x play.
 
 ## Automation Rules
 
@@ -70,6 +71,8 @@ The game should communicate the fantasy immediately: a self-serve car wash busin
 - Progress: Added larger theme-specific gateway sign silhouettes (small town timber arch, harbor lighthouse marker, downtown neon header pylons, snow pass arch, beltline overhead service beam) to improve city identification from default camera distance.
 - Progress: Added city-specific roadside district marquee signs (main street shops, fish market row, neon arcade boulevard, summit lodge way, fleet service corridor) to strengthen business-tone identity near the lot edge from default camera framing.
 - Progress: Replaced repeated placeholder cube clusters with parcel-style mini storefront blocks: parking aprons, sidewalks, curbs, awnings, windows, small parked cars, streetlights, and trees now surround the wash in every district.
+- Progress: Added theme-specific roadside landmark silhouettes near the frontage corridor (small city clock plaza, harbor ferry pier/cabin, downtown neon skybridge, snow chairlift posts, beltline service overpass) so district identity reads faster at default zoom.
+- Progress: Added district-specific frontage road language near the marquee corridor (small city brick crossing band, harbor dock lane + bollards, downtown neon bus-lane bars, snow chain-lane grooves, beltline heavy-truck lane blocks) to improve city identity at a quick camera glance.
 
 ### L-004 Road And Arrival Polish
 
@@ -100,6 +103,8 @@ The game should communicate the fantasy immediately: a self-serve car wash busin
 - Verify: `npm.cmd run audit:visual-rewards`.
 - Progress: Added per-bay scene-backed visual rewards for all six bay upgrade tracks: selector chips/readout, pressure wand hose reel and swivel arm, foam tanks and lines, rinse nozzles/gloss, dryer side blowers/air streams, and expanded vault cabinet/cassette. The visual reward audit now checks bay upgrade coverage too.
 - Progress: Added manager-upgrade staffing visuals near the office (staff training board and manager/staff parking sign) so people-ops progression reads in-scene from the default camera rather than only through UI.
+- Progress: Added a manager-upgrade staff break canopy/rest stop beside the office so workforce progression has a larger, camera-readable lot prop from default desktop/mobile framing.
+- Progress: Added a security-upgrade frontage checkpoint (gate arm, kiosk, and camera post) mapped to `securityLights` so protection upgrades create an immediate lot-edge silhouette change from default camera distance.
 
 ### L-007 Economy Eight-Hour Balance Check
 
@@ -137,8 +142,19 @@ The game should communicate the fantasy immediately: a self-serve car wash busin
 - Acceptance: checklist exists in `docs/` and references current commands.
 - Verify: documentation review plus build.
 
+### L-011 WebGL Performance Budget
+
+- Owner: Release QA Team
+- Status: complete
+- Automation OK: yes
+- Goal: Add a repeatable memory/performance guard so the game can run at 10x without silently growing WebGL geometry or texture counts.
+- Acceptance: `npm.cmd run audit:perf` samples production preview render metrics after warmup and `npm.cmd run audit:launch` includes it.
+- Verify: `npm.cmd run audit:launch`.
+- Progress: Added shared geometry/material caching for high-churn box, wheel, occupant, and washer-tool meshes; added a render-info probe and production performance smoke test. Latest launch audit held steady at 340 geometries and 6 textures during 10x play.
+
 ## Current Product Risks
 
 - The visual reward audit proves upgrade props exist, but it does not judge whether the scene looks production-ready.
 - Automated tests cover core logic, but browser/mobile playability still needs screenshot and interaction checks.
 - The cron can help steadily, but it must work from small queue tasks and leave a clear run log.
+- The production bundle still triggers Vite's large chunk warning; before App Store submission, code splitting should be considered after gameplay/art stabilizes.

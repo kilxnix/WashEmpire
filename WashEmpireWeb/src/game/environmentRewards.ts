@@ -17,6 +17,7 @@ export type EnvironmentRewardVisualId =
   | 'parking-light-poles'
   | 'security-light-cones'
   | 'bay-light-bars'
+  | 'security-gate-arm'
   | 'bay-card-readers'
   | 'tap-to-pay-window-decal'
   | 'price-board-card-ready'
@@ -28,6 +29,7 @@ export type EnvironmentRewardVisualId =
   | 'staff-clipboard'
   | 'staff-training-board'
   | 'manager-parking-sign'
+  | 'staff-break-canopy'
   | 'mobile-campaign-billboard'
   | 'phone-ad-placards'
   | 'roadside-coupon-banner'
@@ -66,7 +68,7 @@ export const environmentRewardDefinitions: readonly EnvironmentRewardDefinition[
   },
   {
     upgradeId: 'securityLights',
-    visualIds: ['parking-light-poles', 'security-light-cones', 'bay-light-bars'],
+    visualIds: ['parking-light-poles', 'security-light-cones', 'bay-light-bars', 'security-gate-arm'],
   },
   {
     upgradeId: 'cardReader',
@@ -78,7 +80,7 @@ export const environmentRewardDefinitions: readonly EnvironmentRewardDefinition[
   },
   {
     upgradeId: 'manager',
-    visualIds: ['office-open-sign', 'manager-desk-light', 'staff-clipboard', 'staff-training-board', 'manager-parking-sign'],
+    visualIds: ['office-open-sign', 'manager-desk-light', 'staff-clipboard', 'staff-training-board', 'manager-parking-sign', 'staff-break-canopy'],
   },
   {
     upgradeId: 'mobileCampaign',

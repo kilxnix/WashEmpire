@@ -4,6 +4,7 @@ const steps = [
   { name: 'visual reward audit', command: 'npm.cmd run audit:visual-rewards' },
   { name: 'tests', command: 'npm.cmd run test' },
   { name: 'build', command: 'npm.cmd run build' },
+  { name: 'performance smoke', command: 'npm.cmd run audit:perf' },
   { name: 'browser smoke/screenshot', command: 'npm.cmd run audit:smoke-ui' },
 ]
 

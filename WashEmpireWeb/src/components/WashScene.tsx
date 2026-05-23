@@ -1,6 +1,7 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { ContactShadows, OrbitControls, Sky, Text } from '@react-three/drei'
+import * as THREE from 'three'
 import type { BayState, Car, CityDefinition, CityDistrictState, CityTheme, GameState } from '../game/types'
 import { activeBayCount, cashBoxValue, cityDefinitions, currentCityDefinition, isConveyorCity, totalCashBox } from '../game/simulation'
 import { activeEnvironmentRewards, type EnvironmentRewardVisualId } from '../game/environmentRewards'
@@ -27,6 +28,9 @@ const CAMERA_TARGET: Vec3 = [0, 0.55, -0.6]
 const TRAFFIC_PALETTE = ['#f8fafc', '#dbe4ea', '#b8c3cc', '#334155', '#1f2937', '#8f1d1d']
 const CORNER_RADIUS = 0.62
 const CAR_LOOKAHEAD_DISTANCE = 0.48
+const SHARED_BOX_GEOMETRY = new THREE.BoxGeometry(1, 1, 1)
+const SHARED_GEOMETRIES = new Map<string, THREE.BufferGeometry>()
+const STANDARD_MATERIALS = new Map<string, THREE.MeshStandardMaterial>()
 
 interface ServiceVehicleConfig {
   id: string
@@ -230,13 +234,54 @@ function themeFor(city: CityDefinition): CityThemeSpec {
   return CITY_THEMES[city.theme]
 }
 
+function standardMaterialKey(color: string, roughness: number, metalness: number, opacity = 1): string {
+  return `${color}|${roughness}|${metalness}|${opacity}`
+}
+
+function getStandardMaterial(color: string, roughness: number, metalness: number, opacity = 1): THREE.MeshStandardMaterial {
+  const key = standardMaterialKey(color, roughness, metalness, opacity)
+  const cached = STANDARD_MATERIALS.get(key)
+  if (cached) return cached
+
+  const material = new THREE.MeshStandardMaterial({
+    color,
+    roughness,
+    metalness,
+    transparent: opacity < 1,
+    opacity,
+    depthWrite: opacity >= 1,
+  })
+  STANDARD_MATERIALS.set(key, material)
+  return material
+}
+
+function cachedGeometry<T extends THREE.BufferGeometry>(key: string, create: () => T): T {
+  const cached = SHARED_GEOMETRIES.get(key)
+  if (cached) return cached as T
+
+  const geometry = create()
+  SHARED_GEOMETRIES.set(key, geometry)
+  return geometry
+}
+
+function getSphereGeometry(radius: number, widthSegments: number, heightSegments: number): THREE.SphereGeometry {
+  return cachedGeometry(`sphere|${radius}|${widthSegments}|${heightSegments}`, () => new THREE.SphereGeometry(radius, widthSegments, heightSegments))
+}
+
+function getCylinderGeometry(radiusTop: number, radiusBottom: number, height: number, radialSegments: number): THREE.CylinderGeometry {
+  return cachedGeometry(
+    `cylinder|${radiusTop}|${radiusBottom}|${height}|${radialSegments}`,
+    () => new THREE.CylinderGeometry(radiusTop, radiusBottom, height, radialSegments),
+  )
+}
+
 export function WashScene({ state, onCollect, rideAlong = false }: WashSceneProps) {
   return (
     <Canvas
       camera={{ position: CAMERA_POSITION, fov: 54 }}
       shadows
-      dpr={[1, 2]}
-      gl={{ antialias: true, preserveDrawingBuffer: true }}
+      dpr={[1, 1.5]}
+      gl={{ antialias: true, powerPreference: 'high-performance' }}
     >
       <color attach="background" args={['#bfd8e8']} />
       <fog attach="fog" args={['#bfd8e8', 30, 72]} />
@@ -246,8 +291,9 @@ export function WashScene({ state, onCollect, rideAlong = false }: WashSceneProp
         castShadow
         intensity={1.95}
         position={[8, 12, 5]}
-        shadow-mapSize={[2048, 2048]}
+        shadow-mapSize={[1024, 1024]}
       />
+      <RenderInfoProbe />
       {rideAlong ? <RideAlongCamera state={state} /> : <CameraSetup />}
       <Lot state={state} onCollect={onCollect} />
       {state.cars.map((car) => (
@@ -325,6 +371,40 @@ function Lot({ state, onCollect }: WashSceneProps) {
       <PrototypeAssetLayer />
     </group>
   )
+}
+
+function RenderInfoProbe() {
+  const gl = useThree((three) => three.gl)
+  const frame = useRef(0)
+
+  useFrame(() => {
+    frame.current += 1
+    if (frame.current % 60 !== 0) return
+
+    const info = gl.info as THREE.WebGLInfo & { programs?: unknown[] }
+    const heap = (performance as Performance & { memory?: { usedJSHeapSize: number; jsHeapSizeLimit: number } }).memory
+    ;(window as typeof window & {
+      __washEmpireRenderInfo?: {
+        calls: number
+        geometries: number
+        jsHeapSizeLimit?: number
+        programs: number
+        textures: number
+        triangles: number
+        usedJSHeapSize?: number
+      }
+    }).__washEmpireRenderInfo = {
+      calls: info.render.calls,
+      geometries: info.memory.geometries,
+      jsHeapSizeLimit: heap?.jsHeapSizeLimit,
+      programs: info.programs?.length ?? 0,
+      textures: info.memory.textures,
+      triangles: info.render.triangles,
+      usedJSHeapSize: heap?.usedJSHeapSize,
+    }
+  })
+
+  return null
 }
 
 function SelfServeWashSite({
@@ -846,10 +926,12 @@ function UpgradeRewardLayer({
       {hasReward(rewardIds, 'lit-road-sign') && <SignageRewardProps theme={theme} automatic={automatic} />}
       {hasReward(rewardIds, 'camera-warning-decals') && <CameraRewardProps automatic={automatic} />}
       {hasReward(rewardIds, 'parking-light-poles') && <SecurityLightRewardProps automatic={automatic} />}
+      {hasReward(rewardIds, 'security-gate-arm') && <SecurityGateRewardProps automatic={automatic} />}
       {hasReward(rewardIds, 'tap-to-pay-window-decal') && <PaymentRewardProps automatic={automatic} />}
       {hasReward(rewardIds, 'loyalty-window-decal') && <LoyaltyRewardProps automatic={automatic} />}
       {hasReward(rewardIds, 'office-open-sign') && <ManagerRewardProps automatic={automatic} />}
       {hasReward(rewardIds, 'staff-training-board') && <ManagerStaffingRewardProps automatic={automatic} />}
+      {hasReward(rewardIds, 'staff-break-canopy') && <StaffBreakCanopyRewardProps automatic={automatic} />}
       {hasReward(rewardIds, 'mobile-campaign-billboard') && <MobileCampaignRewardProps automatic={automatic} />}
       {hasReward(rewardIds, 'laser-menu-board') && <LaserRewardProps automatic={automatic} />}
     </group>
@@ -1030,6 +1112,27 @@ function PaymentRewardProps({ automatic }: { automatic: boolean }) {
   )
 }
 
+function SecurityGateRewardProps({ automatic }: { automatic: boolean }) {
+  const gatePosition: Vec3 = automatic ? [-4.42, 0, -6.3] : [-5.05, 0, -5.68]
+  const kioskOffset: Vec3 = automatic ? [0.92, 0, 0.54] : [1.08, 0, 0.5]
+
+  return (
+    <group name="security-gate-arm" position={gatePosition}>
+      <Box name="security-gate-pad" color="#4b5563" position={[0, 0.06, 0]} scale={[2.22, 0.08, 0.78]} />
+      <Box name="security-gate-kiosk-base" color="#111827" position={[-0.88, 0.44, -0.06]} scale={[0.32, 0.88, 0.32]} />
+      <Box name="security-gate-kiosk-light" color="#22c55e" position={[-0.88, 0.88, -0.24]} scale={[0.14, 0.08, 0.04]} />
+      <Box name="security-gate-barrier-post" color="#26323d" position={[0.76, 0.58, 0]} scale={[0.1, 1.16, 0.1]} />
+      <Box name="security-gate-barrier-arm" color="#f8fafc" position={[-0.14, 1.06, 0]} scale={[1.9, 0.08, 0.1]} />
+      <Box name="security-gate-barrier-stripe-a" color="#dc2626" position={[-0.64, 1.12, 0]} scale={[0.3, 0.03, 0.12]} />
+      <Box name="security-gate-barrier-stripe-b" color="#dc2626" position={[0.04, 1.12, 0]} scale={[0.3, 0.03, 0.12]} />
+      <group position={kioskOffset}>
+        <Box name="security-gate-camera-post" color="#26323d" position={[0, 0.62, 0]} scale={[0.06, 1.24, 0.06]} />
+        <Box name="security-gate-camera-head" color="#0f172a" position={[0.12, 1.16, -0.08]} scale={[0.22, 0.12, 0.18]} />
+      </group>
+    </group>
+  )
+}
+
 function LoyaltyRewardProps({ automatic }: { automatic: boolean }) {
   const decalPosition: Vec3 = automatic ? [5.92, 1.48, 0.48] : [6.84, 1.38, 1.0]
   const signPosition: Vec3 = automatic ? [3.75, 0, -6.28] : [3.92, 0, -5.8]
@@ -1105,6 +1208,24 @@ function ManagerStaffingRewardProps({ automatic }: { automatic: boolean }) {
           STAFF
         </Text>
       </group>
+    </group>
+  )
+}
+
+function StaffBreakCanopyRewardProps({ automatic }: { automatic: boolean }) {
+  const canopyPosition: Vec3 = automatic ? [4.88, 0, 3.98] : [5.28, 0, 4.16]
+
+  return (
+    <group name="staff-break-canopy" position={canopyPosition}>
+      <Box name="staff-break-pad" color="#6b7280" position={[0, 0.06, 0]} scale={[1.12, 0.08, 0.88]} />
+      <Box name="staff-break-post-left" color="#26323d" position={[-0.42, 0.58, -0.3]} scale={[0.06, 1.16, 0.06]} />
+      <Box name="staff-break-post-right" color="#26323d" position={[0.42, 0.58, -0.3]} scale={[0.06, 1.16, 0.06]} />
+      <Box name="staff-break-canopy-roof" color="#0f4f9c" position={[0, 1.2, -0.18]} scale={[1.18, 0.12, 0.72]} />
+      <Box name="staff-break-bench-base" color="#7c2d12" position={[0, 0.36, 0.18]} scale={[0.76, 0.08, 0.22]} />
+      <Box name="staff-break-bench-seat" color="#ea580c" position={[0, 0.47, 0.18]} scale={[0.82, 0.08, 0.26]} />
+      <Text color="#f8fafc" fontSize={0.05} position={[-0.36, 1.22, -0.54]}>
+        CREW REST
+      </Text>
     </group>
   )
 }
@@ -2985,6 +3106,16 @@ function RoadsideBusinessDistrict({ theme }: { theme: CityThemeSpec }) {
   return (
     <group>
       <DistrictMarquee label="MAIN ST SHOPS" color="#b45309" position={[0, -0.02, -10.95]} />
+      <Box name="smalltown-mainstreet-brick-band" color="#9a3412" position={[0, 0.01, -8.18]} scale={[4.3, 0.03, 0.3]} />
+      {[-1.55, -0.55, 0.55, 1.55].map((x, index) => (
+        <Box name={`smalltown-crosswalk-bar-${index}`} color="#fef3c7" key={`smalltown-crosswalk-${index}`} position={[x, 0.02, -8.18]} scale={[0.45, 0.03, 0.16]} />
+      ))}
+      <Box name="smalltown-clock-plaza-pad" color="#9a8f84" position={[-18.8, 0.02, -8.4]} scale={[3.2, 0.05, 2.0]} />
+      <Box name="smalltown-clock-plaza-tower" color="#d7d1c6" position={[-18.8, 0.92, -8.4]} scale={[0.82, 1.8, 0.82]} />
+      <Box name="smalltown-clock-plaza-cap" color="#2f6fba" position={[-18.8, 1.92, -8.4]} scale={[0.92, 0.2, 0.92]} />
+      <Box name="smalltown-civic-roofline-west" color="#7c2d12" position={[-8.6, 1.26, -8.62]} scale={[1.9, 0.24, 0.34]} />
+      <Box name="smalltown-civic-roofline-east" color="#b45309" position={[8.9, 1.22, -8.6]} scale={[1.7, 0.24, 0.34]} />
+      <Box name="smalltown-civic-banner" color="#f59e0b" position={[0.1, 1.08, -8.66]} scale={[1.4, 0.12, 0.08]} />
       <GasStation position={[-12.0, -0.02, -6.2]} theme={theme} />
       <Diner position={[12.25, -0.02, -6.18]} theme={theme} />
       <AutoPartsStore position={[-12.25, -0.02, 6.55]} theme={theme} />
@@ -3002,6 +3133,10 @@ function HarborRoadsideDistrict({ theme }: { theme: CityThemeSpec }) {
     <group>
       <DistrictMarquee label="FISH MARKET ROW" color="#0e7490" position={[0, -0.02, -10.95]} />
       <Box name="harbor-waterfront-channel" color={theme.water} position={[-17.4, -0.08, -6.2]} scale={[0.42, 0.05, 8.4]} />
+      <Box name="harbor-dock-lane-marking" color="#bae6fd" position={[0, 0.02, -8.08]} scale={[3.9, 0.03, 0.08]} />
+      {[-2.35, -1.1, 1.15, 2.4].map((x, index) => (
+        <Box name={`harbor-bollard-${index}`} color="#475569" key={`harbor-bollard-${index}`} position={[x, 0.2, -7.52]} scale={[0.1, 0.38, 0.1]} />
+      ))}
       <GasStation position={[-12.0, -0.02, -6.2]} theme={theme} />
       <SeafoodMarket position={[12.25, -0.02, -6.18]} theme={theme} />
       <AutoPartsStore position={[-12.25, -0.02, 6.55]} theme={theme} />
@@ -3010,6 +3145,12 @@ function HarborRoadsideDistrict({ theme }: { theme: CityThemeSpec }) {
       <DockWarehouse position={[19.0, -0.02, -1.25]} theme={theme} />
       <Box name="harbor-crane-base" color="#334155" position={[-20.2, 0.36, -7.6]} scale={[0.28, 0.72, 0.28]} />
       <Box name="harbor-crane-arm" color="#facc15" position={[-19.25, 0.92, -7.6]} scale={[1.8, 0.1, 0.1]} />
+      <Box name="harbor-ferry-pier" color="#8b6f55" position={[17.6, 0.02, -8.15]} scale={[2.3, 0.06, 0.78]} />
+      <Box name="harbor-ferry-cabin" color="#dbe3e7" position={[17.6, 0.4, -8.15]} scale={[1.26, 0.72, 0.58]} />
+      <Box name="harbor-ferry-stripe" color="#0284c7" position={[17.6, 0.52, -8.46]} scale={[1.16, 0.12, 0.08]} />
+      <Box name="harbor-container-stack-a" color="#0f766e" position={[-8.4, 0.56, -8.72]} scale={[1.4, 1.0, 0.56]} />
+      <Box name="harbor-container-stack-b" color="#0ea5e9" position={[-6.8, 0.46, -8.68]} scale={[1.3, 0.82, 0.54]} />
+      <Box name="harbor-container-stack-c" color="#0369a1" position={[-7.55, 1.06, -8.7]} scale={[1.15, 0.38, 0.54]} />
     </group>
   )
 }
@@ -3020,6 +3161,9 @@ function DowntownRoadsideDistrict({ theme }: { theme: CityThemeSpec }) {
       <DistrictMarquee label="NEON ARCADE BLVD" color="#ec4899" position={[0, -0.02, -10.95]} />
       <Box name="downtown-curb-neon-north" color="#f472b6" position={[-10.4, 0.08, -8.1]} scale={[3.6, 0.035, 0.08]} />
       <Box name="downtown-curb-neon-south" color="#22d3ee" position={[10.2, 0.08, -8.05]} scale={[3.2, 0.035, 0.08]} />
+      {[-2.1, 0, 2.1].map((x, index) => (
+        <Box name={`downtown-bus-lane-bar-${index}`} color={index === 1 ? '#22d3ee' : '#f472b6'} key={`downtown-bus-lane-bar-${index}`} position={[x, 0.02, -8.02]} scale={[1.35, 0.028, 0.08]} />
+      ))}
       <Box name="downtown-crosswalk-a" color="#e2e8f0" position={[-0.85, 0.01, -10.35]} scale={[1.3, 0.03, 0.11]} />
       <Box name="downtown-crosswalk-b" color="#e2e8f0" position={[0.85, 0.01, -10.35]} scale={[1.3, 0.03, 0.11]} />
       <QuickMart position={[-12.0, -0.02, -6.2]} theme={theme} />
@@ -3030,6 +3174,13 @@ function DowntownRoadsideDistrict({ theme }: { theme: CityThemeSpec }) {
       <BillboardTower position={[17.8, -0.02, -8.6]} theme={theme} />
       <SkylineCluster dense position={[-19.0, -0.02, -1.25]} theme={theme} />
       <SkylineCluster dense position={[19.0, -0.02, 1.2]} theme={theme} />
+      <Box name="downtown-ped-skybridge-body" color="#475569" position={[0, 1.18, -8.02]} scale={[2.9, 0.24, 0.34]} />
+      <Box name="downtown-ped-skybridge-neon-a" color="#22d3ee" position={[0, 1.3, -8.22]} scale={[2.7, 0.08, 0.07]} />
+      <Box name="downtown-ped-skybridge-neon-b" color="#f472b6" position={[0, 1.3, -7.82]} scale={[2.7, 0.08, 0.07]} />
+      <Box name="downtown-roofline-led-west" color="#1f2937" position={[-8.8, 1.46, -8.66]} scale={[1.95, 0.22, 0.3]} />
+      <Box name="downtown-roofline-led-west-band" color="#22d3ee" position={[-8.8, 1.56, -8.86]} scale={[1.72, 0.08, 0.07]} />
+      <Box name="downtown-roofline-led-east" color="#1f2937" position={[8.7, 1.44, -8.64]} scale={[1.9, 0.22, 0.3]} />
+      <Box name="downtown-roofline-led-east-band" color="#f472b6" position={[8.7, 1.54, -8.84]} scale={[1.68, 0.08, 0.07]} />
     </group>
   )
 }
@@ -3040,6 +3191,9 @@ function SnowRoadsideDistrict({ theme }: { theme: CityThemeSpec }) {
       <DistrictMarquee label="SUMMIT LODGE WAY" color="#0f766e" position={[0, -0.02, -10.95]} />
       <Box name="snow-road-berm-north" color="#f8fafc" position={[0, -0.04, -8.55]} scale={[23.5, 0.05, 0.42]} />
       <Box name="snow-road-berm-south" color="#f8fafc" position={[0, -0.04, 8.22]} scale={[23.5, 0.05, 0.42]} />
+      {[-3.1, -1.1, 1.1, 3.1].map((x, index) => (
+        <Box name={`snow-chain-lane-${index}`} color="#64748b" key={`snow-chain-lane-${index}`} position={[x, 0.015, -8.16]} scale={[0.18, 0.02, 0.42]} />
+      ))}
       {[-10.8, -6.4, -2.0, 2.4, 6.8, 11.2].map((x, index) => (
         <group key={`snow-route-marker-${index}`} position={[x, 0, -8.9]}>
           <Box name={`snow-route-post-${index}`} color="#64748b" position={[0, 0.36, 0]} scale={[0.06, 0.72, 0.06]} />
@@ -3054,6 +3208,12 @@ function SnowRoadsideDistrict({ theme }: { theme: CityThemeSpec }) {
       <Box name="snow-plow-yard" color="#8d9490" position={[19.0, 0.02, -1.25]} scale={[3.9, 0.05, 3.1]} />
       <Box name="snow-plow-shed" color="#cbd5e1" position={[18.6, 0.46, -1.18]} scale={[1.9, 0.92, 1.1]} />
       <Box name="snow-plow-truck" color="#f97316" position={[20.0, 0.32, -1.9]} scale={[0.88, 0.46, 0.5]} />
+      <Box name="snow-chairlift-base-a" color="#475569" position={[-18.6, 0.86, -8.3]} scale={[0.16, 1.72, 0.16]} />
+      <Box name="snow-chairlift-base-b" color="#475569" position={[-16.5, 0.86, -8.3]} scale={[0.16, 1.72, 0.16]} />
+      <Box name="snow-chairlift-cable" color="#94a3b8" position={[-17.55, 1.62, -8.3]} scale={[2.25, 0.07, 0.07]} />
+      <Box name="snow-lodge-ridgeline-west" color="#334155" position={[-8.7, 1.22, -8.62]} scale={[1.95, 0.2, 0.28]} />
+      <Box name="snow-lodge-ridgeline-east" color="#475569" position={[8.6, 1.2, -8.62]} scale={[1.75, 0.2, 0.28]} />
+      <Box name="snow-lodge-ridgeline-snowcap" color="#f8fafc" position={[0, 1.26, -8.72]} scale={[1.5, 0.09, 0.08]} />
     </group>
   )
 }
@@ -3063,12 +3223,22 @@ function BeltlineRoadsideDistrict({ theme }: { theme: CityThemeSpec }) {
     <group>
       <DistrictMarquee label="FLEET SERVICE CORR" color="#f59e0b" position={[0, -0.02, -10.95]} />
       <Box name="beltline-service-road" color="#111827" position={[0, -0.08, -12.0]} scale={[48.0, 0.035, 0.32]} />
+      {[-3.3, -1.1, 1.1, 3.3].map((x, index) => (
+        <Box name={`beltline-heavy-lane-${index}`} color={index % 2 === 0 ? '#f59e0b' : '#fbbf24'} key={`beltline-heavy-lane-${index}`} position={[x, 0.02, -8.16]} scale={[0.38, 0.028, 0.16]} />
+      ))}
       <DistributionCenter position={[-12.0, -0.02, -6.2]} theme={theme} />
       <FastFoodDriveThru position={[12.25, -0.02, -6.18]} theme={theme} />
       <StorageWarehouse position={[-12.25, -0.02, 6.55]} theme={theme} />
       <FleetDepot position={[12.35, -0.02, 6.72]} theme={theme} />
       <BillboardTower position={[-20.0, -0.02, -8.4]} theme={theme} />
       <DockWarehouse position={[19.0, -0.02, -1.25]} theme={theme} />
+      <Box name="beltline-overpass-deck" color="#374151" position={[0, 1.16, -8.2]} scale={[5.2, 0.26, 0.86]} />
+      <Box name="beltline-overpass-pier-west" color="#1f2937" position={[-2.2, 0.58, -8.2]} scale={[0.36, 1.16, 0.42]} />
+      <Box name="beltline-overpass-pier-east" color="#1f2937" position={[2.2, 0.58, -8.2]} scale={[0.36, 1.16, 0.42]} />
+      <Box name="beltline-service-gantry-west" color="#111827" position={[-8.9, 1.18, -8.56]} scale={[2.0, 0.22, 0.28]} />
+      <Box name="beltline-service-gantry-east" color="#111827" position={[8.9, 1.18, -8.56]} scale={[2.0, 0.22, 0.28]} />
+      <Box name="beltline-service-gantry-stripe-west" color="#f59e0b" position={[-8.9, 1.28, -8.74]} scale={[1.8, 0.08, 0.07]} />
+      <Box name="beltline-service-gantry-stripe-east" color="#f59e0b" position={[8.9, 1.28, -8.74]} scale={[1.8, 0.08, 0.07]} />
     </group>
   )
 }
@@ -4413,16 +4583,16 @@ function CarOccupants({ variant }: { variant: number }) {
   return (
     <group>
       <Box name="driver-torso" color="#334155" position={[-0.16, 0.66, -0.1]} scale={[0.14, 0.18, 0.12]} />
-      <mesh position={[-0.16, 0.82, -0.12]} castShadow>
-        <sphereGeometry args={[0.075, 16, 16]} />
-        <meshStandardMaterial color={variant % 2 === 0 ? '#c08457' : '#8d5524'} roughness={0.5} />
+      <mesh position={[-0.16, 0.82, -0.12]} castShadow dispose={null}>
+        <primitive attach="geometry" object={getSphereGeometry(0.075, 16, 16)} />
+        <primitive attach="material" object={getStandardMaterial(variant % 2 === 0 ? '#c08457' : '#8d5524', 0.5, 0)} />
       </mesh>
       {passenger && (
         <>
           <Box name="passenger-torso" color="#475569" position={[0.16, 0.66, -0.06]} scale={[0.14, 0.18, 0.12]} />
-          <mesh position={[0.16, 0.82, -0.08]} castShadow>
-            <sphereGeometry args={[0.07, 16, 16]} />
-            <meshStandardMaterial color="#c08457" roughness={0.5} />
+          <mesh position={[0.16, 0.82, -0.08]} castShadow dispose={null}>
+            <primitive attach="geometry" object={getSphereGeometry(0.07, 16, 16)} />
+            <primitive attach="material" object={getStandardMaterial('#c08457', 0.5, 0)} />
           </mesh>
         </>
       )}
@@ -4558,17 +4728,17 @@ function WashCustomer({ car, carPosition }: { car: Car; carPosition: Vec3 }) {
       </group>
       <group position={[personX, 0, personZ]} rotation={[0, side > 0 ? -Math.PI / 2 : Math.PI / 2, 0]}>
         <Box name={`${car.id}-washer-body`} color="#f97316" position={[0, 0.62, 0]} scale={[0.22, 0.48, 0.16]} />
-        <mesh position={[0, 0.96, 0]} castShadow>
-          <sphereGeometry args={[0.13, 18, 18]} />
-          <meshStandardMaterial color="#c08457" roughness={0.5} />
+        <mesh position={[0, 0.96, 0]} castShadow dispose={null}>
+          <primitive attach="geometry" object={getSphereGeometry(0.13, 18, 18)} />
+          <primitive attach="material" object={getStandardMaterial('#c08457', 0.5, 0)} />
         </mesh>
         <Box name={`${car.id}-washer-leg-left`} color="#1f2937" position={[-0.06, 0.28, 0]} scale={[0.07, 0.35, 0.08]} />
         <Box name={`${car.id}-washer-leg-right`} color="#1f2937" position={[0.06, 0.28, 0]} scale={[0.07, 0.35, 0.08]} />
         <Box name={`${car.id}-washer-arm-left`} color="#c08457" position={[0.13, 0.74, -0.06]} scale={[0.08, 0.26, 0.06]} />
         <Box name={`${car.id}-washer-arm-right`} color="#c08457" position={[0.13, 0.74, 0.08]} scale={[0.08, 0.26, 0.06]} />
-        <mesh position={[0.26, 0.7, 0]} rotation={[0, 0, Math.PI / 2]}>
-          <cylinderGeometry args={[0.022, 0.022, 0.66, 14]} />
-          <meshStandardMaterial color="#111827" roughness={0.35} />
+        <mesh position={[0.26, 0.7, 0]} rotation={[0, 0, Math.PI / 2]} dispose={null}>
+          <primitive attach="geometry" object={getCylinderGeometry(0.022, 0.022, 0.66, 14)} />
+          <primitive attach="material" object={getStandardMaterial('#111827', 0.35, 0)} />
         </mesh>
         {brushVisible && (
           <Box name={`${car.id}-foam-brush`} color="#f8fafc" position={[0.58, 0.62, 0]} scale={[0.16, 0.28, 0.42]} />
@@ -4596,9 +4766,9 @@ function WashProgress({ value }: { value: number }) {
 
 function Wheel({ x, z }: { x: number; z: number }) {
   return (
-    <mesh position={[x, 0.22, z]} rotation={[0, 0, Math.PI / 2]} castShadow>
-      <cylinderGeometry args={[0.14, 0.14, 0.12, 24]} />
-      <meshStandardMaterial color="#020617" roughness={0.62} />
+    <mesh position={[x, 0.22, z]} rotation={[0, 0, Math.PI / 2]} castShadow dispose={null}>
+      <primitive attach="geometry" object={getCylinderGeometry(0.14, 0.14, 0.12, 24)} />
+      <primitive attach="material" object={getStandardMaterial('#020617', 0.62, 0)} />
     </mesh>
   )
 }
@@ -4636,9 +4806,9 @@ function RotBox({
   rotationY?: number
 }) {
   return (
-    <mesh name={name} position={position} rotation={[0, rotationY, 0]} scale={scale} castShadow receiveShadow>
-      <boxGeometry args={[1, 1, 1]} />
-      <meshStandardMaterial color={color} roughness={0.58} metalness={0.02} />
+    <mesh name={name} position={position} rotation={[0, rotationY, 0]} scale={scale} castShadow receiveShadow dispose={null}>
+      <primitive attach="geometry" object={SHARED_BOX_GEOMETRY} />
+      <primitive attach="material" object={getStandardMaterial(color, 0.58, 0.02)} />
     </mesh>
   )
 }
@@ -4661,9 +4831,9 @@ function Box({
   metalness?: number
 }) {
   return (
-    <mesh name={name} position={position} rotation={rotation} scale={scale} castShadow receiveShadow>
-      <boxGeometry args={[1, 1, 1]} />
-      <meshStandardMaterial color={color} roughness={roughness} metalness={metalness} />
+    <mesh name={name} position={position} rotation={rotation} scale={scale} castShadow receiveShadow dispose={null}>
+      <primitive attach="geometry" object={SHARED_BOX_GEOMETRY} />
+      <primitive attach="material" object={getStandardMaterial(color, roughness, metalness)} />
     </mesh>
   )
 }
@@ -4682,9 +4852,9 @@ function TransparentBox({
   opacity: number
 }) {
   return (
-    <mesh name={name} position={position} scale={scale}>
-      <boxGeometry args={[1, 1, 1]} />
-      <meshStandardMaterial color={color} transparent opacity={opacity} roughness={0.25} />
+    <mesh name={name} position={position} scale={scale} dispose={null}>
+      <primitive attach="geometry" object={SHARED_BOX_GEOMETRY} />
+      <primitive attach="material" object={getStandardMaterial(color, 0.25, 0.02, opacity)} />
     </mesh>
   )
 }

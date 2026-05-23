@@ -123,3 +123,43 @@ Append one entry per launch-worker run. Keep this file short, factual, and usefu
 - Verification: npm.cmd run lint (pass); npm.cmd run audit:visual-rewards (pass: 10 lot upgrades, 33 lot reward props, 6 bay upgrades); npm.cmd run test (pass); npm.cmd run build (pass); npm.cmd run audit:launch (pass)
 - Result: Passed. Removed the debug-like sidewalk grid feel and giant road words, then replaced them with curb/sidewalk slabs, driveway throats, curb cuts, no-parking curb paint, street-sign blades, and clearer car wash entry/exit frontage markings.
 - Next: Continue with tighter city block placement and parking-lot polish.
+
+## Run 2026-05-19T19:27:12-04:00
+- Task: L-003 District Identity Pass
+- Team: Visual / Art
+- Changed: src/components/WashScene.tsx; docs/launch-pathway.md; docs/launch-run-log.md
+- Verification: npm.cmd run audit:visual-rewards (pass: 10 lot upgrades, 33 lot reward props, 6 bay upgrades); npm.cmd run test (pass); npm.cmd run build (pass); npm.cmd run audit:smoke-ui (pass, screenshots written under qa/)
+- Result: Passed. Added new district-specific roadside silhouette landmarks (small city clock plaza, harbor ferry pier/cabin, downtown neon skybridge, snow chairlift posts, beltline overpass) to improve city identity recognition from default camera distance.
+- Next: Continue L-003 with per-district road markings and curb asset language that stays subordinate to the hero wash lot.
+
+## Run 2026-05-20T03:37:13-04:00
+- Task: L-006 Upgrade Reward Expansion
+- Team: Visual / Art
+- Changed: src/game/environmentRewards.ts; src/components/WashScene.tsx; docs/launch-pathway.md; docs/launch-run-log.md; qa/launch-smoke-desktop.png; qa/launch-smoke-mobile-start-menu.png; qa/launch-smoke-mobile-hud.png; qa/launch-smoke-mobile-upgrades.png; qa/launch-smoke-mobile-map.png
+- Verification: npm.cmd run audit:visual-rewards (pass: 10 lot upgrades, 34 lot reward props, 6 bay upgrades); npm.cmd run test (pass); npm.cmd run build (pass); npm.cmd run audit:smoke-ui (pass, screenshots written under qa/)
+- Result: Passed. Added a new manager-upgrade scene reward (`staff-break-canopy`) with a visible office-side crew rest canopy/bench prop and wired it through environment rewards so workforce progression reads more clearly in-scene.
+- Next: Continue L-006 with security/ad-upgrade lot props that introduce stronger silhouette changes near the frontage corridor.
+
+## Run 2026-05-20T05:42:21-04:00
+- Task: L-003 District Identity Pass
+- Team: Visual / Art
+- Changed: src/components/WashScene.tsx; docs/launch-pathway.md; docs/launch-run-log.md
+- Verification: npm.cmd run audit:visual-rewards (pass: 10 lot upgrades, 34 lot reward props, 6 bay upgrades); npm.cmd run test (pass); npm.cmd run build (pass); npm.cmd run audit:smoke-ui (fail: Map panel did not open on mobile in scripts/launch-smoke.mjs)
+- Result: Advanced L-003 with district-specific frontage roadway identity props (small city brick crossing, harbor bollards/dock lane, downtown neon bus-lane bars, snow chain grooves, beltline truck lane blocks); no commit because required mobile smoke check failed.
+- Next: Release QA should fix the mobile map open step in scripts/launch-smoke.mjs and rerun npm.cmd run audit:smoke-ui before the next visual pass.
+
+## Run 2026-05-20T13:52:51-04:00
+- Task: L-006 Upgrade Reward Expansion
+- Team: Visual / Art
+- Changed: src/game/environmentRewards.ts; src/components/WashScene.tsx; docs/launch-pathway.md; docs/launch-run-log.md; qa/launch-smoke-desktop.png; qa/launch-smoke-mobile-start-menu.png; qa/launch-smoke-mobile-hud.png; qa/launch-smoke-mobile-upgrades.png; qa/launch-smoke-mobile-map.png
+- Verification: npm.cmd run audit:visual-rewards (pass: 10 lot upgrades, 35 lot reward props, 6 bay upgrades); npm.cmd run test (pass); npm.cmd run build (pass); npm.cmd run audit:smoke-ui (pass, screenshots written under qa/)
+- Result: Passed. Added a new security-upgrade visual reward (`security-gate-arm`) and scene-backed frontage checkpoint props (gate arm, kiosk, and camera post) so `securityLights` produces a clearer lot-edge progression silhouette from default desktop/mobile framing.
+- Next: Continue L-006 with ad/marketing and employee/security compound props that add larger skyline-adjacent silhouettes without reducing car wash hero focus.
+
+## Run 2026-05-22T20:52:17-04:00
+- Task: L-011 WebGL Performance Budget
+- Team: Release QA
+- Changed: src/components/WashScene.tsx; scripts/performance-smoke.mjs; scripts/launch-audit.mjs; package.json; docs/launch-pathway.md; docs/launch-run-log.md; qa/performance-smoke.png; qa/launch-smoke-desktop.png; qa/launch-smoke-mobile-start-menu.png; qa/launch-smoke-mobile-hud.png; qa/launch-smoke-mobile-upgrades.png; qa/launch-smoke-mobile-map.png
+- Verification: npm.cmd run lint (pass); npm.cmd run audit:visual-rewards (pass: 10 lot upgrades, 35 lot reward props, 6 bay upgrades); npm.cmd run test (pass: 3 files, 47 tests); npm.cmd run build (pass, Vite large chunk warning remains); npm.cmd run audit:perf (pass: steady 340 geometries, 6 textures); npm.cmd run audit:launch (pass)
+- Result: Passed. Added a production performance smoke gate to launch audit and reduced high-churn traffic allocations by sharing box, wheel, occupant, and washer-tool geometries/materials across the scene.
+- Next: Continue app-store prep with code splitting/asset packaging after the remaining art and gameplay acceptance work is locked.
