@@ -41,17 +41,18 @@ The browser version should feel like a playable tycoon toy within the first minu
 
 ## Sprint B-003 Browser Ad Boost
 
-- Status: open
+- Status: in progress
 - Goal: Replace the local fallback ad with a real browser ad provider while keeping the safe fallback for dev.
 - Current hook: `window.WashEmpireAds.showRewardedAd()` can be supplied by a host/injected script. If it returns `true`, the game grants the boost.
 - Acceptance:
-  - [ ] Decide web ad provider: AdSense display ad around the game, Google Ad Manager/IMA rewarded placement, direct sponsor interstitial, or another web ad network.
-  - [ ] Keep local fallback for localhost/dev.
-  - [ ] Do not grant boost if the ad fails, closes early, or the provider returns no reward.
+  - [x] Decide web ad provider: **Google IMA HTML5 + Ad Manager VAST tag** for browser; AdMob remains for Capacitor Android.
+  - [x] Keep local fallback for localhost/dev (`VITE_ADS_FORCE_LOCAL` / localhost after IMA fail).
+  - [x] Do not grant boost if the ad fails, closes early, or the provider returns no reward (IMA COMPLETE required).
   - [ ] Add privacy/consent handling before production ads.
-  - [ ] Add provider keys through environment variables, not hardcoded secrets.
+  - [x] Add provider keys through environment variables (`VITE_IMA_AD_TAG_URL`, `VITE_ADMOB_*`), not only hardcoded ids.
   - [ ] Add a production smoke check that confirms the web ad hook is present when expected.
-- Verify: ad success grants boost; cancel/fail grants nothing.
+  - [ ] Replace sample VAST tag with a live Ad Manager inventory tag before public launch.
+- Verify: ad success grants boost; cancel/fail grants nothing. Files: `src/services/ads.ts`, `src/services/imaRewarded.ts`, `.env.example`.
 
 ## Sprint B-004 Hosting
 

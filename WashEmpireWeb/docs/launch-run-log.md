@@ -235,3 +235,11 @@ Append one entry per launch-worker run. Keep this file short, factual, and usefu
 - Verification: npm.cmd run lint (pass); npm.cmd run test (pass: 3 files, 49 tests); npm.cmd run build (pass, no large chunk warning); npm.cmd run audit:visual-rewards (pass: 10/35/6); npm.cmd run audit:launch (pass: WebGL stable 149 geometries / 1 texture, smoke waits for live traffic and regenerates qa/launch-smoke-*-cars.png plus map/title shots)
 - Result: Passed. Fixed offline resume (reconcile on visibility restore, preserve lastTickAt while backgrounded, no offline cash before game start), wrapped district map pills so mobile cards no longer overflow, mounted the 3D lot behind the title card, proved cars render in smoke (Drive-bys and live road cars), and rebuilt wash-empire-itch.zip without prototype-assets placeholders.
 - Next: Upload wash-empire-itch.zip to itch.io (pay-what-you-want), paste first-player guide copy, run hosted smoke, send link to family testers.
+
+## Run 2026-07-19T22:46:00-04:00
+- Task: B-003 Browser IMA rewarded ad path (defer itch until real ads)
+- Team: Monetization / Release
+- Changed: src/services/ads.ts; src/services/ads.test.ts; src/services/imaRewarded.ts; src/services/imaTypes.ts; src/App.css; .env.example; README.md; docs/browser-first-launch-plan.md; docs/launch-run-log.md
+- Verification: npm.cmd run lint (pass); npm.cmd run test (pass: 3 files, 52 tests); npm.cmd run build (pass)
+- Result: Passed. Browser Ad Boost now loads Google IMA, requests a VAST/Ad Manager tag (`VITE_IMA_AD_TAG_URL` or public sample tag), grants boost only on full COMPLETE, fails closed on skip/error, keeps local modal for localhost/dev, and documents env config. Itch upload still deferred until a live production ad tag is configured.
+- Next: Set production `VITE_IMA_AD_TAG_URL` from Ad Manager; add consent/privacy banner; then host + itch soft launch.

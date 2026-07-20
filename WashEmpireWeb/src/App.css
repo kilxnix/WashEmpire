@@ -929,6 +929,60 @@ button:disabled {
   pointer-events: auto;
 }
 
+.wash-ima-player {
+  display: grid;
+  gap: 12px;
+  width: min(720px, calc(100vw - 24px));
+  padding: 14px;
+  border: 1px solid rgba(248, 250, 252, 0.18);
+  border-radius: 10px;
+  color: #f8fafc;
+  background: #0f172a;
+  box-shadow: 0 28px 70px rgba(2, 6, 23, 0.5);
+}
+
+.wash-ima-stage {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border-radius: 8px;
+  background: #020617;
+}
+
+.wash-ima-video,
+.wash-ima-ad-container {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.wash-ima-video {
+  object-fit: contain;
+  background: #000;
+}
+
+.wash-ima-status {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  padding: 16px;
+  color: rgba(248, 250, 252, 0.9);
+  font-size: 15px;
+  font-weight: 800;
+  text-align: center;
+  pointer-events: none;
+  background: rgba(2, 6, 23, 0.55);
+}
+
+.wash-ima-status[hidden] {
+  display: none;
+}
+
 .wash-ad-modal {
   display: grid;
   gap: 14px;

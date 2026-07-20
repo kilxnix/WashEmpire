@@ -66,22 +66,34 @@ Use `docs/first-player-guide.md` as the first-player guide or itch page instruct
 
 The reward button calls `showRewardedAd()` before granting the boost. Resolution order:
 
-1. `window.WashEmpireAds.showRewardedAd()` when a custom native host provides it.
-2. `@capacitor-community/admob` when the app is running in the Android Capacitor APK.
-3. Browser-only local fallback so the itch/web demo remains testable.
+1. `window.WashEmpireAds.showRewardedAd()` when a custom host injects a provider.
+2. `@capacitor-community/admob` when running in the Android Capacitor APK.
+3. **Browser:** Google IMA HTML5 SDK + VAST/Ad Manager tag (real video ad).
+4. Local "Driver Campaign" modal only on `localhost` / when `VITE_ADS_FORCE_LOCAL=true` / when `VITE_ADS_ALLOW_LOCAL_FALLBACK=true`.
 
-Production AdMob ids:
+### Browser IMA (default path)
+
+Copy `.env.example` to `.env` (or set CI env vars) and configure:
+
+```text
+VITE_IMA_AD_TAG_URL=https://your-ad-manager-vast-or-tag-url
+VITE_IMA_USE_SAMPLE_TAG=false
+```
+
+If `VITE_IMA_AD_TAG_URL` is empty, the game uses Google's public sample linear VAST tag so you can verify the player without your own inventory. Boost is granted only when the IMA creative **completes** (skip/close/error = no boost).
+
+### Android AdMob
 
 ```text
 Android app id: ca-app-pub-0396642445880935~1557835307
 Rewarded ad unit: ca-app-pub-0396642445880935/6253769968
 ```
 
-The Android wrapper lives in `android/` after running:
+Override with `VITE_ADMOB_*` env vars if needed. The Android wrapper lives in `android/` after:
 
 ```powershell
 npm run android:sync
 npm run android:apk
 ```
 
-Android builds require JDK 21 and Android SDK platform/build-tools 36. The native manifest includes `com.google.android.gms.ads.APPLICATION_ID` with the Android app id above. The web build prepares the rewarded unit, shows it, and grants the boost only when AdMob returns a reward.
+Android builds require JDK 21 and Android SDK platform/build-tools 36. The native manifest includes `com.google.android.gms.ads.APPLICATION_ID`. Boost is granted only when AdMob returns a reward with `amount > 0`.

@@ -1,10 +1,12 @@
 import { AdMob } from '@capacitor-community/admob'
 import type { AdMobInitializationOptions, AdMobPlugin } from '@capacitor-community/admob'
 import { Capacitor } from '@capacitor/core'
+import { GOOGLE_SAMPLE_LINEAR_VAST_TAG, showImaRewardedAd } from './imaRewarded'
 
 declare global {
   interface Window {
     WashEmpireAdMobConfig?: AdMobConfig
+    WashEmpireAdsConfig?: BrowserAdsConfig
     WashEmpireAds?: {
       showRewardedAd: () => Promise<boolean>
     }
@@ -17,6 +19,18 @@ export interface AdMobConfig {
   isTesting: boolean
 }
 
+export interface BrowserAdsConfig {
+  /** When true, browser always uses the local modal (dev). */
+  forceLocalFallback: boolean
+  /**
+   * VAST / Ad Manager tag URL for Google IMA.
+   * Empty falls back to Google's public sample tag when not forceLocal.
+   */
+  imaAdTagUrl: string
+  /** Prefer sample VAST tag even if a production URL is configured. */
+  useSampleTag: boolean
+}
+
 interface NativeRuntime {
   getPlatform?: () => string
   isNativePlatform?: () => boolean
@@ -27,22 +41,28 @@ type RewardAdMobPlugin = Pick<
   'initialize' | 'prepareRewardVideoAd' | 'showRewardVideoAd'
 >
 type WebRewardedAdPresenter = () => Promise<boolean>
+type BrowserImaPresenter = (adTagUrl: string) => Promise<boolean>
 
 export const ADMOB_CONFIG: AdMobConfig = {
-  androidAppId: 'ca-app-pub-0396642445880935~1557835307',
-  rewardedAdUnitId: 'ca-app-pub-0396642445880935/6253769968',
-  isTesting: false,
+  androidAppId: readEnv('VITE_ADMOB_ANDROID_APP_ID') || 'ca-app-pub-0396642445880935~1557835307',
+  rewardedAdUnitId:
+    readEnv('VITE_ADMOB_REWARDED_UNIT_ID') || 'ca-app-pub-0396642445880935/6253769968',
+  isTesting: readBoolEnv('VITE_ADMOB_TESTING', false),
 }
+
+export const BROWSER_ADS_CONFIG: BrowserAdsConfig = resolveBrowserAdsConfig()
 
 let capacitorAdMobInitialized = false
 let rewardPreparation: Promise<void> | null = null
 let nativeAdMob: RewardAdMobPlugin = AdMob
 let nativeRuntime: NativeRuntime = Capacitor
 let webRewardedAdPresenter: WebRewardedAdPresenter = showWebRewardedAdModal
+let browserImaPresenter: BrowserImaPresenter = showImaRewardedAdBound
 
 const browserWindow = getBrowserWindow()
 if (browserWindow) {
   browserWindow.WashEmpireAdMobConfig = ADMOB_CONFIG
+  browserWindow.WashEmpireAdsConfig = BROWSER_ADS_CONFIG
 }
 
 export async function showRewardedAd(): Promise<boolean> {
@@ -57,7 +77,7 @@ export async function showRewardedAd(): Promise<boolean> {
     return showCapacitorRewardedAd(nativeAdMob)
   }
 
-  return showLocalFallbackAd()
+  return showBrowserRewardedAd()
 }
 
 export function resetAdMobBridgeForTests(): void {
@@ -66,6 +86,7 @@ export function resetAdMobBridgeForTests(): void {
   nativeAdMob = AdMob
   nativeRuntime = Capacitor
   webRewardedAdPresenter = showWebRewardedAdModal
+  browserImaPresenter = showImaRewardedAdBound
 }
 
 export function configureAdMobBridgeForTests(adMob: RewardAdMobPlugin, runtime: NativeRuntime): void {
@@ -75,6 +96,43 @@ export function configureAdMobBridgeForTests(adMob: RewardAdMobPlugin, runtime: 
 
 export function configureWebRewardedAdForTests(presenter: WebRewardedAdPresenter): void {
   webRewardedAdPresenter = presenter
+}
+
+export function configureBrowserImaForTests(presenter: BrowserImaPresenter): void {
+  browserImaPresenter = presenter
+}
+
+export function resolveBrowserAdTagUrl(config: BrowserAdsConfig = BROWSER_ADS_CONFIG): string {
+  if (config.useSampleTag || !config.imaAdTagUrl.trim()) {
+    return GOOGLE_SAMPLE_LINEAR_VAST_TAG
+  }
+  return config.imaAdTagUrl.trim()
+}
+
+async function showBrowserRewardedAd(): Promise<boolean> {
+  if (BROWSER_ADS_CONFIG.forceLocalFallback) {
+    return showLocalFallbackAd()
+  }
+
+  const adTagUrl = resolveBrowserAdTagUrl()
+  try {
+    const rewarded = await browserImaPresenter(adTagUrl)
+    if (rewarded) return true
+  } catch {
+    // Fall through to local demo only when explicitly allowed for localhost/dev.
+  }
+
+  // Production-safe: do not silently grant boost via local modal when IMA fails
+  // unless the build is marked for local fallback.
+  if (shouldAllowLocalFallbackAfterImaFailure()) {
+    return showLocalFallbackAd()
+  }
+
+  return false
+}
+
+async function showImaRewardedAdBound(adTagUrl: string): Promise<boolean> {
+  return showImaRewardedAd({ adTagUrl })
 }
 
 async function showCapacitorRewardedAd(adMob: RewardAdMobPlugin): Promise<boolean> {
@@ -207,6 +265,28 @@ function showWebRewardedAdModal(): Promise<boolean> {
   })
 }
 
+function resolveBrowserAdsConfig(): BrowserAdsConfig {
+  const forceLocalFallback = readBoolEnv('VITE_ADS_FORCE_LOCAL', false)
+  const useSampleTag = readBoolEnv('VITE_IMA_USE_SAMPLE_TAG', !readEnv('VITE_IMA_AD_TAG_URL'))
+  const imaAdTagUrl = readEnv('VITE_IMA_AD_TAG_URL')
+
+  return {
+    forceLocalFallback,
+    imaAdTagUrl,
+    useSampleTag,
+  }
+}
+
+function shouldAllowLocalFallbackAfterImaFailure(): boolean {
+  if (BROWSER_ADS_CONFIG.forceLocalFallback) return true
+  // Dev servers may hit CORS / sample fill issues; keep the loop playable.
+  if (typeof window !== 'undefined') {
+    const host = window.location.hostname
+    if (host === 'localhost' || host === '127.0.0.1') return true
+  }
+  return readBoolEnv('VITE_ADS_ALLOW_LOCAL_FALLBACK', false)
+}
+
 function adMobInitializationOptions(): AdMobInitializationOptions {
   return ADMOB_CONFIG.isTesting ? { initializeForTesting: true } : {}
 }
@@ -224,4 +304,21 @@ function isNativeAndroidRuntime(): boolean {
 
 function getBrowserWindow(): Window | undefined {
   return typeof window === 'undefined' ? undefined : window
+}
+
+function readEnv(key: string): string {
+  try {
+    const value = (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env?.[key]
+    return typeof value === 'string' ? value.trim() : ''
+  } catch {
+    return ''
+  }
+}
+
+function readBoolEnv(key: string, fallback: boolean): boolean {
+  const raw = readEnv(key).toLowerCase()
+  if (!raw) return fallback
+  if (raw === '1' || raw === 'true' || raw === 'yes' || raw === 'on') return true
+  if (raw === '0' || raw === 'false' || raw === 'no' || raw === 'off') return false
+  return fallback
 }
