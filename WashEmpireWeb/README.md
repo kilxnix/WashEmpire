@@ -2,7 +2,7 @@
 
 Browser-native vertical slice for Wash Empire. This version keeps the Unity prototype intact and rebuilds the core loop as a web game:
 
-- React DOM HUD for cash, time controls, upgrades, save export, and save upload.
+- React DOM HUD for cash, time controls, upgrades, city map, graphics, and ad boosts.
 - React Three Fiber scene for the self-serve bay, pay box, office, cars, and upgrade visuals.
 - Idle-style simulation state kept outside the renderer.
 - District-specific washes with two or three active bays, plus future-bay pads where a smaller location can grow.
@@ -15,7 +15,7 @@ Browser-native vertical slice for Wash Empire. This version keeps the Unity prot
 - Rewarded-ad hook with a local fallback for demo builds.
 - PWA manifest and mobile web-app metadata for phone testing.
 - Title menu with saved-game continue and new-location naming.
-- Local autosave plus JSON import/export for demos.
+- Local autosave in browser storage.
 
 ## Run
 
@@ -45,6 +45,8 @@ Compress-Archive -Path dist\* -DestinationPath wash-empire-itch.zip -Force
 
 Upload `wash-empire-itch.zip` as an HTML game. The Vite build uses relative asset paths, so `index.html`, `assets/`, `favicon.svg`, and `manifest.webmanifest` can live at the zip root.
 
+Use `docs/first-player-guide.md` as the first-player guide or itch page instructions.
+
 ## Demo Loop
 
 1. Cars enter the self-serve bays and customers spend time washing.
@@ -57,7 +59,7 @@ Upload `wash-empire-itch.zip` as an HTML game. The Vite build uses relative asse
 8. Watch traffic pressure: if the bays are full, less-interested cars keep driving, while stronger districts and upgrades create a queue.
 9. Use the rewarded-ad button to bank offline earning boost time.
 10. At week end, time pauses until profits are collected or staff has auto-collected them.
-11. Export and import JSON saves from the top-right HUD controls.
+11. Close the tab and return later; the local autosave and offline return panel bring the run forward.
 
 ## Ad Hook
 

@@ -163,3 +163,67 @@ Append one entry per launch-worker run. Keep this file short, factual, and usefu
 - Verification: npm.cmd run lint (pass); npm.cmd run audit:visual-rewards (pass: 10 lot upgrades, 35 lot reward props, 6 bay upgrades); npm.cmd run test (pass: 3 files, 47 tests); npm.cmd run build (pass, Vite large chunk warning remains); npm.cmd run audit:perf (pass: steady 340 geometries, 6 textures); npm.cmd run audit:launch (pass)
 - Result: Passed. Added a production performance smoke gate to launch audit and reduced high-churn traffic allocations by sharing box, wheel, occupant, and washer-tool geometries/materials across the scene.
 - Next: Continue app-store prep with code splitting/asset packaging after the remaining art and gameplay acceptance work is locked.
+
+## Run 2026-05-24T13:35:04-04:00
+- Task: L-010 App Store Checklist
+- Team: Release QA
+- Changed: docs/app-store-readiness-checklist.md; docs/launch-pathway.md; docs/launch-run-log.md
+- Verification: Documentation-only pass; sourced against current Apple App Store Connect and App Review guidance; git diff --check (pass).
+- Result: Added a detailed App Store readiness checklist covering gameplay completion, visual bar, WebGL/performance gates, iOS/Capacitor/Xcode work, App Store Connect metadata, paid app setup, privacy/ad disclosure, TestFlight, screenshots, and final submission.
+- Next: Convert remaining unchecked items into implementation sprints, starting with eight-hour balance, iOS build path, privacy/ad compliance, and final district screenshot review.
+
+## Run 2026-05-24T13:43:23-04:00
+- Task: L-010 Google Play Checklist
+- Team: Release QA
+- Changed: docs/google-play-readiness-checklist.md; docs/launch-pathway.md; docs/launch-run-log.md
+- Verification: Documentation-only pass; sourced against current Google Play Console and Android developer guidance; git diff --check (pass).
+- Result: Added a Google Play readiness checklist covering Android App Bundle production build work, Play Console setup, Data safety/privacy/ad declarations, store listing assets, testing tracks, real-device QA, and production rollout.
+- Next: Add a real `android:aab` build command and begin Play Console/test-track prep after the gameplay/art acceptance items are locked.
+
+## Run 2026-05-25T18:21:50-04:00
+- Task: L-012 Browser-First Fun Launch
+- Team: Gameplay; Release QA
+- Changed: src/components/MomentumPanel.tsx; src/App.tsx; src/App.css; docs/browser-first-launch-plan.md; docs/launch-pathway.md; docs/launch-run-log.md
+- Verification: npm.cmd run lint (initial JSX parent error fixed, pass); npm.cmd run audit:visual-rewards (pass: 10 lot upgrades, 35 lot reward props, 6 bay upgrades); npm.cmd run test (pass: 3 files, 47 tests); npm.cmd run build (pass, Vite large chunk warning remains); npm.cmd run audit:perf (initial heap drift failed, fixed with 20 Hz simulation cadence, pass); npm.cmd run audit:launch (pass: steady 280 geometries, 6 textures).
+- Result: Passed. Started the browser-first shift by adding a Momentum goals panel, hiding it during ride view and weekly review, documenting the browser launch plan for fun loop/real web ad boost/hosting/advertising/public playtest, and reducing simulation state churn for browser memory stability.
+- Next: Continue L-012 with reward feedback polish, a real hosted ad-provider bridge, and public browser hosting.
+
+## Run 2026-05-25T20:42:12-04:00
+- Task: L-013 Browser Launch Hardening
+- Team: Gameplay; Release QA
+- Changed: src/game/types.ts; src/game/simulation.ts; src/game/simulation.test.ts; src/components/Hud.tsx; src/components/OfflineReturnPanel.tsx; src/components/WashScene.tsx; src/App.tsx; docs/browser-first-launch-plan.md; docs/launch-pathway.md; docs/launch-run-log.md
+- Verification: npm.cmd run lint (pass); npm.cmd run test (pass: 3 files, 47 tests); npm.cmd run build (pass, Vite large chunk warning remains); npm.cmd run audit:launch (pass: 10 lot upgrades, 35 lot reward props, 6 bay upgrades; perf steady 276 geometries, 2 textures, heap drift 21.2 MB; screenshots written).
+- Result: Passed. Set the browser launch path to pay-what-you-want, added a saved graphics-quality preference, defaulted to balanced rendering with lower DPR/no contact shadows, kept high graphics available, added low graphics mode, and removed offline earning caps so the full away time is credited.
+- Next: Continue with code splitting for the large bundle warning, reward feedback polish, real hosted ad bridge, and upload prep for the pay-what-you-want page.
+
+## Run 2026-05-25T22:05:26-04:00
+- Task: L-013 Browser Launch Hardening / Itch Upload Prep
+- Team: Gameplay; Release QA
+- Changed: src/components/Hud.tsx; src/App.tsx; src/App.css; src/index.css; README.md; docs/first-player-guide.md; docs/browser-first-launch-plan.md; docs/google-play-readiness-checklist.md; docs/app-store-readiness-checklist.md; docs/launch-pathway.md; docs/launch-run-log.md; wash-empire-itch.zip
+- Verification: npm.cmd run lint (pass); npm.cmd run test (pass: 3 files, 47 tests); npm.cmd run build (pass, Vite large chunk warning remains); npm.cmd run audit:visual-rewards (pass: 10 lot upgrades, 35 lot reward props, 6 bay upgrades); npm.cmd run audit:launch (pass: perf steady 276 geometries, 2 textures, heap drift -11.2 MB; smoke screenshots written); in-app browser preview at 127.0.0.1:4174 confirmed HUD actions are Upgrades, City map, Graphics, and Watch Ad only.
+- Result: Passed. Removed the player-facing JSON import/export/reset controls from the in-game HUD, kept browser autosave intact, added the first-player guide for itch instructions, refreshed readiness docs, and rebuilt the itch upload zip from the passing production build.
+- Next: Upload the zip to itch.io as an HTML5 browser game with donations/pay-what-you-want enabled, add screenshots/page copy, then run a hosted smoke check.
+
+## Run 2026-05-25T22:19:31-04:00
+- Task: Vite Chunk Warning / One-Hour Economy Pass
+- Team: Gameplay; Release QA
+- Changed: vite.config.ts; src/App.tsx; src/App.css; src/game/simulation.ts; src/game/simulation.test.ts; docs/browser-first-launch-plan.md; docs/launch-pathway.md; docs/launch-run-log.md; wash-empire-itch.zip
+- Verification: npm.cmd run lint (pass); npm.cmd run test (pass: 3 files, 48 tests); npm.cmd run build (pass, no large chunk warning; largest chunks 372.58 kB and 355.85 kB); npm.cmd run audit:visual-rewards (pass: 10 lot upgrades, 35 lot reward props, 6 bay upgrades); npm.cmd run audit:perf (pass: stable 276 geometries, 2 textures); npm.cmd run audit:launch (pass); fresh in-app browser preview at 127.0.0.1:4175 confirmed canvas and HUD render after lazy scene load.
+- Result: Passed. Lazy-loaded the 3D wash scene, split React/Three/R3F dependencies into production chunks under Vite's warning threshold, raised base wash revenue from $6 to $12, and added a deterministic one-hour starter playtest requiring positive cash, 45+ purchases, 3,800+ cars, and $150k+ first-hour revenue with the rewarded campaign loop.
+- Next: Hosted itch smoke check after upload, then longer balance coverage for the remaining multi-hour/city-unlock curve.
+
+## Run 2026-05-25T22:58:34-04:00
+- Task: Continue Save Canvas Recovery
+- Team: Release QA
+- Changed: src/components/WashScene.tsx; docs/launch-run-log.md; wash-empire-itch.zip
+- Verification: npm.cmd run lint (pass); npm.cmd run test (pass: 3 files, 48 tests); npm.cmd run build (pass, no large chunk warning); npm.cmd run audit:visual-rewards (pass: 10 lot upgrades, 35 lot reward props, 6 bay upgrades); npm.cmd run audit:perf (pass: stable 2048 calls, 147 geometries, 1 texture, heap drift 0.3 MB); npm.cmd run audit:launch (pass); Playwright/SwiftShader save-load smoke confirmed Neon Downtown renders after Continue without WebGL context loss; rebuilt wash-empire-itch.zip (396,974 bytes).
+- Result: Passed. Removed live Drei/Troika 3D text rendering from the WebGL scene path and replaced ambient micro-labels with geometric sign chips, preventing resumed saves from hanging on text/font work while keeping HUD labels intact.
+- Next: Hosted itch smoke check after upload, then capture final page screenshots from the uploaded build.
+
+## Run 2026-05-25T23:27:39-04:00
+- Task: Browser Favicon Dial
+- Team: Visual / Release QA
+- Changed: public/favicon.svg; docs/launch-run-log.md; wash-empire-itch.zip
+- Verification: npm.cmd run build (pass, no large chunk warning); in-app browser preview confirmed the favicon SVG renders as a wash selector dial; rebuilt wash-empire-itch.zip (395,935 bytes).
+- Result: Passed. Replaced the old favicon with a compact car-wash spin-dial mark using a dark selector ring, cyan wash arc, yellow dial center, and pink pointer.
+- Next: Use the new zip for the itch upload smoke check.

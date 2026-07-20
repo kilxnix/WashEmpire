@@ -18,11 +18,12 @@ The game should communicate the fantasy immediately: a self-serve car wash busin
 ## Launch Gates
 
 - `G1 Demo Ready`: start menu, save/load, first district, upgrades, car flow, cash collection, ads fallback, and weekly loop are playable without intervention.
-- `G2 Family Test Ready`: no known softlocks, mobile HUD readable, visual rewards obvious, no bankrupt-by-default balance, and a simple reset/export path exists.
-- `G3 Itch Ready`: production build works from zipped `dist`, desktop/mobile screenshots are current, and the README publish path is accurate.
+- `G2 Family Test Ready`: no known softlocks, mobile HUD readable, visual rewards obvious, no bankrupt-by-default balance, and a simple Start New path exists.
+- `G3 Itch Ready`: production build works from zipped `dist`, desktop/mobile screenshots are current, the README publish path is accurate, and the first-player guide is ready for the itch page.
 - `G4 App Store Prep`: Capacitor Android build works, rewarded-ad hook is guarded, privacy/store checklist is documented, and app icons/screenshots are ready.
 - `G5 Content Runway`: three distinct locations are playable with different demand, bay count, visuals, and upgrade strategy: small city, snow city, bustling/neon city.
 - `G6 Performance Ready`: launch audit includes a WebGL steady-state budget check and fails if geometry or texture counts grow during 10x play.
+- `G7 Browser Launch`: browser build is fun in the first session, hosted publicly, has a real ad/boost path, and can be advertised with screenshots/video.
 
 ## Automation Rules
 
@@ -109,11 +110,12 @@ The game should communicate the fantasy immediately: a self-serve car wash busin
 ### L-007 Economy Eight-Hour Balance Check
 
 - Owner: Economy / Progression Team
-- Status: open
+- Status: in progress
 - Automation OK: yes
 - Goal: Add a deterministic balance test or script that simulates roughly eight hours of active play progression.
 - Acceptance: the player cannot go bankrupt from normal operation and has meaningful upgrade choices across the run.
 - Verify: `npm.cmd run test` or a dedicated balance script.
+- Progress: Added a deterministic one-hour starter playtest inside `simulation.test.ts` that runs the first session with a rewarded campaign, regular collections, and a scripted upgrade plan; the test requires positive cash flow, high car volume, at least 45 purchases, and first-hour revenue over $150k.
 
 ### L-008 Employee Collection Clarity
 
@@ -136,11 +138,14 @@ The game should communicate the fantasy immediately: a self-serve car wash busin
 ### L-010 Itch And App Store Checklist
 
 - Owner: Release QA Team
-- Status: open
+- Status: in progress
 - Automation OK: yes
 - Goal: Create a launch checklist for itch.io and app-store readiness, including screenshots, privacy notes, ad disclosure, build commands, and known test devices.
 - Acceptance: checklist exists in `docs/` and references current commands.
 - Verify: documentation review plus build.
+- Progress: Added `docs/app-store-readiness-checklist.md` with the Apple App Store readiness checklist, including gameplay/art gates, iOS build work, App Store Connect metadata, privacy/ad requirements, TestFlight, screenshots, and final submission steps.
+- Progress: Added `docs/google-play-readiness-checklist.md` with the Google Play readiness checklist, including Android App Bundle work, Play Console setup, Data safety/privacy/ad declarations, store listing assets, testing tracks, and production rollout steps.
+- Progress: Added `docs/first-player-guide.md` for itch page instructions, player onboarding, controls, saves, upgrades, cities, weekly review, and first-session tips.
 
 ### L-011 WebGL Performance Budget
 
@@ -151,6 +156,29 @@ The game should communicate the fantasy immediately: a self-serve car wash busin
 - Acceptance: `npm.cmd run audit:perf` samples production preview render metrics after warmup and `npm.cmd run audit:launch` includes it.
 - Verify: `npm.cmd run audit:launch`.
 - Progress: Added shared geometry/material caching for high-churn box, wheel, occupant, and washer-tool meshes; added a render-info probe and production performance smoke test. Latest launch audit held steady at 340 geometries and 6 textures during 10x play.
+
+### L-012 Browser-First Fun Launch
+
+- Owner: Gameplay Team
+- Status: in progress
+- Automation OK: yes
+- Goal: Prioritize browser fun, hosted play, real web ad boost integration, and shareable marketing before returning to app-store packaging.
+- Acceptance: `docs/browser-first-launch-plan.md` exists, the game has a visible short-term goal loop, the hosted web launch tasks are tracked, and the browser launch audit stays green.
+- Verify: `npm.cmd run audit:launch` plus browser screenshot review.
+- Progress: Added `docs/browser-first-launch-plan.md`, started the Momentum Loop with an in-game goals panel that links to collect/upgrades/map/ad boost actions, hid the panel during ride view and weekly review, and moved simulation updates to a 20 Hz cadence to reduce browser memory churn. Latest launch audit passed.
+
+### L-013 Browser Launch Hardening
+
+- Owner: Gameplay Team; Release QA Team
+- Status: in progress
+- Automation OK: yes
+- Goal: Prepare the public pay-what-you-want browser build with safer memory defaults, graphics control, and uncapped offline earnings.
+- Acceptance: Graphics quality is player-selectable, default graphics reduce render cost, offline return credits the full elapsed time, dev save controls are absent from the HUD, and the full launch audit passes.
+- Verify: `npm.cmd run lint`; `npm.cmd run test`; `npm.cmd run build`; `npm.cmd run audit:launch`.
+- Progress: Added the browser graphics quality preference, switched the default to balanced rendering, and removed offline earning caps.
+- Progress: Removed player-facing JSON import/export/reset controls from the in-game HUD while keeping autosave and the title-screen Start New path.
+- Progress: Split the 3D scene and Three/R3F dependencies into lazy production chunks so `npm.cmd run build` no longer emits the Vite large-chunk warning.
+- Progress: Raised the base wash price from $6 to $12 so the cold first week is profitable and the first hour has stronger upgrade cadence.
 
 ## Current Product Risks
 
