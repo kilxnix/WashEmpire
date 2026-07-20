@@ -25,7 +25,7 @@ const DAY_SECONDS = 30
 const WEEK_SECONDS = DAY_SECONDS * 7
 const BAY_COUNT = 4
 const CUSTOMERS_PER_VISIBLE_CAR = 2
-const BASE_PRICE = 6
+const BASE_PRICE = 12
 const BASE_WASH_SECONDS = 8.8
 const BASE_SPAWN_SECONDS = 1.8
 const BASE_QUEUE_SECONDS = 9.5
@@ -40,8 +40,6 @@ const AD_BOOST_MULTIPLIER = 3
 const AD_SLOTS_MAX = 5
 const AD_SLOT_REFILL_SECONDS = 17_280
 const OFFLINE_BASELINE_RATE_FRACTION = 0.5
-const OFFLINE_UNBOOSTED_CAP_SECONDS = 28_800
-const OFFLINE_HARD_CAP_SECONDS = 86_400
 const OFFLINE_MIN_RECONCILE_SECONDS = 60
 const DEFAULT_LOCATION_NAME = 'Wash Empire Auto Spa'
 
@@ -375,7 +373,7 @@ export function reconcileOffline(input: GameState, nowMs: number): GameState {
     return { ...input, lastTickAt: nowMs }
   }
 
-  const elapsed = Math.min(OFFLINE_HARD_CAP_SECONDS, Math.max(0, elapsedRaw))
+  const elapsed = Math.max(0, elapsedRaw)
   const state = cloneState(input)
 
   const boostBefore = state.ads.boostSeconds
@@ -386,7 +384,7 @@ export function reconcileOffline(input: GameState, nowMs: number): GameState {
   state.ads = advanceAds(state.ads, elapsed)
 
   const boostedT = Math.min(elapsed, boostBefore)
-  const unboostedT = Math.min(elapsed - boostedT, OFFLINE_UNBOOSTED_CAP_SECONDS)
+  const unboostedT = Math.max(0, elapsed - boostedT)
   const cashEarned = roundMoney(ratePerSec * (boostedT * AD_BOOST_MULTIPLIER + unboostedT))
 
   state.cash = roundMoney(state.cash + cashEarned)

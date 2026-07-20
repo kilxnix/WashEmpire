@@ -1,20 +1,16 @@
 import {
   BadgeDollarSign,
-  Download,
   Eye,
   FastForward,
   Gauge,
   Map,
   Pause,
   Play,
-  RotateCcw,
-  Upload,
   WalletCards,
   Wrench,
   Zap,
 } from 'lucide-react'
-import type { ChangeEvent } from 'react'
-import type { GameState, SpeedSetting } from '../game/types'
+import type { GameState, GraphicsQuality, SpeedSetting } from '../game/types'
 import {
   activeBayCount,
   activeBays,
@@ -32,31 +28,29 @@ import {
 
 interface HudProps {
   state: GameState
+  graphicsQuality: GraphicsQuality
   rideAlong: boolean
   onSetSpeed: (speed: SpeedSetting) => void
   onCollect: () => void
   onOpenUpgrades: () => void
   onOpenCityMap: () => void
+  onCycleGraphics: () => void
   onToggleRideAlong: () => void
   onWatchAd: () => void
-  onExport: () => void
-  onImport: (file: File) => void
-  onReset: () => void
   adLoading: boolean
 }
 
 export function Hud({
   state,
+  graphicsQuality,
   rideAlong,
   onSetSpeed,
   onCollect,
   onOpenUpgrades,
   onOpenCityMap,
+  onCycleGraphics,
   onToggleRideAlong,
   onWatchAd,
-  onExport,
-  onImport,
-  onReset,
   adLoading,
 }: HudProps) {
   const visibleBays = activeBays(state)
@@ -76,12 +70,6 @@ export function Hud({
   const city = currentCityDefinition(state)
   const conveyor = city.washModel === 'conveyor'
   const queued = activeQueueCount(state)
-
-  function handleImport(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0]
-    if (file) onImport(file)
-    event.target.value = ''
-  }
 
   return (
     <div className="hud" aria-label="Wash Empire controls">
@@ -146,6 +134,10 @@ export function Hud({
           <Map size={18} />
           <span>Map</span>
         </button>
+        <button type="button" title={`Graphics: ${graphicsLabel(graphicsQuality)}`} onClick={onCycleGraphics}>
+          <Gauge size={18} />
+          <span>{graphicsLabel(graphicsQuality)}</span>
+        </button>
         {conveyor && (
           <button
             type="button"
@@ -174,16 +166,6 @@ export function Hud({
             <span className="hud-ad-line hud-ad-refill">Next slot in {formatHm(adNextSlotSeconds)}</span>
           )}
         </div>
-        <button type="button" title="Export save" onClick={onExport}>
-          <Download size={18} />
-        </button>
-        <label className="icon-button" title="Import save">
-          <Upload size={18} />
-          <input type="file" accept="application/json,.json" onChange={handleImport} />
-        </label>
-        <button type="button" title="Reset demo" onClick={onReset}>
-          <RotateCcw size={18} />
-        </button>
       </section>
 
       <section className="hud-cluster hud-paybox" aria-label="Pay box">
@@ -294,4 +276,10 @@ function formatHm(seconds: number): string {
   if (hours === 0) return `${mins}m`
   if (mins === 0) return `${hours}h`
   return `${hours}h ${mins}m`
+}
+
+function graphicsLabel(quality: GraphicsQuality): string {
+  if (quality === 'low') return 'Low'
+  if (quality === 'high') return 'High'
+  return 'Balanced'
 }

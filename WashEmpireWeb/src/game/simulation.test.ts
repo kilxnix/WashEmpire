@@ -1,5 +1,6 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { createInitialState } from './simulation'
+import type { BayUpgradeId, EmployeeId, GameState, UpgradeId } from './types'
 
 describe('simulation smoke', () => {
   it('createInitialState returns a fresh state with $20 000', () => {
@@ -124,9 +125,9 @@ describe('expectedHourlyRevenue', () => {
     expect(Number.isFinite(rate)).toBe(true)
   })
 
-  it('keeps the starter wash comfortably above weekly fixed costs', () => {
+  it('keeps the starter wash comfortably above weekly fixed costs and early upgrade pacing', () => {
     const expectedStarterWeek = expectedHourlyRevenue(createInitialState()) * (210 / 3600)
-    expect(expectedStarterWeek).toBeGreaterThan(700)
+    expect(expectedStarterWeek).toBeGreaterThan(1500)
   })
 
   it('grows when bay wand upgrades are added (faster wash -> more throughput)', () => {
@@ -267,13 +268,13 @@ describe('reconcileOffline', () => {
     expect(next.lastTickAt).toBe(state.lastTickAt + 30_000)
   })
 
-  it('credits cash for the unboosted window, capped at 8h', () => {
+  it('credits cash for the full unboosted window while offline', () => {
     const state = frozenState()
     const tenHoursLater = state.lastTickAt + 10 * 3600 * 1000
     const next = reconcileOffline(state, tenHoursLater)
     expect(next.cash).toBeGreaterThan(state.cash)
     expect(next.pendingOfflineSummary).not.toBeNull()
-    expect(next.pendingOfflineSummary!.unboostedSeconds).toBe(28_800) // 8h cap
+    expect(next.pendingOfflineSummary!.unboostedSeconds).toBe(10 * 3600)
     expect(next.pendingOfflineSummary!.boostedSeconds).toBe(0)
   })
 
@@ -289,11 +290,12 @@ describe('reconcileOffline', () => {
     expect(next.ads.boostSeconds).toBe(0)
   })
 
-  it('clamps elapsed time at 24h hard cap', () => {
+  it('credits the full elapsed time without a hard cap', () => {
     const state = frozenState()
     const fiftyHoursLater = state.lastTickAt + 50 * 3600 * 1000
     const next = reconcileOffline(state, fiftyHoursLater)
-    expect(next.pendingOfflineSummary!.elapsedSeconds).toBe(86_400)
+    expect(next.pendingOfflineSummary!.elapsedSeconds).toBe(50 * 3600)
+    expect(next.pendingOfflineSummary!.unboostedSeconds).toBe(50 * 3600)
   })
 
   it('clamps negative elapsed time to zero', () => {
@@ -365,7 +367,21 @@ describe('hydrateGameState - ad migration', () => {
   })
 })
 
-import { activeBayCount, buyBayUpgrade, buyCityDistrict, switchCityDistrict } from './simulation'
+import {
+  activeBayCount,
+  bayUpgradeCost,
+  bayUpgradeDefinitions,
+  buyBayUpgrade,
+  buyCityDistrict,
+  buyUpgrade,
+  cashBoxValue,
+  employeeDefinitions,
+  hireEmployee,
+  setSpeed,
+  switchCityDistrict,
+  totalCashBox,
+  upgradeDefinitions,
+} from './simulation'
 
 describe('city bay management', () => {
   it('uses the configured bay count for each travel district', () => {
@@ -418,3 +434,144 @@ describe('city bay management', () => {
     expect(activeBayCount(state)).toBe(3)
   })
 })
+
+describe('one-hour playtest economy', () => {
+  it('supports a busy first hour with frequent upgrades and positive cash flow', () => {
+    const random = vi.spyOn(Math, 'random').mockImplementation(seededRandom(12_345))
+
+    try {
+      const result = runOneHourStarterPlaytest()
+
+      expect(result.state.cash).toBeGreaterThan(0)
+      expect(result.state.week).toBeGreaterThanOrEqual(45)
+      expect(result.state.totalCars).toBeGreaterThan(3800)
+      expect(result.state.lifetimeRevenue).toBeGreaterThan(150_000)
+      expect(result.purchases).toBeGreaterThanOrEqual(45)
+      expect(result.purchasedLotUpgrades).toContain('paint')
+      expect(result.hiredEmployees).toContain('cashRunner')
+    } finally {
+      random.mockRestore()
+    }
+  })
+})
+
+type PurchaseStep =
+  | { kind: 'bay'; id: BayUpgradeId; target: number }
+  | { kind: 'lot'; id: UpgradeId }
+  | { kind: 'employee'; id: EmployeeId }
+
+const ONE_HOUR_PURCHASE_PLAN: PurchaseStep[] = [
+  { kind: 'bay', id: 'selector', target: 2 },
+  { kind: 'bay', id: 'wand', target: 2 },
+  { kind: 'bay', id: 'soap', target: 1 },
+  { kind: 'bay', id: 'rinse', target: 1 },
+  { kind: 'bay', id: 'vault', target: 1 },
+  { kind: 'bay', id: 'dryer', target: 1 },
+  { kind: 'lot', id: 'paint' },
+  { kind: 'lot', id: 'signage' },
+  { kind: 'employee', id: 'cashRunner' },
+  { kind: 'bay', id: 'selector', target: 4 },
+  { kind: 'bay', id: 'wand', target: 4 },
+  { kind: 'bay', id: 'soap', target: 3 },
+  { kind: 'bay', id: 'rinse', target: 3 },
+  { kind: 'bay', id: 'vault', target: 2 },
+  { kind: 'bay', id: 'dryer', target: 2 },
+  { kind: 'lot', id: 'coinCameras' },
+  { kind: 'lot', id: 'vacuumIsland' },
+  { kind: 'employee', id: 'bayTech' },
+  { kind: 'lot', id: 'securityLights' },
+  { kind: 'lot', id: 'cardReader' },
+]
+
+function runOneHourStarterPlaytest() {
+  let state = setSpeed(startGame(createInitialState(), 'One Hour Lot'), 3)
+  state = watchAdForBoost(state)
+  let purchases = 0
+
+  for (let realSeconds = 0; realSeconds < 3600; realSeconds += 0.1) {
+    if (state.collectRequired || dueCash(state) >= 2500) {
+      state = setSpeed(collectPayBox(state), 3)
+    }
+
+    let bought = true
+    let guard = 0
+    while (bought && guard < 100) {
+      const next = buyNextOneHourUpgrade(state)
+      bought = next !== state
+      if (bought) {
+        state = next
+        purchases += 1
+      }
+      guard += 1
+    }
+
+    state = advanceGame(state, 0.1)
+  }
+
+  if (state.collectRequired || dueCash(state) > 0) {
+    state = collectPayBox(state)
+  }
+
+  return {
+    state,
+    purchases,
+    purchasedLotUpgrades: Object.entries(state.upgrades)
+      .filter(([, owned]) => owned)
+      .map(([id]) => id),
+    hiredEmployees: Object.entries(state.employees)
+      .filter(([, hired]) => hired)
+      .map(([id]) => id),
+  }
+}
+
+function buyNextOneHourUpgrade(state: GameState): GameState {
+  const cashReserve = 5000
+
+  for (const step of ONE_HOUR_PURCHASE_PLAN) {
+    if (step.kind === 'bay') {
+      const activeBays = state.bays.slice(0, activeBayCount(state))
+      const def = bayUpgradeDefinitions.find((upgrade) => upgrade.id === step.id)
+      if (!def) continue
+
+      const candidates = activeBays
+        .map((bay, index) => ({ bay, index }))
+        .filter(({ bay }) => bay.upgrades[step.id] < Math.min(step.target, def.maxLevel))
+        .sort((a, b) => a.bay.upgrades[step.id] - b.bay.upgrades[step.id] || a.index - b.index)
+
+      for (const { bay, index } of candidates) {
+        const cost = bayUpgradeCost(step.id, bay.upgrades[step.id], index)
+        if (state.cash - cashReserve >= cost) {
+          return buyBayUpgrade(state, index, step.id)
+        }
+      }
+    }
+
+    if (step.kind === 'lot') {
+      const def = upgradeDefinitions.find((upgrade) => upgrade.id === step.id)
+      if (def && !state.upgrades[step.id] && state.cash - cashReserve >= def.cost) {
+        return buyUpgrade(state, step.id)
+      }
+    }
+
+    if (step.kind === 'employee') {
+      const def = employeeDefinitions.find((employee) => employee.id === step.id)
+      if (def && !state.employees[step.id] && state.cash - cashReserve >= def.hireCost) {
+        return hireEmployee(state, step.id)
+      }
+    }
+  }
+
+  return state
+}
+
+function dueCash(state: GameState): number {
+  return cashBoxValue(totalCashBox(state.bays))
+}
+
+function seededRandom(seedStart: number): () => number {
+  let seed = seedStart
+  return () => {
+    seed = (seed * 16807) % 2147483647
+    return (seed - 1) / 2147483646
+  }
+}

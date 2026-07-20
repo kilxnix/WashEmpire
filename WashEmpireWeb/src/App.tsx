@@ -1,11 +1,11 @@
-import { useEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import './App.css'
 import { CityDrawer } from './components/CityDrawer'
 import { Hud } from './components/Hud'
+import { MomentumPanel } from './components/MomentumPanel'
 import { OfflineReturnPanel } from './components/OfflineReturnPanel'
 import { StartMenu } from './components/StartMenu'
 import { UpgradeDrawer } from './components/UpgradeDrawer'
-import { WashScene } from './components/WashScene'
 import {
   advanceGame,
   buyBayUpgrade,
@@ -27,12 +27,17 @@ import {
   watchAdForBoost,
 } from './game/simulation'
 import { showRewardedAd } from './services/ads'
-import type { BayUpgradeId, CityId, EmployeeId, GameState, SpeedSetting, UpgradeId } from './game/types'
+import type { BayUpgradeId, CityId, EmployeeId, GameState, GraphicsQuality, SpeedSetting, UpgradeId } from './game/types'
 
 const SAVE_KEY = 'wash-empire-browser-save-v1'
+const GRAPHICS_SAVE_KEY = 'wash-empire-graphics-quality-v1'
+const SIMULATION_STEP_SECONDS = 1 / 20
+const GRAPHICS_SEQUENCE: GraphicsQuality[] = ['low', 'balanced', 'high']
+const WashScene = lazy(() => import('./components/WashScene').then((module) => ({ default: module.WashScene })))
 
 function App() {
   const [game, setGame] = useState<GameState>(loadSavedGame)
+  const [graphicsQuality, setGraphicsQuality] = useState<GraphicsQuality>(loadGraphicsQuality)
   const [titleOpen, setTitleOpen] = useState(true)
   const [upgradesOpen, setUpgradesOpen] = useState(false)
   const [cityOpen, setCityOpen] = useState(false)
@@ -56,8 +61,10 @@ function App() {
 
     function tick(now: number) {
       const delta = (now - last) / 1000
-      last = now
-      if (!titleOpenRef.current) {
+      if (titleOpenRef.current) {
+        last = now
+      } else if (delta >= SIMULATION_STEP_SECONDS) {
+        last = now
         setGame((state) => advanceGame(state, delta))
       }
       frame = requestAnimationFrame(tick)
@@ -99,6 +106,10 @@ function App() {
     const timeout = window.setTimeout(() => setCollectionToast(null), 2200)
     return () => window.clearTimeout(timeout)
   }, [collectionToast])
+
+  useEffect(() => {
+    localStorage.setItem(GRAPHICS_SAVE_KEY, graphicsQuality)
+  }, [graphicsQuality])
 
   function handleSetSpeed(speed: SpeedSetting) {
     setGame((state) => setSpeed(state, speed))
@@ -178,37 +189,8 @@ function App() {
     }
   }
 
-  function handleExport() {
-    const blob = new Blob([exportGameState(gameRef.current)], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = `wash-empire-week-${gameRef.current.week}.json`
-    link.click()
-    URL.revokeObjectURL(url)
-  }
-
-  async function handleImport(file: File) {
-    try {
-      const parsed = JSON.parse(await file.text())
-      const loaded = hydrateGameState(parsed)
-      if (!loaded) throw new Error('Save file is not a Wash Empire browser save.')
-      setGame(loaded)
-    } catch (error) {
-      window.alert(error instanceof Error ? error.message : 'Could not import save.')
-    }
-  }
-
-  function handleReset() {
-    if (!window.confirm('Reset this browser demo?')) return
-    const fresh = createInitialState()
-    localStorage.setItem(SAVE_KEY, exportGameState(fresh))
-    setGame(fresh)
-    setCollectionToast(null)
-    setUpgradesOpen(false)
-    setCityOpen(false)
-    setRideAlong(false)
-    setTitleOpen(true)
+  function handleCycleGraphics() {
+    setGraphicsQuality((quality) => nextGraphicsQuality(quality))
   }
 
   function handleDismissOfflineSummary() {
@@ -216,25 +198,41 @@ function App() {
   }
 
   const activeRideAlong = rideAlong && isConveyorCity(game)
+  const gameVisible = game.gameStarted && !titleOpen
 
   return (
     <main className="app-shell">
-      <WashScene state={game} onCollect={handleCollect} rideAlong={activeRideAlong} />
-      {game.gameStarted && !titleOpen ? (
-        <Hud
-          state={game}
-          rideAlong={activeRideAlong}
-          onSetSpeed={handleSetSpeed}
-          onCollect={handleCollect}
-          onOpenUpgrades={() => setUpgradesOpen(true)}
-          onOpenCityMap={() => setCityOpen(true)}
-          onToggleRideAlong={handleToggleRideAlong}
-          onWatchAd={handleWatchAd}
-          onExport={handleExport}
-          onImport={handleImport}
-          onReset={handleReset}
-          adLoading={adLoading}
-        />
+      {gameVisible && (
+        <Suspense fallback={<SceneLoading />}>
+          <WashScene state={game} onCollect={handleCollect} rideAlong={activeRideAlong} graphicsQuality={graphicsQuality} />
+        </Suspense>
+      )}
+      {gameVisible ? (
+        <>
+          <Hud
+            state={game}
+            graphicsQuality={graphicsQuality}
+            rideAlong={activeRideAlong}
+            onSetSpeed={handleSetSpeed}
+            onCollect={handleCollect}
+            onOpenUpgrades={() => setUpgradesOpen(true)}
+            onOpenCityMap={() => setCityOpen(true)}
+            onCycleGraphics={handleCycleGraphics}
+            onToggleRideAlong={handleToggleRideAlong}
+            onWatchAd={handleWatchAd}
+            adLoading={adLoading}
+          />
+          {!activeRideAlong && !(game.collectRequired && game.lastReview) && (
+            <MomentumPanel
+              state={game}
+              adLoading={adLoading}
+              onCollect={handleCollect}
+              onOpenUpgrades={() => setUpgradesOpen(true)}
+              onOpenCityMap={() => setCityOpen(true)}
+              onWatchAd={handleWatchAd}
+            />
+          )}
+        </>
       ) : titleOpen || !game.gameStarted ? (
         <StartMenu
           cash={game.cash}
@@ -253,7 +251,7 @@ function App() {
           title={collectionToast.title}
         />
       )}
-      {game.gameStarted && !titleOpen && activeRideAlong && (
+      {gameVisible && activeRideAlong && (
         <>
           <div className="ride-windshield" aria-hidden="true" />
           <RideAlongOverlay state={game} />
@@ -285,6 +283,14 @@ function App() {
         />
       )}
     </main>
+  )
+}
+
+function SceneLoading() {
+  return (
+    <div className="scene-loading" aria-label="Loading wash lot">
+      <span>Loading wash lot...</span>
+    </div>
   )
 }
 
@@ -392,10 +398,36 @@ function loadSavedGame(): GameState {
     const saved = localStorage.getItem(SAVE_KEY)
     if (!saved) return createInitialState()
     const hydrated = hydrateGameState(JSON.parse(saved)) ?? createInitialState()
-    return reconcileOffline(hydrated, Date.now())
+    return prepareLoadedGame(reconcileOffline(hydrated, Date.now()))
   } catch {
     return createInitialState()
   }
+}
+
+function prepareLoadedGame(state: GameState): GameState {
+  return {
+    ...state,
+    cars: [],
+    nextCarIn: 1.2,
+  }
+}
+
+function loadGraphicsQuality(): GraphicsQuality {
+  try {
+    const saved = localStorage.getItem(GRAPHICS_SAVE_KEY)
+    return isGraphicsQuality(saved) ? saved : 'balanced'
+  } catch {
+    return 'balanced'
+  }
+}
+
+function nextGraphicsQuality(current: GraphicsQuality): GraphicsQuality {
+  const index = GRAPHICS_SEQUENCE.indexOf(current)
+  return GRAPHICS_SEQUENCE[(index + 1) % GRAPHICS_SEQUENCE.length]
+}
+
+function isGraphicsQuality(value: unknown): value is GraphicsQuality {
+  return value === 'low' || value === 'balanced' || value === 'high'
 }
 
 function money(value: number): string {

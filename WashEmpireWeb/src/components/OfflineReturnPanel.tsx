@@ -21,10 +21,7 @@ export function OfflineReturnPanel({ summary, onDismiss }: OfflineReturnPanelPro
         </div>
         <div>
           <dt>Baseline</dt>
-          <dd>
-            {formatDuration(summary.unboostedSeconds)}
-            {summary.unboostedSeconds >= 28_800 ? <span className="offline-tag">capped</span> : null}
-          </dd>
+          <dd>{formatDuration(summary.unboostedSeconds)}</dd>
         </div>
         <div>
           <dt>Slots refilled</dt>

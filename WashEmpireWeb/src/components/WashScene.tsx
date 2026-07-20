@@ -1,8 +1,8 @@
-import { useEffect, useRef } from 'react'
+import { type ReactNode, useEffect, useRef } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
-import { ContactShadows, OrbitControls, Sky, Text } from '@react-three/drei'
+import { ContactShadows, OrbitControls, Sky } from '@react-three/drei'
 import * as THREE from 'three'
-import type { BayState, Car, CityDefinition, CityDistrictState, CityTheme, GameState } from '../game/types'
+import type { BayState, Car, CityDefinition, CityDistrictState, CityTheme, GameState, GraphicsQuality } from '../game/types'
 import { activeBayCount, cashBoxValue, cityDefinitions, currentCityDefinition, isConveyorCity, totalCashBox } from '../game/simulation'
 import { activeEnvironmentRewards, type EnvironmentRewardVisualId } from '../game/environmentRewards'
 import { PrototypeAssetLayer } from './PrototypeAssetLayer'
@@ -10,6 +10,7 @@ import { PrototypeAssetLayer } from './PrototypeAssetLayer'
 interface WashSceneProps {
   state: GameState
   onCollect: () => void
+  graphicsQuality: GraphicsQuality
   rideAlong?: boolean
 }
 
@@ -31,6 +32,53 @@ const CAR_LOOKAHEAD_DISTANCE = 0.48
 const SHARED_BOX_GEOMETRY = new THREE.BoxGeometry(1, 1, 1)
 const SHARED_GEOMETRIES = new Map<string, THREE.BufferGeometry>()
 const STANDARD_MATERIALS = new Map<string, THREE.MeshStandardMaterial>()
+
+type SceneTextProps = {
+  children?: ReactNode
+  [key: string]: unknown
+}
+
+// Keep scene lettering geometric; live SDF text can stall WebGL on resumed browser saves.
+function Text(props: SceneTextProps) {
+  void props
+  return null
+}
+
+interface GraphicsPreset {
+  antialias: boolean
+  contactShadows: boolean
+  dpr: [number, number]
+  shadowMapSize: number
+  shadows: boolean
+  serviceTraffic: boolean
+}
+
+const GRAPHICS_PRESETS: Record<GraphicsQuality, GraphicsPreset> = {
+  low: {
+    antialias: false,
+    contactShadows: false,
+    dpr: [0.75, 1],
+    shadowMapSize: 256,
+    shadows: false,
+    serviceTraffic: false,
+  },
+  balanced: {
+    antialias: true,
+    contactShadows: false,
+    dpr: [0.85, 1.15],
+    shadowMapSize: 512,
+    shadows: false,
+    serviceTraffic: true,
+  },
+  high: {
+    antialias: true,
+    contactShadows: true,
+    dpr: [1, 1.5],
+    shadowMapSize: 1024,
+    shadows: true,
+    serviceTraffic: true,
+  },
+}
 
 interface ServiceVehicleConfig {
   id: string
@@ -275,31 +323,33 @@ function getCylinderGeometry(radiusTop: number, radiusBottom: number, height: nu
   )
 }
 
-export function WashScene({ state, onCollect, rideAlong = false }: WashSceneProps) {
+export function WashScene({ state, onCollect, graphicsQuality, rideAlong = false }: WashSceneProps) {
+  const preset = GRAPHICS_PRESETS[graphicsQuality]
+
   return (
     <Canvas
       camera={{ position: CAMERA_POSITION, fov: 54 }}
-      shadows
-      dpr={[1, 1.5]}
-      gl={{ antialias: true, powerPreference: 'high-performance' }}
+      shadows={preset.shadows}
+      dpr={preset.dpr}
+      gl={{ antialias: preset.antialias, powerPreference: graphicsQuality === 'low' ? 'default' : 'high-performance' }}
     >
       <color attach="background" args={['#bfd8e8']} />
       <fog attach="fog" args={['#bfd8e8', 30, 72]} />
       <Sky sunPosition={[12, 18, 8]} turbidity={3.4} rayleigh={0.8} mieCoefficient={0.004} mieDirectionalG={0.72} />
       <ambientLight intensity={0.64} />
       <directionalLight
-        castShadow
+        castShadow={preset.shadows}
         intensity={1.95}
         position={[8, 12, 5]}
-        shadow-mapSize={[1024, 1024]}
+        shadow-mapSize={[preset.shadowMapSize, preset.shadowMapSize]}
       />
       <RenderInfoProbe />
       {rideAlong ? <RideAlongCamera state={state} /> : <CameraSetup />}
-      <Lot state={state} onCollect={onCollect} />
+      <Lot state={state} onCollect={onCollect} graphicsQuality={graphicsQuality} />
       {state.cars.map((car) => (
         <CarWithCustomer car={car} key={car.id} state={state} />
       ))}
-      <ContactShadows opacity={0.28} scale={22} blur={2.5} far={5} position={[0, 0.02, 0]} />
+      {preset.contactShadows && <ContactShadows opacity={0.28} scale={22} blur={2.5} far={5} position={[0, 0.02, 0]} />}
       {!rideAlong && (
         <OrbitControls
           enableDamping
@@ -355,20 +405,21 @@ function RideAlongCamera({ state }: { state: GameState }) {
   return null
 }
 
-function Lot({ state, onCollect }: WashSceneProps) {
+function Lot({ state, onCollect, graphicsQuality }: WashSceneProps) {
   const conveyor = isConveyorCity(state)
   const theme = themeFor(currentCityDefinition(state))
+  const preset = GRAPHICS_PRESETS[graphicsQuality]
 
   return (
     <group>
       <FloatingCity state={state} theme={theme} />
-      <ServiceTraffic state={state} theme={theme} />
+      {preset.serviceTraffic && <ServiceTraffic state={state} theme={theme} />}
       {conveyor ? (
         <ConveyorWashSite state={state} onCollect={onCollect} theme={theme} />
       ) : (
         <SelfServeWashSite state={state} onCollect={onCollect} theme={theme} />
       )}
-      <PrototypeAssetLayer />
+      {graphicsQuality !== 'low' && <PrototypeAssetLayer />}
     </group>
   )
 }
@@ -1668,9 +1719,7 @@ function DioramaShop({
       <Box name={`${name}-${safeLabel}-shop-door`} color="#0f172a" position={[-0.46, 0.34, -0.24]} scale={[0.25, 0.58, 0.06]} />
       <Box name={`${name}-${safeLabel}-shop-window-a`} color="#bae6fd" position={[0.02, 0.44, -0.24]} scale={[0.3, 0.28, 0.05]} />
       <Box name={`${name}-${safeLabel}-shop-window-b`} color="#bae6fd" position={[0.42, 0.44, -0.24]} scale={[0.3, 0.28, 0.05]} />
-      <Text color="#f8fafc" fontSize={0.085} position={[-0.58, 0.73, -0.34]}>
-        {label}
-      </Text>
+      <Box name={`${name}-${safeLabel}-shop-sign-chip`} color={theme.trim} position={[-0.48, 0.73, -0.34]} scale={[0.42, 0.08, 0.04]} />
     </group>
   )
 }
@@ -3038,9 +3087,7 @@ function MiniBlock({ position, tone, lotColor = '#65724f' }: { position: Vec3; t
             <Box name={`mini-building-${id}-${safeLabel}-door`} color="#111827" position={[-0.28, 0.29, -0.29]} scale={[0.17, 0.42, 0.04]} />
             <Box name={`mini-building-${id}-${safeLabel}-window-a`} color="#bae6fd" position={[0.06, 0.42, -0.3]} scale={[0.18, 0.2, 0.04]} />
             <Box name={`mini-building-${id}-${safeLabel}-window-b`} color="#bae6fd" position={[0.31, 0.42, -0.3]} scale={[0.18, 0.2, 0.04]} />
-            <Text color="#f8fafc" fontSize={0.045} position={[-0.33, 0.59, -0.35]}>
-              {label}
-            </Text>
+            <Box name={`mini-building-${id}-${safeLabel}-sign-chip`} color={index % 2 === 0 ? '#f8fafc' : '#22d3ee'} position={[-0.18, 0.59, -0.35]} scale={[0.28, 0.055, 0.035]} />
           </group>
         )
       })}

@@ -38,8 +38,7 @@ input {
   font: inherit;
 }
 
-button:focus-visible,
-.icon-button:focus-within {
+button:focus-visible {
   outline: 3px solid rgba(10, 132, 150, 0.35);
   outline-offset: 2px;
 }

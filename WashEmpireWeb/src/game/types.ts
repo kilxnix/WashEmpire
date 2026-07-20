@@ -1,5 +1,7 @@
 export type SpeedSetting = 0 | 1 | 3 | 10
 
+export type GraphicsQuality = 'low' | 'balanced' | 'high'
+
 export type CarStage = 'approaching' | 'entering' | 'queued' | 'washing' | 'leaving' | 'passing'
 
 export type PaymentKind = 'quarters' | 'tokens' | 'mixed' | 'card' | 'laser'
