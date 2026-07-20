@@ -41,7 +41,7 @@ export function UpgradeDrawer({ open, state, onBuy, onBuyBay, onHireEmployee, on
   }
 
   return (
-    <aside className={`upgrade-drawer ${open ? 'open' : ''}`} aria-hidden={!open}>
+    <aside className={`upgrade-drawer ${open ? 'open' : ''}`} aria-hidden={!open} inert={!open}>
       <header>
         <div>
           <span className="mini-label">8-hour runway</span>

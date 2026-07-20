@@ -21,7 +21,7 @@ export function CityDrawer({ open, state, onBuy, onRestore, onSwitch, onClose }:
   const currentDistrict = currentCityDistrict(state)
 
   return (
-    <aside className={`city-drawer ${open ? 'open' : ''}`} aria-hidden={!open}>
+    <aside className={`city-drawer ${open ? 'open' : ''}`} aria-hidden={!open} inert={!open}>
       <header>
         <div>
           <span className="mini-label">Floating city map</span>

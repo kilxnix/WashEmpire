@@ -251,3 +251,11 @@ Append one entry per launch-worker run. Keep this file short, factual, and usefu
 - Verification: npm.cmd run lint; npm.cmd run test; npm.cmd run build
 - Result: Exclusive drawers + week-review priority; HUD Live/Washed + Empire/Week day labels; softer week review (passing traffic / missed opportunity); early-week overhead ramp; Restore/Buy map labels; first-session coach; mobile momentum keeps top goal.
 - Next: Friend playtest on phone; art car pack optional.
+
+## Run 2026-07-20T19:12:00-04:00
+- Task: Drawer focus-scroll hardening + selector audit marker repair (post-playtest fixes)
+- Team: Gameplay / UI; Release QA
+- Changed: src/App.css; src/components/UpgradeDrawer.tsx; src/components/CityDrawer.tsx; scripts/visual-reward-audit.mjs; docs/launch-run-log.md
+- Verification: npm.cmd run lint (pass); npm.cmd run build (pass); npm.cmd run audit:launch (pass: visual rewards 10 lot upgrades / 35 props / 6 bay upgrades, tests, build, perf steady 149 geometries / 1 texture / 0 drift, smoke screenshots written); DevTools check confirmed closed drawers are inert, focus cannot enter them, and .app-shell scrollLeft stays 0 for both drawers.
+- Result: Passed. Fixed the closed-drawer focus wedge: tabbing or scripted focus into a closed upgrade/city drawer used to side-scroll the overflow-hidden app shell 431px, dragging the closed drawer back on screen and leaving the 3D scene permanently off-center. Added inert to both closed drawers and switched .app-shell to overflow: clip so the shell can never be programmatically scrolled. Also repaired the visual reward audit, which HEAD was failing: the reworked selector kiosk renamed its meshes, so the selector marker now checks selector-upgrade-dial instead of the removed selector-upgrade-face.
+- Next: Push branch for multi-machine work; set production ad tag + consent, itch upload smoke check, and verify mobile momentum goal visibility in a phone playtest.

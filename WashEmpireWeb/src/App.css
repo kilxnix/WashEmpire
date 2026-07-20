@@ -2,7 +2,8 @@
   position: relative;
   width: 100vw;
   height: 100svh;
-  overflow: hidden;
+  /* clip, not hidden: focus moving into an off-screen drawer must never side-scroll the shell */
+  overflow: clip;
   background: #8db8d7;
 }
 

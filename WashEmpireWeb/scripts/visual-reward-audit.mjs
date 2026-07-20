@@ -50,7 +50,7 @@ const visualIds = unique([...visualIdSection.matchAll(/'([^']+)'/g)].map((match)
 const missingUpgradeMappings = upgradeIds.filter((id) => !coveredUpgradeIds.includes(id))
 const missingSceneVisuals = visualIds.filter((id) => !washScene.includes(id))
 const bayVisualMarkers = {
-  selector: ['SelectorUpgradeProps', 'selector-upgrade-face'],
+  selector: ['SelectorUpgradeProps', 'selector-upgrade-dial'],
   wand: ['WandUpgradeProps', 'wand-upgrade-hose-reel'],
   soap: ['SoapUpgradeProps', 'soap-tank'],
   rinse: ['RinseUpgradeProps', 'rinse-nozzle'],
