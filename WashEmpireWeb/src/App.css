@@ -1355,8 +1355,8 @@ button:disabled {
     top: auto;
     left: 10px;
     right: auto;
-    bottom: 210px;
-    width: min(220px, calc(100vw - 150px));
+    bottom: 128px;
+    width: min(240px, calc(100vw - 28px));
     padding: 8px 10px;
   }
 
@@ -1365,8 +1365,23 @@ button:disabled {
     gap: 4px;
   }
 
+  /* Only show the current step on phones so coach stays one card tall. */
+  .first-coach li:not(.current) {
+    display: none;
+  }
+
+  .first-coach-done {
+    bottom: 128px;
+  }
+
+  /* While coach is teaching, free the left stack — momentum can wait. */
+  .coach-active .momentum-panel {
+    display: none;
+  }
+
   .momentum-panel {
-    bottom: 300px;
+    bottom: 128px;
+    left: 10px;
   }
 
   .hud-route {

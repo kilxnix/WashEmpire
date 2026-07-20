@@ -140,6 +140,8 @@ export interface GameState {
   week: number
   clockSeconds: number
   speed: SpeedSetting
+  /** Last non-zero play speed — restored after weekly review closeout. */
+  resumeSpeed: SpeedSetting
   cars: Car[]
   nextCarIn: number
   nextCarId: number

@@ -228,6 +228,31 @@ describe('weekly closeout economy', () => {
     // 100 cash + 1000 pay box - 208 overhead
     expect(nextWeek.cash).toBe(892)
     expect(nextWeek.week).toBe(2)
+    // Default resume when week was entered without a prior non-zero capture
+    expect(nextWeek.speed).toBe(1)
+  })
+
+  it('restores the pre-review play speed after week closeout', () => {
+    let state = startGame(createInitialState(), 'Fast Lot')
+    state = setSpeed(state, 10)
+    state = {
+      ...state,
+      clockSeconds: 209.99,
+      nextCarIn: 999,
+      weekRevenue: 500,
+      bays: state.bays.map((bay, index) =>
+        index === 0 ? { ...bay, cashBox: { bills: 500, coins: 0, tokens: 0 } } : bay,
+      ),
+    }
+
+    const reviewReady = advanceGame(state, 0.2)
+    expect(reviewReady.collectRequired).toBe(true)
+    expect(reviewReady.speed).toBe(0)
+    expect(reviewReady.resumeSpeed).toBe(10)
+
+    const nextWeek = collectPayBox(reviewReady)
+    expect(nextWeek.week).toBe(2)
+    expect(nextWeek.speed).toBe(10)
   })
 
   it('lets a hired collector settle weekly costs from the pay boxes automatically', () => {

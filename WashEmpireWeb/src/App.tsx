@@ -46,7 +46,11 @@ function App() {
   const [adLoading, setAdLoading] = useState(false)
   const [collectionToast, setCollectionToast] = useState<CollectionToastState | null>(null)
   const [coachOpen, setCoachOpen] = useState(() => !hasDismissedCoach())
-  const [coachProgress, setCoachProgress] = useState({ collected: false, upgraded: false })
+  const [coachProgress, setCoachProgress] = useState({
+    collected: false,
+    upgraded: false,
+    fastSpeed: false,
+  })
   const gameRef = useRef(game)
   const titleOpenRef = useRef(titleOpen)
 
@@ -123,6 +127,9 @@ function App() {
 
   function handleSetSpeed(speed: SpeedSetting) {
     setGame((state) => setSpeed(state, speed))
+    if (speed >= 3) {
+      setCoachProgress((progress) => ({ ...progress, fastSpeed: true }))
+    }
   }
 
   function handleCollect(options?: { fromWeekReview?: boolean }) {
@@ -260,8 +267,10 @@ function App() {
   const upgradesDrawerOpen = upgradesOpen && !weekReviewOpen
   const cityDrawerOpen = cityOpen && !weekReviewOpen
 
+  const showCoach = coachOpen && gameVisible && !activeRideAlong && !weekReviewOpen
+
   return (
-    <main className="app-shell">
+    <main className={`app-shell${showCoach ? ' coach-active' : ''}`}>
       <Suspense fallback={<SceneLoading />}>
         <WashScene
           state={game}
@@ -295,7 +304,7 @@ function App() {
               onWatchAd={handleWatchAd}
             />
           )}
-          {coachOpen && !activeRideAlong && !weekReviewOpen && (
+          {showCoach && (
             <FirstSessionCoach
               state={game}
               progress={coachProgress}
@@ -487,7 +496,7 @@ function FirstSessionCoach({
   onOpenUpgrades,
 }: {
   state: GameState
-  progress: { collected: boolean; upgraded: boolean }
+  progress: { collected: boolean; upgraded: boolean; fastSpeed: boolean }
   onDismiss: () => void
   onSpeedUp: () => void
   onOpenUpgrades: () => void
@@ -496,16 +505,17 @@ function FirstSessionCoach({
     progress.upgraded ||
     state.bays.some((bay) => Object.values(bay.upgrades).some((level) => level > 0)) ||
     Object.values(state.upgrades).some(Boolean)
+  const speedDone = progress.fastSpeed || state.speed >= 3 || state.resumeSpeed >= 3
   const steps = [
     {
       id: 'speed',
-      done: state.speed >= 3,
+      done: speedDone,
       label: (
         <>
           Hit <strong>10x</strong> so cars arrive faster
         </>
       ),
-      action: state.speed < 3 ? { label: 'Set 10x', run: onSpeedUp } : null,
+      action: !speedDone ? { label: 'Set 10x', run: onSpeedUp } : null,
     },
     {
       id: 'collect',
@@ -541,6 +551,13 @@ function FirstSessionCoach({
 
   const next = steps.find((step) => !step.done)
   const allDone = !next
+
+  // Auto-dismiss shortly after every first-session step is complete.
+  useEffect(() => {
+    if (!allDone) return
+    const timer = window.setTimeout(() => onDismiss(), 2200)
+    return () => window.clearTimeout(timer)
+  }, [allDone, onDismiss])
 
   if (allDone) {
     return (

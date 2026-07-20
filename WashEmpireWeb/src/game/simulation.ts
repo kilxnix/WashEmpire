@@ -284,6 +284,7 @@ export function createInitialState(): GameState {
     week: 1,
     clockSeconds: 0,
     speed: 0,
+    resumeSpeed: 1,
     cars: [],
     nextCarIn: 1.2,
     nextCarId: 1,
@@ -346,6 +347,9 @@ export function advanceGame(input: GameState, realDeltaSeconds: number): GameSta
 
     state.clockSeconds = WEEK_SECONDS
     state.collectRequired = true
+    if (state.speed > 0) {
+      state.resumeSpeed = state.speed
+    }
     state.speed = 0
     state.lastReview = {
       week: state.week,
@@ -411,16 +415,22 @@ export function reconcileOffline(input: GameState, nowMs: number): GameState {
 
 export function setSpeed(input: GameState, speed: SpeedSetting): GameState {
   if ((!input.gameStarted || input.collectRequired) && speed !== 0) return input
-  return { ...input, speed }
+  return {
+    ...input,
+    speed,
+    resumeSpeed: speed > 0 ? speed : input.resumeSpeed,
+  }
 }
 
 export function startGame(input: GameState, locationName: string): GameState {
   const state = cloneState(input)
+  const speed = state.speed === 0 ? 1 : state.speed
   return {
     ...state,
     gameStarted: true,
     locationName: normalizeLocationName(locationName),
-    speed: state.speed === 0 ? 1 : state.speed,
+    speed,
+    resumeSpeed: speed > 0 ? speed : state.resumeSpeed || 1,
   }
 }
 
@@ -435,7 +445,10 @@ export function collectPayBox(input: GameState): GameState {
   if (state.collectRequired) {
     state.week += 1
     state.clockSeconds = 0
-    state.speed = 1
+    // Resume the speed the player was using before week pause (default 1x).
+    const resume = state.resumeSpeed > 0 ? state.resumeSpeed : 1
+    state.speed = resume
+    state.resumeSpeed = resume
     state.weekRevenue = 0
     state.weekCars = 0
     state.weekDriveBys = 0
@@ -754,7 +767,19 @@ export function hydrateGameState(value: unknown): GameState | null {
     lastTickAt: typeof candidate.lastTickAt === 'number' ? candidate.lastTickAt : Date.now(),
     pendingOfflineSummary: candidate.pendingOfflineSummary ?? null,
     lastReview: candidate.lastReview ?? null,
+    resumeSpeed: normalizeResumeSpeed(candidate.resumeSpeed, candidate.speed),
   }
+}
+
+function normalizeResumeSpeed(
+  resumeSpeed: unknown,
+  currentSpeed: unknown,
+): SpeedSetting {
+  const fromResume = typeof resumeSpeed === 'number' ? resumeSpeed : null
+  const fromCurrent = typeof currentSpeed === 'number' && currentSpeed > 0 ? currentSpeed : null
+  const value = fromResume && fromResume > 0 ? fromResume : fromCurrent ?? 1
+  if (value === 3 || value === 10) return value
+  return 1
 }
 
 function updateCars(input: GameState, deltaSeconds: number): GameState {
