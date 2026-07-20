@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import './App.css'
 import { CityDrawer } from './components/CityDrawer'
 import { Hud } from './components/Hud'
@@ -202,14 +202,14 @@ function App() {
     setCityOpen(false)
   }
 
-  function dismissCoach() {
+  const dismissCoach = useCallback(() => {
     setCoachOpen(false)
     try {
       localStorage.setItem(COACH_KEY, '1')
     } catch {
       // ignore storage failures
     }
-  }
+  }, [])
 
   function handleToggleRideAlong() {
     if (!isConveyorCity(gameRef.current)) return
