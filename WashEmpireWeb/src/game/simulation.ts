@@ -1118,7 +1118,17 @@ function weeklyCosts(state: GameState): number {
   const managerCost = state.upgrades.manager ? 420 : 0
   const laserCost = state.upgrades.laserWash ? 260 : 0
   const conveyorCost = isConveyorCity(state) ? 620 : 0
-  return WEEKLY_FIXED_COSTS + managerCost + laserCost + conveyorCost + employeeWeeklyWages(state.employees)
+  // Soft ramp so week 1-3 teach the loop without crushing profit.
+  const overhead = Math.round(WEEKLY_FIXED_COSTS * earlyWeekOverheadScale(state.week))
+  return overhead + managerCost + laserCost + conveyorCost + employeeWeeklyWages(state.employees)
+}
+
+/** Week 1 = 40%, 2 = 60%, 3 = 80%, then full lot overhead. */
+function earlyWeekOverheadScale(week: number): number {
+  if (week <= 1) return 0.4
+  if (week === 2) return 0.6
+  if (week === 3) return 0.8
+  return 1
 }
 
 function employeeWeeklyWages(employees: EmployeeState): number {

@@ -73,14 +73,29 @@ export function CityDrawer({ open, state, onBuy, onRestore, onSwitch, onClose }:
                     <button type="button" disabled={active} onClick={() => onSwitch(city.id)}>
                       {active ? 'Here' : 'Move'}
                     </button>
-                    <button type="button" disabled={!canRestore} onClick={() => onRestore(city.id)}>
+                    <button
+                      type="button"
+                      disabled={!canRestore}
+                      title={
+                        canRestore
+                          ? `Improve this district's restoration (level ${(district?.restoration ?? 0) + 1}/5)`
+                          : (district?.restoration ?? 0) >= 5
+                            ? 'Fully restored'
+                            : 'Not enough cash to restore'
+                      }
+                      onClick={() => onRestore(city.id)}
+                    >
                       <Hammer size={15} />
-                      <span>{restoreCost > 0 ? money(restoreCost) : 'New'}</span>
+                      <span>
+                        {canRestore || (district?.restoration ?? 0) < 5
+                          ? `Restore ${money(restoreCost)}`
+                          : 'Restored'}
+                      </span>
                     </button>
                   </>
                 ) : (
-                  <button type="button" disabled={!canBuy} onClick={() => onBuy(city.id)}>
-                    {money(city.purchaseCost)}
+                  <button type="button" disabled={!canBuy} title="Buy this district wash" onClick={() => onBuy(city.id)}>
+                    Buy {money(city.purchaseCost)}
                   </button>
                 )}
               </div>

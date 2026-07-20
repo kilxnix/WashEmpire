@@ -221,10 +221,12 @@ describe('weekly closeout economy', () => {
     expect(reviewReady.collectRequired).toBe(true)
     expect(reviewReady.cash).toBe(100)
     expect(reviewReady.lastReview!.physicalDue).toBe(1000)
-    expect(reviewReady.lastReview!.costsDue).toBe(520)
+    // Week 1 overhead is ramped to 40% of $520 fixed = $208
+    expect(reviewReady.lastReview!.costsDue).toBe(208)
 
     const nextWeek = collectPayBox(reviewReady)
-    expect(nextWeek.cash).toBe(580)
+    // 100 cash + 1000 pay box - 208 overhead
+    expect(nextWeek.cash).toBe(892)
     expect(nextWeek.week).toBe(2)
   })
 
@@ -245,10 +247,30 @@ describe('weekly closeout economy', () => {
     const reviewReady = advanceGame(state, 0.2)
 
     expect(reviewReady.collectRequired).toBe(true)
-    expect(reviewReady.cash).toBe(340)
+    // Week 1: 40% of 520 fixed + 240 cash runner wage = 208 + 240 = 448
+    // 100 cash + 1000 auto-collect - 448 costs
+    expect(reviewReady.cash).toBe(652)
     expect(reviewReady.lastReview!.autoCollected).toBe(1000)
-    expect(reviewReady.lastReview!.costsPaid).toBe(760)
+    expect(reviewReady.lastReview!.costsPaid).toBe(448)
     expect(reviewReady.lastReview!.costsDue).toBe(0)
+  })
+
+  it('uses full lot overhead from week 4 onward', () => {
+    let state = startGame(createInitialState(), 'Mature Lot')
+    state = {
+      ...state,
+      week: 4,
+      cash: 100,
+      clockSeconds: 209.99,
+      nextCarIn: 999,
+      weekRevenue: 1000,
+      bays: state.bays.map((bay, index) =>
+        index === 0 ? { ...bay, cashBox: { bills: 1000, coins: 0, tokens: 0 } } : bay,
+      ),
+    }
+
+    const reviewReady = advanceGame(state, 0.2)
+    expect(reviewReady.lastReview!.costsDue).toBe(520)
   })
 })
 

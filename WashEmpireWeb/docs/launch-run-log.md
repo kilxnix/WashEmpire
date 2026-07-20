@@ -243,3 +243,11 @@ Append one entry per launch-worker run. Keep this file short, factual, and usefu
 - Verification: npm.cmd run lint (pass); npm.cmd run test (pass: 3 files, 52 tests); npm.cmd run build (pass)
 - Result: Passed. Browser Ad Boost now loads Google IMA, requests a VAST/Ad Manager tag (`VITE_IMA_AD_TAG_URL` or public sample tag), grants boost only on full COMPLETE, fails closed on skip/error, keeps local modal for localhost/dev, and documents env config. Itch upload still deferred until a live production ad tag is configured.
 - Next: Set production `VITE_IMA_AD_TAG_URL` from Ad Manager; add consent/privacy banner; then host + itch soft launch.
+
+## Run 2026-07-19T23:15:00-04:00
+- Task: First-session UX pain fixes from live playtest
+- Team: Gameplay / UI
+- Changed: src/App.tsx; src/App.css; src/components/Hud.tsx; src/components/CityDrawer.tsx; src/game/simulation.ts; src/game/simulation.test.ts; docs/launch-run-log.md
+- Verification: npm.cmd run lint; npm.cmd run test; npm.cmd run build
+- Result: Exclusive drawers + week-review priority; HUD Live/Washed + Empire/Week day labels; softer week review (passing traffic / missed opportunity); early-week overhead ramp; Restore/Buy map labels; first-session coach; mobile momentum keeps top goal.
+- Next: Friend playtest on phone; art car pack optional.

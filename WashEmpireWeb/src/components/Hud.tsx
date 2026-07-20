@@ -70,6 +70,8 @@ export function Hud({
   const city = currentCityDefinition(state)
   const conveyor = city.washModel === 'conveyor'
   const queued = activeQueueCount(state)
+  const liveCars = state.cars.length
+  const weekProgress = dayProgress(state)
 
   return (
     <div className="hud" aria-label="Wash Empire controls">
@@ -210,8 +212,8 @@ export function Hud({
           <span>Queued</span>
           <strong>{queued}</strong>
         </div>
-        <div>
-          <span>Drive-bys</span>
+        <div title="Cars that kept driving past this week">
+          <span>Passing</span>
           <strong>{state.weekDriveBys}</strong>
         </div>
         <div>
@@ -222,13 +224,19 @@ export function Hud({
           <span>{conveyor ? 'Lanes' : 'Bays'}</span>
           <strong>{conveyor ? 2 : visibleBayCount}</strong>
         </div>
-        <div>
-          <span>Cars</span>
-          <strong>{state.totalCars}</strong>
+        <div title="Cars currently on the lot / washed this run">
+          <span>Live / Washed</span>
+          <strong>
+            {liveCars} / {state.totalCars}
+          </strong>
         </div>
-        <div>
-          <span>Progress</span>
+        <div title="Empire buildout toward multi-district goals">
+          <span>Empire</span>
           <strong>{Math.round(progress * 100)}%</strong>
+        </div>
+        <div title="Day progress this week">
+          <span>Week day</span>
+          <strong>{Math.round(weekProgress * 100)}%</strong>
         </div>
         <div>
           <span>Staff</span>
@@ -242,15 +250,15 @@ export function Hud({
 
       <section className="hud-cluster hud-route" aria-label="Traffic pressure">
         <div>
-          <span>Traffic</span>
-          <strong>x{cityTrafficMultiplier(state).toFixed(2)}</strong>
+          <span>Live</span>
+          <strong>{liveCars}</strong>
         </div>
         <div>
           <span>Queued</span>
           <strong>{queued}</strong>
         </div>
-        <div>
-          <span>Drive-bys</span>
+        <div title="Cars that kept driving past">
+          <span>Passing</span>
           <strong>{state.weekDriveBys}</strong>
         </div>
       </section>

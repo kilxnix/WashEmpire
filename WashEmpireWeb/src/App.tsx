@@ -31,6 +31,7 @@ import type { BayUpgradeId, CityId, EmployeeId, GameState, GraphicsQuality, Spee
 
 const SAVE_KEY = 'wash-empire-browser-save-v1'
 const GRAPHICS_SAVE_KEY = 'wash-empire-graphics-quality-v1'
+const COACH_KEY = 'wash-empire-coach-v1'
 const SIMULATION_STEP_SECONDS = 1 / 20
 const GRAPHICS_SEQUENCE: GraphicsQuality[] = ['low', 'balanced', 'high']
 const WashScene = lazy(() => import('./components/WashScene').then((module) => ({ default: module.WashScene })))
@@ -44,6 +45,7 @@ function App() {
   const [rideAlong, setRideAlong] = useState(false)
   const [adLoading, setAdLoading] = useState(false)
   const [collectionToast, setCollectionToast] = useState<CollectionToastState | null>(null)
+  const [coachOpen, setCoachOpen] = useState(() => !hasDismissedCoach())
   const gameRef = useRef(game)
   const titleOpenRef = useRef(titleOpen)
 
@@ -126,6 +128,9 @@ function App() {
     const due = cashBoxValue(totalCashBox(gameRef.current.bays))
     const openingWeek = gameRef.current.collectRequired
     setGame((state) => collectPayBox(state))
+    setUpgradesOpen(false)
+    setCityOpen(false)
+    dismissCoach()
     if (due > 0) {
       setCollectionToast({ id: Date.now(), title: 'Collected', amount: due })
     } else if (openingWeek) {
@@ -133,12 +138,24 @@ function App() {
     }
   }
 
+  function openUpgrades() {
+    setCityOpen(false)
+    setUpgradesOpen(true)
+  }
+
+  function openCityMap() {
+    setUpgradesOpen(false)
+    setCityOpen(true)
+  }
+
   function handleBuy(upgradeId: UpgradeId) {
     setGame((state) => buyUpgrade(state, upgradeId))
+    dismissCoach()
   }
 
   function handleBuyBay(bayIndex: number, upgradeId: BayUpgradeId) {
     setGame((state) => buyBayUpgrade(state, bayIndex, upgradeId))
+    dismissCoach()
   }
 
   function handleHireEmployee(employeeId: EmployeeId) {
@@ -148,6 +165,7 @@ function App() {
   function handleBuyCity(cityId: CityId) {
     setGame((state) => buyCityDistrict(state, cityId))
     setRideAlong(false)
+    setCityOpen(false)
   }
 
   function handleRestoreCity(cityId: CityId) {
@@ -157,6 +175,16 @@ function App() {
   function handleSwitchCity(cityId: CityId) {
     setGame((state) => switchCityDistrict(state, cityId))
     setRideAlong(false)
+    setCityOpen(false)
+  }
+
+  function dismissCoach() {
+    setCoachOpen(false)
+    try {
+      localStorage.setItem(COACH_KEY, '1')
+    } catch {
+      // ignore storage failures
+    }
   }
 
   function handleToggleRideAlong() {
@@ -207,6 +235,10 @@ function App() {
   const activeRideAlong = rideAlong && isConveyorCity(game)
   const gameVisible = game.gameStarted && !titleOpen
   const showTitle = titleOpen || !game.gameStarted
+  const weekReviewOpen = Boolean(game.collectRequired && game.lastReview)
+  // Week review owns the screen: never leave drawers stacked over it.
+  const upgradesDrawerOpen = upgradesOpen && !weekReviewOpen
+  const cityDrawerOpen = cityOpen && !weekReviewOpen
 
   return (
     <main className="app-shell">
@@ -226,22 +258,25 @@ function App() {
             rideAlong={activeRideAlong}
             onSetSpeed={handleSetSpeed}
             onCollect={handleCollect}
-            onOpenUpgrades={() => setUpgradesOpen(true)}
-            onOpenCityMap={() => setCityOpen(true)}
+            onOpenUpgrades={openUpgrades}
+            onOpenCityMap={openCityMap}
             onCycleGraphics={handleCycleGraphics}
             onToggleRideAlong={handleToggleRideAlong}
             onWatchAd={handleWatchAd}
             adLoading={adLoading}
           />
-          {!activeRideAlong && !(game.collectRequired && game.lastReview) && (
+          {!activeRideAlong && !weekReviewOpen && (
             <MomentumPanel
               state={game}
               adLoading={adLoading}
               onCollect={handleCollect}
-              onOpenUpgrades={() => setUpgradesOpen(true)}
-              onOpenCityMap={() => setCityOpen(true)}
+              onOpenUpgrades={openUpgrades}
+              onOpenCityMap={openCityMap}
               onWatchAd={handleWatchAd}
             />
+          )}
+          {coachOpen && !activeRideAlong && !weekReviewOpen && (
+            <FirstSessionCoach onDismiss={dismissCoach} onSpeedUp={() => handleSetSpeed(10)} />
           )}
         </>
       ) : showTitle ? (
@@ -269,7 +304,7 @@ function App() {
         </>
       )}
       <UpgradeDrawer
-        open={upgradesOpen}
+        open={upgradesDrawerOpen}
         state={game}
         onBuy={handleBuy}
         onBuyBay={handleBuyBay}
@@ -277,14 +312,14 @@ function App() {
         onClose={() => setUpgradesOpen(false)}
       />
       <CityDrawer
-        open={cityOpen}
+        open={cityDrawerOpen}
         state={game}
         onBuy={handleBuyCity}
         onRestore={handleRestoreCity}
         onSwitch={handleSwitchCity}
         onClose={() => setCityOpen(false)}
       />
-      {game.collectRequired && game.lastReview && (
+      {weekReviewOpen && (
         <WeekReviewPanel state={game} onCollect={handleCollect} />
       )}
       {game.gameStarted && game.pendingOfflineSummary && (
@@ -354,22 +389,33 @@ function WeekReviewPanel({ state, onCollect }: { state: GameState; onCollect: ()
   const costsDue = review.costsDue ?? 0
   const closeoutAction =
     review.physicalDue > 0 ? 'Collect, pay costs, open' : costsDue > 0 ? 'Pay costs and open' : 'Open'
+  const driveBys = review.driveBys ?? 0
+  const served = review.cars
+  const passShare = driveBys + served > 0 ? Math.round((driveBys / (driveBys + served)) * 100) : 0
+  const earlyWeek = review.week <= 3
+  const tip =
+    driveBys > served
+      ? earlyWeek
+        ? 'Normal early on: most road traffic is just passing. Upgrades and faster bays convert more of them.'
+        : 'Upgrade wash speed and demand to turn more passing cars into customers.'
+      : 'Strong capture this week — keep collecting and reinvesting.'
 
   return (
     <section className="week-review" aria-label="Weekly review">
       <span className="mini-label">Week {review.week} review</span>
       <h2>{money(review.profit)} profit</h2>
+      <p className="week-review-tip">{tip}</p>
       <dl>
         <div>
-          <dt>Revenue</dt>
+          <dt>Wash revenue</dt>
           <dd>{money(review.revenue)}</dd>
         </div>
         <div>
-          <dt>Total costs</dt>
+          <dt>Lot overhead</dt>
           <dd>{money(review.costs)}</dd>
         </div>
         <div>
-          <dt>{costsDue > 0 ? 'Costs due' : 'Costs paid'}</dt>
+          <dt>{costsDue > 0 ? 'Overhead due' : 'Overhead paid'}</dt>
           <dd>{money(costsDue > 0 ? costsDue : review.costsPaid ?? review.costs)}</dd>
         </div>
         <div>
@@ -377,15 +423,18 @@ function WeekReviewPanel({ state, onCollect }: { state: GameState; onCollect: ()
           <dd>{money(review.employeeWages ?? 0)}</dd>
         </div>
         <div>
-          <dt>Cars served</dt>
-          <dd>{review.cars}</dd>
+          <dt>Cars washed</dt>
+          <dd>{served}</dd>
         </div>
         <div>
-          <dt>Drive-bys</dt>
-          <dd>{review.driveBys ?? 0}</dd>
+          <dt>Passing traffic</dt>
+          <dd>
+            {driveBys}
+            {driveBys + served > 0 ? ` (${passShare}%)` : ''}
+          </dd>
         </div>
         <div>
-          <dt>Lost sales</dt>
+          <dt title="Estimated value of cars that did not stop this week">Missed opportunity</dt>
           <dd>{money(review.lostRevenue ?? 0)}</dd>
         </div>
         <div>
@@ -402,6 +451,50 @@ function WeekReviewPanel({ state, onCollect }: { state: GameState; onCollect: ()
       </button>
     </section>
   )
+}
+
+function FirstSessionCoach({
+  onDismiss,
+  onSpeedUp,
+}: {
+  onDismiss: () => void
+  onSpeedUp: () => void
+}) {
+  return (
+    <section className="first-coach" aria-label="First session tips">
+      <span className="mini-label">Quick start</span>
+      <ol>
+        <li>
+          Hit <strong>10x</strong> so cars arrive faster
+        </li>
+        <li>
+          <strong>Collect</strong> the pay box when it fills
+        </li>
+        <li>
+          Buy a <strong>bay upgrade</strong> — you should see the lot change
+        </li>
+        <li>
+          At week end, close the review to open the next week
+        </li>
+      </ol>
+      <div className="first-coach-actions">
+        <button type="button" onClick={onSpeedUp}>
+          Set 10x
+        </button>
+        <button type="button" className="first-coach-dismiss" onClick={onDismiss}>
+          Got it
+        </button>
+      </div>
+    </section>
+  )
+}
+
+function hasDismissedCoach(): boolean {
+  try {
+    return localStorage.getItem(COACH_KEY) === '1'
+  } catch {
+    return false
+  }
 }
 
 function loadSavedGame(): GameState {
