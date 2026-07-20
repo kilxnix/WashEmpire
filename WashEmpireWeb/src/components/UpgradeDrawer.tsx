@@ -1,4 +1,4 @@
-import { Check, Lock, Wrench, X } from 'lucide-react'
+import { Check, ChevronDown, Lock, Wrench, X } from 'lucide-react'
 import { useState } from 'react'
 import type { BayUpgradeId, EmployeeId, GameState, UpgradeId } from '../game/types'
 import {
@@ -20,14 +20,25 @@ interface UpgradeDrawerProps {
   onClose: () => void
 }
 
+type SectionId = 'bay' | 'lot' | 'employees'
+
 export function UpgradeDrawer({ open, state, onBuy, onBuyBay, onHireEmployee, onClose }: UpgradeDrawerProps) {
   const [selectedBay, setSelectedBay] = useState(0)
+  const [collapsed, setCollapsed] = useState<Record<SectionId, boolean>>({
+    bay: false,
+    lot: false,
+    employees: true,
+  })
   const activeCount = activeBayCount(state)
   const selectedIndex = Math.min(selectedBay, activeCount - 1)
   const bayTabs = state.bays.slice(0, activeCount)
   const bay = bayTabs[selectedIndex] ?? state.bays[0]
   const city = currentCityDefinition(state)
   const progress = progressionProgress(state)
+
+  function toggleSection(id: SectionId) {
+    setCollapsed((current) => ({ ...current, [id]: !current[id] }))
+  }
 
   return (
     <aside className={`upgrade-drawer ${open ? 'open' : ''}`} aria-hidden={!open}>
@@ -43,7 +54,8 @@ export function UpgradeDrawer({ open, state, onBuy, onBuyBay, onHireEmployee, on
 
       <div className="upgrade-progress">
         <span>
-          {city.name}: {city.washModel === 'conveyor' ? '2 auto lanes' : `${activeCount} active bays`} - Buildout {Math.round(progress * 100)}%
+          {city.name}: {city.washModel === 'conveyor' ? '2 auto lanes' : `${activeCount} active bays`} — Empire{' '}
+          {Math.round(progress * 100)}%
         </span>
         <div>
           <i style={{ width: `${progress * 100}%` }} />
@@ -64,76 +76,109 @@ export function UpgradeDrawer({ open, state, onBuy, onBuyBay, onHireEmployee, on
       </div>
 
       <div className="upgrade-list">
-        <h3 className="upgrade-section-title">Bay {bay.id} Equipment</h3>
-        {bayUpgradeDefinitions.map((upgrade) => {
-          const level = bay.upgrades[upgrade.id]
-          const maxed = level >= upgrade.maxLevel
-          const cost = bayUpgradeCost(upgrade.id, level, selectedIndex)
-          const affordable = state.cash >= cost
+        <SectionHeader
+          title={`Bay ${bay.id} Equipment`}
+          open={!collapsed.bay}
+          onToggle={() => toggleSection('bay')}
+        />
+        {!collapsed.bay &&
+          bayUpgradeDefinitions.map((upgrade) => {
+            const level = bay.upgrades[upgrade.id]
+            const maxed = level >= upgrade.maxLevel
+            const cost = bayUpgradeCost(upgrade.id, level, selectedIndex)
+            const affordable = state.cash >= cost
 
-          return (
-            <article className={maxed ? 'owned' : ''} key={upgrade.id}>
-              <div className="upgrade-icon">{maxed ? <Check size={18} /> : <Wrench size={18} />}</div>
-              <div>
-                <div className="upgrade-title-row">
+            return (
+              <article className={maxed ? 'owned' : ''} key={upgrade.id}>
+                <div className="upgrade-icon">{maxed ? <Check size={18} /> : <Wrench size={18} />}</div>
+                <div>
+                  <div className="upgrade-title-row">
+                    <h3>{upgrade.name}</h3>
+                    <span className="level-pill">
+                      Lv {level}/{upgrade.maxLevel}
+                    </span>
+                  </div>
+                  <p>{upgrade.effect}</p>
+                  <span>{upgrade.visual}</span>
+                </div>
+                <button type="button" disabled={maxed || !affordable} onClick={() => onBuyBay(selectedIndex, upgrade.id)}>
+                  {maxed ? 'Max' : money(cost)}
+                </button>
+              </article>
+            )
+          })}
+
+        <SectionHeader title="Lot Expansion" open={!collapsed.lot} onToggle={() => toggleSection('lot')} />
+        {!collapsed.lot &&
+          upgradeDefinitions.map((upgrade) => {
+            const owned = state.upgrades[upgrade.id]
+            const affordable = state.cash >= upgrade.cost
+            const locked = !affordable && !owned
+
+            return (
+              <article className={owned ? 'owned' : ''} key={upgrade.id}>
+                <div className="upgrade-icon">
+                  {owned ? <Check size={18} /> : locked ? <Lock size={18} /> : <Wrench size={18} />}
+                </div>
+                <div>
                   <h3>{upgrade.name}</h3>
-                  <span className="level-pill">Lv {level}/{upgrade.maxLevel}</span>
+                  <p>{upgrade.effect}</p>
+                  <span>{upgrade.visual}</span>
                 </div>
-                <p>{upgrade.effect}</p>
-                <span>{upgrade.visual}</span>
-              </div>
-              <button type="button" disabled={maxed || !affordable} onClick={() => onBuyBay(selectedIndex, upgrade.id)}>
-                {maxed ? 'Max' : money(cost)}
-              </button>
-            </article>
-          )
-        })}
+                <button type="button" disabled={owned || !affordable} onClick={() => onBuy(upgrade.id)}>
+                  {owned ? 'Owned' : money(upgrade.cost)}
+                </button>
+              </article>
+            )
+          })}
 
-        <h3 className="upgrade-section-title">Lot Expansion</h3>
-        {upgradeDefinitions.map((upgrade) => {
-          const owned = state.upgrades[upgrade.id]
-          const affordable = state.cash >= upgrade.cost
-          const locked = !affordable && !owned
+        <SectionHeader title="Employees" open={!collapsed.employees} onToggle={() => toggleSection('employees')} />
+        {!collapsed.employees &&
+          employeeDefinitions.map((employee) => {
+            const hired = state.employees[employee.id]
+            const affordable = state.cash >= employee.hireCost
 
-          return (
-            <article className={owned ? 'owned' : ''} key={upgrade.id}>
-              <div className="upgrade-icon">{owned ? <Check size={18} /> : locked ? <Lock size={18} /> : <Wrench size={18} />}</div>
-              <div>
-                <h3>{upgrade.name}</h3>
-                <p>{upgrade.effect}</p>
-                <span>{upgrade.visual}</span>
-              </div>
-              <button type="button" disabled={owned || !affordable} onClick={() => onBuy(upgrade.id)}>
-                {owned ? 'Owned' : money(upgrade.cost)}
-              </button>
-            </article>
-          )
-        })}
-
-        <h3 className="upgrade-section-title">Employees</h3>
-        {employeeDefinitions.map((employee) => {
-          const hired = state.employees[employee.id]
-          const affordable = state.cash >= employee.hireCost
-
-          return (
-            <article className={hired ? 'owned' : ''} key={employee.id}>
-              <div className="upgrade-icon">{hired ? <Check size={18} /> : <Wrench size={18} />}</div>
-              <div>
-                <div className="upgrade-title-row">
-                  <h3>{employee.name}</h3>
-                  <span className="level-pill">{money(employee.weeklyWage)}/wk</span>
+            return (
+              <article className={hired ? 'owned' : ''} key={employee.id}>
+                <div className="upgrade-icon">{hired ? <Check size={18} /> : <Wrench size={18} />}</div>
+                <div>
+                  <div className="upgrade-title-row">
+                    <h3>{employee.name}</h3>
+                    <span className="level-pill">{money(employee.weeklyWage)}/wk</span>
+                  </div>
+                  <p>{employee.effect}</p>
+                  <span>{employee.visual}</span>
                 </div>
-                <p>{employee.effect}</p>
-                <span>{employee.visual}</span>
-              </div>
-              <button type="button" disabled={hired || !affordable} onClick={() => onHireEmployee(employee.id)}>
-                {hired ? 'Hired' : money(employee.hireCost)}
-              </button>
-            </article>
-          )
-        })}
+                <button type="button" disabled={hired || !affordable} onClick={() => onHireEmployee(employee.id)}>
+                  {hired ? 'Hired' : money(employee.hireCost)}
+                </button>
+              </article>
+            )
+          })}
       </div>
     </aside>
+  )
+}
+
+function SectionHeader({
+  title,
+  open,
+  onToggle,
+}: {
+  title: string
+  open: boolean
+  onToggle: () => void
+}) {
+  return (
+    <button
+      type="button"
+      className={`upgrade-section-toggle ${open ? 'open' : ''}`}
+      onClick={onToggle}
+      aria-expanded={open}
+    >
+      <span>{title}</span>
+      <ChevronDown size={16} aria-hidden="true" />
+    </button>
   )
 }
 

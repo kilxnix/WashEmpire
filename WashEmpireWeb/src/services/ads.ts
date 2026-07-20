@@ -123,7 +123,8 @@ async function showBrowserRewardedAd(): Promise<boolean> {
   }
 
   // Production-safe: do not silently grant boost via local modal when IMA fails
-  // unless the build is marked for local fallback.
+  // unless the build is marked for local fallback (localhost / explicit env).
+  // Inactive Ad Manager accounts will often no-fill; localhost keeps a demo path.
   if (shouldAllowLocalFallbackAfterImaFailure()) {
     return showLocalFallbackAd()
   }

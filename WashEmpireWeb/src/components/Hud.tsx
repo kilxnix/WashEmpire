@@ -151,15 +151,25 @@ export function Hud({
             <span>Ride View</span>
           </button>
         )}
-        <div className="hud-ad" title="Watch a rewarded ad">
+        <div className="hud-ad" title="Watch a rewarded ad for a temporary 3x boost">
           <button
             type="button"
             className="hud-ad-button"
             disabled={adButtonDisabled}
             onClick={onWatchAd}
+            aria-label={
+              adLoading
+                ? 'Loading ad'
+                : adSlots <= 0
+                  ? 'No ad slots available'
+                  : `Watch Ad, ${adSlots} of 5 slots`
+            }
+            title={adLoading ? 'Loading ad…' : `Watch Ad (${adSlots}/5)`}
           >
-            <BadgeDollarSign size={18} />
-            <span>{adLoading ? 'Ad...' : `Watch Ad (${adSlots}/5)`}</span>
+            <BadgeDollarSign size={18} aria-hidden="true" />
+            <span className="hud-ad-label">
+              {adLoading ? 'Loading…' : `Watch Ad (${adSlots}/5)`}
+            </span>
           </button>
           {adBoostActive && (
             <span className="hud-ad-line hud-ad-boost">Boost: {formatHm(adBoostSeconds)}</span>

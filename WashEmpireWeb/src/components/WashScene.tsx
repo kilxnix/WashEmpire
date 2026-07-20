@@ -4244,6 +4244,15 @@ function BayUpgradeRewardSet({ bay, theme }: { bay: BayState; theme: CityThemeSp
 
   return (
     <group>
+      {/* High-contrast bay header so level 1 upgrades read from default camera. */}
+      <group position={[0, 2.55, 0.05]}>
+        <Box name={`bay-${bay.id}-upgrade-header-bar`} color={theme.accent} position={[0, 0, 0]} scale={[2.35, 0.12, 0.16]} />
+        <Box name={`bay-${bay.id}-upgrade-header-glow`} color="#f8fafc" position={[0, 0.02, -0.06]} scale={[1.4, 0.04, 0.05]} />
+        <mesh position={[0, 0.18, 0]} castShadow>
+          <sphereGeometry args={[0.09 + Math.min(0.08, totalLevel * 0.01), 16, 16]} />
+          <meshStandardMaterial color={theme.accent} emissive={theme.accent} emissiveIntensity={0.55} roughness={0.35} />
+        </mesh>
+      </group>
       <BayLevelRail bayId={bay.id} levels={levels} />
       {levels.selector > 0 && <SelectorUpgradeProps bayId={bay.id} level={levels.selector} theme={theme} />}
       {levels.wand > 0 && <WandUpgradeProps bayId={bay.id} level={levels.wand} />}
@@ -4297,22 +4306,36 @@ function BayLevelRail({ bayId, levels }: { bayId: number; levels: BayState['upgr
 function SelectorUpgradeProps({ bayId, level, theme }: { bayId: number; level: number; theme: CityThemeSpec }) {
   return (
     <group>
-      <group position={[-1.16, 1.34, -1.16]} rotation={[0, Math.PI / 2, 0]}>
-        <Box name={`bay-${bayId}-selector-upgrade-face`} color="#0f172a" position={[0, 0, 0]} scale={[0.48, 0.34, 0.05]} />
+      {/* Larger freestanding kiosk so dial upgrades read from the default camera. */}
+      <group position={[-1.35, 0, -0.35]}>
+        <Box name={`bay-${bayId}-selector-kiosk-post`} color="#1e293b" position={[0, 0.55, 0]} scale={[0.16, 1.1, 0.16]} />
+        <Box name={`bay-${bayId}-selector-kiosk-body`} color="#0f172a" position={[0, 1.25, 0]} scale={[0.72, 0.55, 0.22]} />
+        <Box name={`bay-${bayId}-selector-kiosk-face`} color={theme.accent} position={[0, 1.25, -0.12]} scale={[0.62, 0.42, 0.04]} />
         {Array.from({ length: Math.min(6, level + 2) }, (_, index) => (
-          <mesh key={`bay-${bayId}-selector-upgrade-dial-${index}`} position={[-0.18 + (index % 3) * 0.18, 0.06 - Math.floor(index / 3) * 0.12, -0.04]} rotation={[Math.PI / 2, 0, 0]}>
-            <cylinderGeometry args={[0.04, 0.04, 0.03, 20]} />
-            <meshStandardMaterial color={[theme.accent, '#22c55e', '#facc15'][index % 3]} roughness={0.42} />
+          <mesh
+            key={`bay-${bayId}-selector-upgrade-dial-${index}`}
+            position={[-0.2 + (index % 3) * 0.2, 1.34 - Math.floor(index / 3) * 0.16, -0.16]}
+            rotation={[Math.PI / 2, 0, 0]}
+            castShadow
+          >
+            <cylinderGeometry args={[0.055, 0.055, 0.05, 20]} />
+            <meshStandardMaterial
+              color={[theme.accent, '#22c55e', '#facc15'][index % 3]}
+              emissive={[theme.accent, '#22c55e', '#facc15'][index % 3]}
+              emissiveIntensity={0.25}
+              roughness={0.4}
+            />
           </mesh>
         ))}
-        {level >= 3 && <Box name={`bay-${bayId}-selector-led-readout`} color="#22d3ee" position={[0.02, -0.17, -0.04]} scale={[0.32, 0.06, 0.03]} />}
+        <Box name={`bay-${bayId}-selector-led-readout`} color="#22d3ee" position={[0, 1.02, -0.14]} scale={[0.42, 0.08, 0.03]} />
+        {level >= 2 && (
+          <Box name={`bay-${bayId}-selector-side-flag`} color="#facc15" position={[0.42, 1.55, 0]} scale={[0.08, 0.42, 0.08]} />
+        )}
       </group>
-      {level >= 5 && (
+      {level >= 4 && (
         <group position={[0, 0, -2.28]}>
           <Box name={`bay-${bayId}-selector-floor-menu-bg`} color="#111827" position={[0, 0.158, 0]} scale={[0.9, 0.024, 0.24]} />
-          <Text color="#f8fafc" fontSize={0.07} position={[-0.36, 0.18, -0.08]} rotation={[-Math.PI / 2, 0, 0]}>
-            PRO MENU
-          </Text>
+          <Box name={`bay-${bayId}-selector-floor-menu-chip`} color="#22d3ee" position={[0, 0.18, -0.02]} scale={[0.55, 0.02, 0.12]} />
         </group>
       )}
     </group>

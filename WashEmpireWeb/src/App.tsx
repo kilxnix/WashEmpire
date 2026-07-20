@@ -46,6 +46,7 @@ function App() {
   const [adLoading, setAdLoading] = useState(false)
   const [collectionToast, setCollectionToast] = useState<CollectionToastState | null>(null)
   const [coachOpen, setCoachOpen] = useState(() => !hasDismissedCoach())
+  const [coachProgress, setCoachProgress] = useState({ collected: false, upgraded: false })
   const gameRef = useRef(game)
   const titleOpenRef = useRef(titleOpen)
 
@@ -124,18 +125,34 @@ function App() {
     setGame((state) => setSpeed(state, speed))
   }
 
-  function handleCollect() {
+  function handleCollect(options?: { fromWeekReview?: boolean }) {
+    const fromWeekReview = options?.fromWeekReview === true
+    // While the weekly review is open, only the review button may close the week.
+    if (gameRef.current.collectRequired && gameRef.current.lastReview && !fromWeekReview) {
+      const panel = document.querySelector<HTMLElement>('[aria-label="Weekly review"]')
+      panel?.classList.add('week-review-pulse')
+      panel?.focus?.()
+      window.setTimeout(() => panel?.classList.remove('week-review-pulse'), 900)
+      setCollectionToast({ id: Date.now(), title: 'Close the week review first', amount: 0 })
+      return
+    }
+
     const due = cashBoxValue(totalCashBox(gameRef.current.bays))
     const openingWeek = gameRef.current.collectRequired
     setGame((state) => collectPayBox(state))
     setUpgradesOpen(false)
     setCityOpen(false)
-    dismissCoach()
     if (due > 0) {
+      setCoachProgress((progress) => ({ ...progress, collected: true }))
       setCollectionToast({ id: Date.now(), title: 'Collected', amount: due })
     } else if (openingWeek) {
+      setCoachProgress((progress) => ({ ...progress, collected: true }))
       setCollectionToast({ id: Date.now(), title: 'Week opened', amount: 0 })
     }
+  }
+
+  function handleWeekReviewCollect() {
+    handleCollect({ fromWeekReview: true })
   }
 
   function openUpgrades() {
@@ -150,12 +167,12 @@ function App() {
 
   function handleBuy(upgradeId: UpgradeId) {
     setGame((state) => buyUpgrade(state, upgradeId))
-    dismissCoach()
+    setCoachProgress((progress) => ({ ...progress, upgraded: true }))
   }
 
   function handleBuyBay(bayIndex: number, upgradeId: BayUpgradeId) {
     setGame((state) => buyBayUpgrade(state, bayIndex, upgradeId))
-    dismissCoach()
+    setCoachProgress((progress) => ({ ...progress, upgraded: true }))
   }
 
   function handleHireEmployee(employeeId: EmployeeId) {
@@ -218,6 +235,9 @@ function App() {
     try {
       if (await showRewardedAd()) {
         setGame((state) => watchAdForBoost(state))
+        setCollectionToast({ id: Date.now(), title: 'Ad boost armed', amount: 0 })
+      } else {
+        setCollectionToast({ id: Date.now(), title: 'No ad reward — try again later', amount: 0 })
       }
     } finally {
       setAdLoading(false)
@@ -276,7 +296,13 @@ function App() {
             />
           )}
           {coachOpen && !activeRideAlong && !weekReviewOpen && (
-            <FirstSessionCoach onDismiss={dismissCoach} onSpeedUp={() => handleSetSpeed(10)} />
+            <FirstSessionCoach
+              state={game}
+              progress={coachProgress}
+              onDismiss={dismissCoach}
+              onSpeedUp={() => handleSetSpeed(10)}
+              onOpenUpgrades={openUpgrades}
+            />
           )}
         </>
       ) : showTitle ? (
@@ -320,7 +346,7 @@ function App() {
         onClose={() => setCityOpen(false)}
       />
       {weekReviewOpen && (
-        <WeekReviewPanel state={game} onCollect={handleCollect} />
+        <WeekReviewPanel state={game} onCollect={handleWeekReviewCollect} />
       )}
       {game.gameStarted && game.pendingOfflineSummary && (
         <OfflineReturnPanel
@@ -377,8 +403,8 @@ interface CollectionToastState {
 function CollectionToast({ title, amount }: { title: string; amount: number }) {
   return (
     <section className="collection-toast" aria-live="polite">
-      <span className="mini-label">{title}</span>
-      <strong>{amount > 0 ? `+${money(amount)}` : 'Ready'}</strong>
+      <span className="mini-label">{amount > 0 ? title : 'Notice'}</span>
+      <strong>{amount > 0 ? `+${money(amount)}` : title}</strong>
     </section>
   )
 }
@@ -401,7 +427,7 @@ function WeekReviewPanel({ state, onCollect }: { state: GameState; onCollect: ()
       : 'Strong capture this week — keep collecting and reinvesting.'
 
   return (
-    <section className="week-review" aria-label="Weekly review">
+    <section className="week-review" aria-label="Weekly review" tabIndex={-1}>
       <span className="mini-label">Week {review.week} review</span>
       <h2>{money(review.profit)} profit</h2>
       <p className="week-review-tip">{tip}</p>
@@ -454,33 +480,101 @@ function WeekReviewPanel({ state, onCollect }: { state: GameState; onCollect: ()
 }
 
 function FirstSessionCoach({
+  state,
+  progress,
   onDismiss,
   onSpeedUp,
+  onOpenUpgrades,
 }: {
+  state: GameState
+  progress: { collected: boolean; upgraded: boolean }
   onDismiss: () => void
   onSpeedUp: () => void
+  onOpenUpgrades: () => void
 }) {
+  const hasBayUpgrade =
+    progress.upgraded ||
+    state.bays.some((bay) => Object.values(bay.upgrades).some((level) => level > 0)) ||
+    Object.values(state.upgrades).some(Boolean)
+  const steps = [
+    {
+      id: 'speed',
+      done: state.speed >= 3,
+      label: (
+        <>
+          Hit <strong>10x</strong> so cars arrive faster
+        </>
+      ),
+      action: state.speed < 3 ? { label: 'Set 10x', run: onSpeedUp } : null,
+    },
+    {
+      id: 'collect',
+      done: progress.collected || state.week > 1,
+      label: (
+        <>
+          <strong>Collect</strong> the pay box when it fills
+        </>
+      ),
+      action: null,
+    },
+    {
+      id: 'upgrade',
+      done: hasBayUpgrade,
+      label: (
+        <>
+          Buy a <strong>bay upgrade</strong> — look for new props on the bay
+        </>
+      ),
+      action: !hasBayUpgrade ? { label: 'Upgrades', run: onOpenUpgrades } : null,
+    },
+    {
+      id: 'week',
+      done: state.week > 1,
+      label: (
+        <>
+          At week end, use the <strong>review button</strong> to open the next week
+        </>
+      ),
+      action: null,
+    },
+  ] as const
+
+  const next = steps.find((step) => !step.done)
+  const allDone = !next
+
+  if (allDone) {
+    return (
+      <section className="first-coach first-coach-done" aria-label="First session tips">
+        <span className="mini-label">Quick start</span>
+        <p>You&apos;re rolling — keep collecting and upgrading.</p>
+        <div className="first-coach-actions">
+          <button type="button" className="first-coach-dismiss" onClick={onDismiss}>
+            Dismiss
+          </button>
+        </div>
+      </section>
+    )
+  }
+
   return (
     <section className="first-coach" aria-label="First session tips">
       <span className="mini-label">Quick start</span>
       <ol>
-        <li>
-          Hit <strong>10x</strong> so cars arrive faster
-        </li>
-        <li>
-          <strong>Collect</strong> the pay box when it fills
-        </li>
-        <li>
-          Buy a <strong>bay upgrade</strong> — you should see the lot change
-        </li>
-        <li>
-          At week end, close the review to open the next week
-        </li>
+        {steps.map((step) => (
+          <li key={step.id} className={step.done ? 'done' : step.id === next.id ? 'current' : ''}>
+            <span className="first-coach-check" aria-hidden="true">
+              {step.done ? '✓' : step.id === next.id ? '→' : '○'}
+            </span>
+            <span>{step.label}</span>
+          </li>
+        ))}
       </ol>
       <div className="first-coach-actions">
-        <button type="button" onClick={onSpeedUp}>
-          Set 10x
-        </button>
+        {next.action && (
+          <button type="button" onClick={next.action.run}>
+            {next.action.label}
+          </button>
+        )}
         <button type="button" className="first-coach-dismiss" onClick={onDismiss}>
           Got it
         </button>
