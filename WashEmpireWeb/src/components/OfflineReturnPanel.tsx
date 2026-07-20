@@ -29,7 +29,7 @@ export function OfflineReturnPanel({ summary, onDismiss }: OfflineReturnPanelPro
         </div>
       </dl>
       <button type="button" onClick={onDismiss}>
-        Collect
+        Got it
       </button>
     </section>
   )

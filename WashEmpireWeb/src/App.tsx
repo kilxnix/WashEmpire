@@ -76,8 +76,9 @@ function App() {
 
   useEffect(() => {
     const interval = window.setInterval(() => {
-      const snapshot = { ...gameRef.current, lastTickAt: Date.now() }
-      localStorage.setItem(SAVE_KEY, exportGameState(snapshot))
+      // Persist the sim's lastTickAt as-is. Stamping Date.now() here while the
+      // tab is backgrounded erases the offline window before resume reconcile.
+      localStorage.setItem(SAVE_KEY, exportGameState(gameRef.current))
     }, 1500)
 
     return () => window.clearInterval(interval)
@@ -85,12 +86,18 @@ function App() {
 
   useEffect(() => {
     function flushSave() {
-      const snapshot = { ...gameRef.current, lastTickAt: Date.now() }
-      localStorage.setItem(SAVE_KEY, exportGameState(snapshot))
+      localStorage.setItem(SAVE_KEY, exportGameState(gameRef.current))
     }
 
     function handleVisibility() {
-      if (document.visibilityState === 'hidden') flushSave()
+      if (document.visibilityState === 'hidden') {
+        flushSave()
+        return
+      }
+
+      if (document.visibilityState === 'visible') {
+        setGame((state) => reconcileOffline(state, Date.now()))
+      }
     }
 
     document.addEventListener('visibilitychange', handleVisibility)
@@ -199,14 +206,18 @@ function App() {
 
   const activeRideAlong = rideAlong && isConveyorCity(game)
   const gameVisible = game.gameStarted && !titleOpen
+  const showTitle = titleOpen || !game.gameStarted
 
   return (
     <main className="app-shell">
-      {gameVisible && (
-        <Suspense fallback={<SceneLoading />}>
-          <WashScene state={game} onCollect={handleCollect} rideAlong={activeRideAlong} graphicsQuality={graphicsQuality} />
-        </Suspense>
-      )}
+      <Suspense fallback={<SceneLoading />}>
+        <WashScene
+          state={game}
+          onCollect={handleCollect}
+          rideAlong={gameVisible && activeRideAlong}
+          graphicsQuality={graphicsQuality}
+        />
+      </Suspense>
       {gameVisible ? (
         <>
           <Hud
@@ -233,7 +244,7 @@ function App() {
             />
           )}
         </>
-      ) : titleOpen || !game.gameStarted ? (
+      ) : showTitle ? (
         <StartMenu
           cash={game.cash}
           hasRun={game.gameStarted}

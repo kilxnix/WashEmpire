@@ -40,10 +40,11 @@ Use Node `22.12+`. Node 21 is not supported by the current Vite/Rolldown toolcha
 ```powershell
 npm install
 npm run build
-Compress-Archive -Path dist\* -DestinationPath wash-empire-itch.zip -Force
+if (Test-Path wash-empire-itch.zip) { Remove-Item wash-empire-itch.zip -Force }
+Get-ChildItem dist | Where-Object { $_.Name -ne 'prototype-assets' } | Compress-Archive -DestinationPath wash-empire-itch.zip -Force
 ```
 
-Upload `wash-empire-itch.zip` as an HTML game. The Vite build uses relative asset paths, so `index.html`, `assets/`, `favicon.svg`, and `manifest.webmanifest` can live at the zip root.
+Upload `wash-empire-itch.zip` as an HTML game. The Vite build uses relative asset paths, so `index.html`, `assets/`, `favicon.svg`, and `manifest.webmanifest` can live at the zip root. Exclude the `prototype-assets` placeholder folder from the zip.
 
 Use `docs/first-player-guide.md` as the first-player guide or itch page instructions.
 

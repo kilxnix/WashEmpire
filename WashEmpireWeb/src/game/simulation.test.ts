@@ -255,8 +255,9 @@ describe('weekly closeout economy', () => {
 import { reconcileOffline } from './simulation'
 
 describe('reconcileOffline', () => {
-  function frozenState() {
-    const state = createInitialState()
+  function frozenState(started = true) {
+    const base = createInitialState()
+    const state = started ? startGame(base, 'Offline Lot') : base
     return { ...state, lastTickAt: 1_000_000 } // arbitrary fixed ms
   }
 
@@ -315,6 +316,20 @@ describe('reconcileOffline', () => {
     // 10h / 4.8h = ~2.08 -> 2 slots refilled
     expect(next.ads.slotsAvailable).toBe(2)
     expect(next.pendingOfflineSummary!.slotsRefilled).toBe(2)
+  })
+
+  it('does not grant cash or burn boost before the wash is opened', () => {
+    let state = frozenState(false)
+    expect(state.gameStarted).toBe(false)
+    state = { ...state, ads: { ...state.ads, boostSeconds: 3 * 3600 } }
+
+    const tenHoursLater = state.lastTickAt + 10 * 3600 * 1000
+    const next = reconcileOffline(state, tenHoursLater)
+
+    expect(next.cash).toBe(state.cash)
+    expect(next.ads.boostSeconds).toBe(3 * 3600)
+    expect(next.pendingOfflineSummary).toBeNull()
+    expect(next.lastTickAt).toBe(tenHoursLater)
   })
 })
 

@@ -131,7 +131,10 @@ async function runDesktopCheck(browser, url) {
     }
 
     await waitForSceneSettle(page, 'desktop')
+    await setSpeed(page, '10x')
+    await waitForActiveTraffic(page, 'desktop')
     await page.screenshot({ path: join(qaDir, 'launch-smoke-desktop.png'), fullPage: true })
+    await page.screenshot({ path: join(qaDir, 'launch-smoke-desktop-cars.png'), fullPage: true })
   } finally {
     await context.close()
   }
@@ -155,6 +158,9 @@ async function runMobileCheck(browser, url) {
     if (!(await startMenu.isVisible())) {
       throw new Error('[launch-smoke] Start menu is missing on mobile.')
     }
+    // Title now mounts the 3D lot behind the form; wait so the backdrop paints.
+    await page.locator('canvas').waitFor({ state: 'visible', timeout: 8_000 }).catch(() => null)
+    await page.waitForTimeout(1_800)
     await page.screenshot({ path: join(qaDir, 'launch-smoke-mobile-start-menu.png'), fullPage: true })
 
     const hud = page.locator('[aria-label="Wash Empire controls"]')
@@ -170,7 +176,10 @@ async function runMobileCheck(browser, url) {
     }
 
     await waitForSceneSettle(page, 'mobile')
+    await setSpeed(page, '10x')
+    await waitForActiveTraffic(page, 'mobile')
     await page.screenshot({ path: join(qaDir, 'launch-smoke-mobile-hud.png'), fullPage: true })
+    await page.screenshot({ path: join(qaDir, 'launch-smoke-mobile-cars.png'), fullPage: true })
 
     const upgradesPanel = page.locator('aside.upgrade-drawer[aria-hidden="false"]')
     const upgradesOpened = await openHudPanel(page, upgradesButton, upgradesPanel)
@@ -225,6 +234,47 @@ async function waitForSceneSettle(page, mode) {
     return Boolean(canvas && canvas.clientWidth > 0 && canvas.clientHeight > 0)
   }, null, { timeout: 8_000 })
   await page.waitForTimeout(mode === 'mobile' ? 3_600 : 3_200)
+}
+
+async function setSpeed(page, label) {
+  const button = page.locator('section[aria-label="Time controls"] button', { hasText: label }).first()
+  if (await button.isVisible().catch(() => false)) {
+    await button.click({ force: true })
+    await page.waitForTimeout(250)
+  }
+}
+
+async function waitForActiveTraffic(page, mode) {
+  // Prove the core fantasy via live save state (mobile HUD hides some metrics).
+  const deadline = Date.now() + (mode === 'mobile' ? 28_000 : 22_000)
+  while (Date.now() < deadline) {
+    const traffic = await page.evaluate(() => {
+      try {
+        const raw = localStorage.getItem('wash-empire-browser-save-v1')
+        if (!raw) return { liveCars: 0, totalCars: 0, driveBys: 0, queued: 0 }
+        const payload = JSON.parse(raw)
+        const state = payload && typeof payload === 'object' && payload.state ? payload.state : payload
+        const cars = Array.isArray(state.cars) ? state.cars : []
+        const liveCars = cars.filter((car) => car && car.stage !== 'done').length
+        return {
+          liveCars,
+          totalCars: Number(state.totalCars) || 0,
+          driveBys: Number(state.weekDriveBys) || 0,
+          queued: cars.filter((car) => car && (car.stage === 'queued' || car.stage === 'approaching')).length,
+        }
+      } catch {
+        return { liveCars: 0, totalCars: 0, driveBys: 0, queued: 0 }
+      }
+    })
+
+    if (traffic.liveCars > 0 || traffic.totalCars > 0 || traffic.driveBys > 0 || traffic.queued > 0) {
+      await page.waitForTimeout(mode === 'mobile' ? 1_000 : 800)
+      return
+    }
+    await page.waitForTimeout(500)
+  }
+
+  throw new Error(`[launch-smoke] No active cars/queue/drive-bys appeared on ${mode} within the traffic wait window.`)
 }
 
 async function startFromMenu(page, mode) {

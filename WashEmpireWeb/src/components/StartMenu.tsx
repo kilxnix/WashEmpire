@@ -34,6 +34,10 @@ export function StartMenu({
 
   return (
     <section className="start-menu" aria-label="Start game">
+      <div className="start-menu-brand" aria-hidden="true">
+        <span>Self-serve tycoon</span>
+        <strong>Build the lot. Fill the pay box. Expand the map.</strong>
+      </div>
       <form onSubmit={handleSubmit}>
         <span className="mini-label">{hasRun ? 'Saved location' : 'New location'}</span>
         <h1>Wash Empire</h1>

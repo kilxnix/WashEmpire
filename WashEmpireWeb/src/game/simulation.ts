@@ -373,6 +373,16 @@ export function reconcileOffline(input: GameState, nowMs: number): GameState {
     return { ...input, lastTickAt: nowMs }
   }
 
+  // Title-screen / never-started saves: advance the clock only.
+  // Do not grant cash or burn ad boost before the player opens a wash.
+  if (!input.gameStarted) {
+    return {
+      ...input,
+      lastTickAt: nowMs,
+      pendingOfflineSummary: null,
+    }
+  }
+
   const elapsed = Math.max(0, elapsedRaw)
   const state = cloneState(input)
 
