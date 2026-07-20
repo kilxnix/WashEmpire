@@ -552,9 +552,15 @@ function FirstSessionCoach({
   const next = steps.find((step) => !step.done)
   const allDone = !next
 
-  // Auto-dismiss shortly after every first-session step is complete.
+  // Persist completion immediately (week review can unmount this panel),
+  // then auto-hide after a short celebration beat.
   useEffect(() => {
     if (!allDone) return
+    try {
+      localStorage.setItem(COACH_KEY, '1')
+    } catch {
+      // ignore
+    }
     const timer = window.setTimeout(() => onDismiss(), 2200)
     return () => window.clearTimeout(timer)
   }, [allDone, onDismiss])
