@@ -945,52 +945,124 @@ button:disabled {
   font-weight: 900;
 }
 
-.week-summary-toast {
+/* The week report supersedes the glanceable stats for the seconds it is up,
+   so the metrics panel steps aside instead of being half-covered. */
+.report-active .hud-metrics {
+  display: none;
+}
+
+/* Staff-run week report: informative, but never in the way of the running wash. */
+.week-passive {
   position: absolute;
-  left: 50%;
-  bottom: 112px;
-  z-index: 25;
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  max-width: min(440px, calc(100vw - 24px));
-  padding: 12px 14px;
+  top: 104px;
+  right: 18px;
+  /* Below the drawers (20) so opening Upgrades or the Map covers it cleanly. */
+  z-index: 19;
+  width: min(310px, calc(100vw - 36px));
+  max-height: min(64vh, 520px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 14px 16px;
   border: 1px solid rgba(22, 31, 38, 0.16);
   border-radius: 10px;
   color: var(--ink);
-  background: rgba(247, 244, 235, 0.97);
-  box-shadow: 0 16px 34px rgba(15, 23, 42, 0.2);
-  transform: translateX(-50%);
+  background: rgba(247, 244, 235, 0.96);
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.22);
+  backdrop-filter: blur(8px);
   pointer-events: auto;
+  user-select: none;
+  -webkit-user-select: none;
+  animation: week-passive-in 220ms ease;
 }
 
-.week-summary-toast strong {
-  display: block;
-  font-size: 20px;
-  line-height: 1.15;
+@keyframes week-passive-in {
+  from {
+    opacity: 0;
+    transform: translateX(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
-.week-summary-detail {
+.week-passive header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.week-passive header strong {
   display: block;
   margin-top: 2px;
-  color: var(--muted);
-  font-size: 12.5px;
-  font-weight: 650;
+  font-size: 21px;
+  line-height: 1.1;
 }
 
-.week-summary-toast button {
-  padding: 2px 6px;
-  border: none;
-  background: transparent;
+.week-passive header button {
+  padding: 4px 6px;
+  border: 1px solid rgba(22, 31, 38, 0.16);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.7);
   color: var(--muted);
-  font-size: 14px;
-  font-weight: 700;
   cursor: pointer;
 }
 
+.week-passive dl {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin: 0;
+  font-size: 13px;
+}
+
+.week-passive dl > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.week-passive dt {
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.week-passive dd {
+  margin: 0;
+  font-weight: 800;
+}
+
+.week-passive .week-review-net {
+  margin-top: 4px;
+  padding-top: 7px;
+  border-top: 1px solid rgba(22, 31, 38, 0.18);
+  font-size: 14.5px;
+}
+
+.week-passive-foot {
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.35;
+}
+
+/* Phones: dock it to the bottom so it never covers the lot or the HUD rails. */
 @media (max-width: 700px) {
-  .week-summary-toast {
-    bottom: 214px;
+  .week-passive {
+    top: auto;
+    right: 10px;
+    left: 10px;
+    bottom: 70px;
+    width: auto;
+    max-height: 46vh;
+    padding: 12px;
+  }
+
+  .week-passive header strong {
+    font-size: 18px;
   }
 }
 

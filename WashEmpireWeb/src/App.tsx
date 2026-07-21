@@ -1,4 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
+import { X } from 'lucide-react'
 import './App.css'
 import { CityDrawer } from './components/CityDrawer'
 import { Hud } from './components/Hud'
@@ -413,7 +414,9 @@ function App() {
 
   useEffect(() => {
     if (autoClosedReviewWeek === 0 || autoClosedReviewWeek <= dismissedAutoReviewWeek) return
-    const timer = window.setTimeout(() => setDismissedAutoReviewWeek(autoClosedReviewWeek), 9000)
+    // Long enough to read the whole report, short enough to clear before the
+    // next week closes at 10x.
+    const timer = window.setTimeout(() => setDismissedAutoReviewWeek(autoClosedReviewWeek), 14000)
     return () => window.clearTimeout(timer)
   }, [autoClosedReviewWeek, dismissedAutoReviewWeek])
 
@@ -426,7 +429,9 @@ function App() {
 
   return (
     <main
-      className={`app-shell${showCoach ? ' coach-active' : ''}${gameVisible && activeRideAlong ? ' ride-active' : ''}`}
+      className={`app-shell${showCoach ? ' coach-active' : ''}${gameVisible && activeRideAlong ? ' ride-active' : ''}${
+        autoReviewVisible && !activeRideAlong ? ' report-active' : ''
+      }`}
     >
       <Suspense fallback={<SceneLoading />}>
         <WashScene
@@ -532,8 +537,8 @@ function App() {
       {weekReviewOpen && (
         <WeekReviewPanel state={game} onCollect={handleWeekReviewCollect} />
       )}
-      {autoReviewVisible && autoClosedReview && (
-        <WeekSummaryToast
+      {autoReviewVisible && autoClosedReview && !activeRideAlong && (
+        <StaffWeekReport
           review={autoClosedReview}
           onDismiss={() => setDismissedAutoReviewWeek(autoClosedReview.week)}
         />
@@ -653,27 +658,99 @@ function EmpireCompletePanel({ state, onDismiss }: { state: GameState; onDismiss
   )
 }
 
-function WeekSummaryToast({ review, onDismiss }: { review: WeekReview; onDismiss: () => void }) {
-  const rushMet = review.rushTarget != null && review.cars >= review.rushTarget
+/** The week's numbers, shared by the blocking review and the staff-run report. */
+function WeekReviewRows({ review }: { review: WeekReview }) {
+  const costsDue = review.costsDue ?? 0
+  const wages = review.employeeWages ?? 0
+  const served = review.cars
+  const driveBys = review.driveBys ?? 0
+  const passShare = driveBys + served > 0 ? Math.round((driveBys / (driveBys + served)) * 100) : 0
+  const autoClosed = review.autoClosed === true
+  const net = autoClosed
+    ? (review.autoCollected ?? 0) - (review.costsPaid ?? 0)
+    : review.physicalDue - costsDue
+
   return (
-    <section className="week-summary-toast" aria-live="polite">
+    <dl>
       <div>
-        <span className="mini-label">Week {review.week} closed by staff</span>
-        <strong>{money(review.profit)} profit</strong>
-        <span className="week-summary-detail">
-          Collected {money(review.autoCollected)} · paid {money(review.costsPaid)} costs
-          {review.rushTarget != null && (
-            <>
-              {' · rush '}
-              {review.cars}/{review.rushTarget}
-              {rushMet ? ' ✓' : ''}
-            </>
-          )}
-        </span>
+        <dt>Wash revenue</dt>
+        <dd>{money(review.revenue)}</dd>
       </div>
-      <button type="button" onClick={onDismiss} aria-label="Dismiss week summary">
-        ✕
-      </button>
+      <div>
+        <dt>Lot overhead</dt>
+        <dd>{money(Math.max(0, review.costs - wages))}</dd>
+      </div>
+      <div>
+        <dt>Employee wages</dt>
+        <dd>{money(wages)}</dd>
+      </div>
+      <div>
+        <dt>{costsDue > 0 ? 'Costs due at closeout' : 'Costs paid'}</dt>
+        <dd>{money(costsDue > 0 ? costsDue : review.costsPaid ?? review.costs)}</dd>
+      </div>
+      <div>
+        <dt>Cars washed</dt>
+        <dd>{served}</dd>
+      </div>
+      {review.rushTarget != null && (
+        <div>
+          <dt>Rush goal</dt>
+          <dd>
+            {served} / {review.rushTarget}
+            {served >= review.rushTarget ? ' ✓' : ''}
+          </dd>
+        </div>
+      )}
+      <div>
+        <dt>Passing traffic</dt>
+        <dd>
+          {driveBys}
+          {driveBys + served > 0 ? ` (${passShare}%)` : ''}
+        </dd>
+      </div>
+      <div>
+        <dt title="Estimated value of cars that did not stop this week">Missed opportunity</dt>
+        <dd>{money(review.lostRevenue ?? 0)}</dd>
+      </div>
+      <div>
+        <dt>{autoClosed ? 'Staff collected' : 'Auto-collected'}</dt>
+        <dd>{money(review.autoCollected ?? 0)}</dd>
+      </div>
+      {!autoClosed && (
+        <div>
+          <dt>Pay box due</dt>
+          <dd>{money(review.physicalDue)}</dd>
+        </div>
+      )}
+      <div className="week-review-net">
+        <dt>{autoClosed ? 'Banked to your cash' : 'Lands in your cash'}</dt>
+        <dd>
+          {net > 0 ? '+' : ''}
+          {money(net)}
+        </dd>
+      </div>
+    </dl>
+  )
+}
+
+/**
+ * Staff-run weeks show the same report without stopping the wash: the sim keeps
+ * ticking, drawers still open, and the card simply steps aside when dismissed.
+ */
+function StaffWeekReport({ review, onDismiss }: { review: WeekReview; onDismiss: () => void }) {
+  return (
+    <section className="week-passive" aria-label={`Week ${review.week} report`} aria-live="polite">
+      <header>
+        <div>
+          <span className="mini-label">Week {review.week} closed by staff</span>
+          <strong>{money(review.profit)} profit</strong>
+        </div>
+        <button type="button" onClick={onDismiss} title="Dismiss week report" aria-label="Dismiss week report">
+          <X size={16} />
+        </button>
+      </header>
+      <WeekReviewRows review={review} />
+      <p className="week-passive-foot">Your crew collected and paid the week. The wash never stopped.</p>
     </section>
   )
 }
@@ -686,7 +763,6 @@ function WeekReviewPanel({ state, onCollect }: { state: GameState; onCollect: ()
     review.physicalDue > 0 ? 'Collect, pay costs, open' : costsDue > 0 ? 'Pay costs and open' : 'Open'
   const driveBys = review.driveBys ?? 0
   const served = review.cars
-  const passShare = driveBys + served > 0 ? Math.round((driveBys / (driveBys + served)) * 100) : 0
   const earlyWeek = review.week <= 3
   const tip =
     driveBys > served
@@ -700,63 +776,7 @@ function WeekReviewPanel({ state, onCollect }: { state: GameState; onCollect: ()
       <span className="mini-label">Week {review.week} review</span>
       <h2>{money(review.profit)} profit</h2>
       <p className="week-review-tip">{tip}</p>
-      <dl>
-        <div>
-          <dt>Wash revenue</dt>
-          <dd>{money(review.revenue)}</dd>
-        </div>
-        <div>
-          <dt>Lot overhead</dt>
-          <dd>{money(Math.max(0, review.costs - (review.employeeWages ?? 0)))}</dd>
-        </div>
-        <div>
-          <dt>Employee wages</dt>
-          <dd>{money(review.employeeWages ?? 0)}</dd>
-        </div>
-        <div>
-          <dt>{costsDue > 0 ? 'Costs due at closeout' : 'Costs paid'}</dt>
-          <dd>{money(costsDue > 0 ? costsDue : review.costsPaid ?? review.costs)}</dd>
-        </div>
-        <div>
-          <dt>Cars washed</dt>
-          <dd>{served}</dd>
-        </div>
-        {review.rushTarget != null && (
-          <div>
-            <dt>Rush goal</dt>
-            <dd>
-              {served} / {review.rushTarget}
-              {served >= review.rushTarget ? ' ✓' : ''}
-            </dd>
-          </div>
-        )}
-        <div>
-          <dt>Passing traffic</dt>
-          <dd>
-            {driveBys}
-            {driveBys + served > 0 ? ` (${passShare}%)` : ''}
-          </dd>
-        </div>
-        <div>
-          <dt title="Estimated value of cars that did not stop this week">Missed opportunity</dt>
-          <dd>{money(review.lostRevenue ?? 0)}</dd>
-        </div>
-        <div>
-          <dt>Auto-collected</dt>
-          <dd>{money(review.autoCollected ?? 0)}</dd>
-        </div>
-        <div>
-          <dt>Pay box due</dt>
-          <dd>{money(review.physicalDue)}</dd>
-        </div>
-        <div className="week-review-net">
-          <dt>Lands in your cash</dt>
-          <dd>
-            {review.physicalDue - costsDue > 0 ? '+' : ''}
-            {money(review.physicalDue - costsDue)}
-          </dd>
-        </div>
-      </dl>
+      <WeekReviewRows review={review} />
       <button type="button" onClick={onCollect}>
         {closeoutAction} Week {state.week + 1}
       </button>

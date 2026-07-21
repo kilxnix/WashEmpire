@@ -5,7 +5,7 @@ import { useCallback, useRef } from 'react'
  * can land on whatever button is under the finger. Buttons wrapped in `guard`
  * ignore activations that arrive while the list is still settling.
  */
-const SCROLL_QUIET_MS = 400
+const SCROLL_QUIET_MS = 300
 
 export function useScrollGuard() {
   const lastScrollAt = useRef(0)
