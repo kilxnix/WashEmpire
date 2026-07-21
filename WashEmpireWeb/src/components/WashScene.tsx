@@ -3,7 +3,7 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { ContactShadows, OrbitControls, Sky } from '@react-three/drei'
 import * as THREE from 'three'
 import type { BayState, Car, CityDefinition, CityDistrictState, CityTheme, GameState, GraphicsQuality } from '../game/types'
-import { activeBayCount, cashBoxValue, cityDefinitions, currentCityDefinition, isConveyorCity, totalCashBox } from '../game/simulation'
+import { activeBayCount, cashBoxValue, cityDefinitions, currentCityDefinition, currentCityDistrict, isConveyorCity, totalCashBox } from '../game/simulation'
 import { activeEnvironmentRewards, type EnvironmentRewardVisualId } from '../game/environmentRewards'
 import { PrototypeAssetLayer } from './PrototypeAssetLayer'
 
@@ -687,6 +687,7 @@ function SelfServeWashSite({
       <LotRoadSurface theme={theme} />
       <LotPolishDetails theme={theme} />
       <PropertyCurbAppeal state={state} theme={theme} />
+      <RestorationDressing state={state} theme={theme} />
       <WashFeatureDressing state={state} theme={theme} />
       <UpgradeRewardLayer rewardIds={rewardIds} theme={theme} />
       {bayXs.map((x, index) => (
@@ -735,8 +736,8 @@ function ConveyorWashSite({
       <Box name="auto-right-wall" color={theme.wall} position={[3.45, 1.08, 0.2]} scale={[0.18, 2.16, 8.9]} />
       <Box name="auto-back-header" color="#26323d" position={[0, 2.42, 4.58]} scale={[7.1, 0.3, 0.22]} />
       <Box name="auto-front-header" color="#26323d" position={[0, 2.42, -4.18]} scale={[7.1, 0.3, 0.22]} />
-      <Box name="auto-roof-left" color="#1f2933" position={[-2.18, 2.58, 0.2]} scale={[1.8, 0.16, 8.9]} />
-      <Box name="auto-roof-right" color="#1f2933" position={[2.18, 2.58, 0.2]} scale={[1.8, 0.16, 8.9]} />
+      <Box name="auto-roof-left" color="#93a6b3" position={[-2.18, 2.58, 0.2]} scale={[1.8, 0.14, 8.9]} />
+      <Box name="auto-roof-right" color="#93a6b3" position={[2.18, 2.58, 0.2]} scale={[1.8, 0.14, 8.9]} />
       <Text color="#f8fafc" fontSize={0.24} position={[-2.6, 2.42, -4.35]}>
         AUTOMATIC EXPRESS
       </Text>
@@ -954,6 +955,85 @@ function PropertyCurbAppeal({ state, theme }: { state: GameState; theme: CityThe
       <BollardRow name="office-bollards" start={[5.04, 0, 0.48]} count={4} step={[0, 0, 0.48]} />
       <ParkingStalls theme={theme} />
       <CustomerWaitingSpot theme={theme} />
+    </group>
+  )
+}
+
+/**
+ * Restoration must be *seen*: run-down districts show stains, trash, and weeds;
+ * highly restored districts earn planters and flags. (Art bible §10.2.)
+ */
+function RestorationDressing({ state, theme }: { state: GameState; theme: CityThemeSpec }) {
+  const restoration = currentCityDistrict(state).restoration
+  const bayXs = bayXPositions(activeBayCount(state))
+
+  if (restoration <= 2) {
+    const severity = 3 - restoration
+    return (
+      <group name="restoration-decay">
+        {/* Everything sits on light, camera-facing surfaces: bay pad lips and sidewalk bands. */}
+        <TransparentBox name="decay-oil-stain-1" color="#1c232a" position={[bayXs[0] ?? -2.8, 0.16, 2.35]} scale={[1.05, 0.02, 0.72]} opacity={0.5} />
+        <TransparentBox name="decay-oil-stain-2" color="#232a30" position={[bayXs[bayXs.length - 1] ?? 2.8, 0.16, 2.5]} scale={[0.8, 0.02, 0.58]} opacity={0.45} />
+        {severity >= 2 && (
+          <>
+            <TransparentBox name="decay-oil-stain-3" color="#1c232a" position={[-7.05, 0.115, 0.8]} scale={[0.5, 0.02, 1.0]} opacity={0.42} />
+            <Box name="decay-trash-bag" color="#3f4a52" position={[-7.05, 0.24, 2.3]} scale={[0.34, 0.3, 0.32]} />
+            <Box name="decay-trash-box" color="#8a6f4d" position={[4.2, 0.2, 5.1]} scale={[0.36, 0.24, 0.28]} />
+            <Box name="decay-loose-litter" color="#b3ab9c" position={[1.2, 0.14, 5.08]} scale={[0.2, 0.05, 0.15]} />
+          </>
+        )}
+        {severity >= 3 && (
+          <>
+            <Box name="decay-weed-1" color="#5a6b4e" position={[-7.05, 0.24, -1.2]} scale={[0.12, 0.34, 0.12]} />
+            <Box name="decay-weed-2" color="#4c5c42" position={[-7.05, 0.2, 3.6]} scale={[0.11, 0.28, 0.11]} />
+            <Box name="decay-weed-3" color="#5a6b4e" position={[5.8, 0.2, 5.1]} scale={[0.11, 0.3, 0.11]} />
+            <Box name="decay-weed-4" color="#4c5c42" position={[0.4, 0.18, 5.08]} scale={[0.1, 0.24, 0.1]} />
+            <TransparentBox name="decay-pad-crack" color="#111827" position={[bayXs[1] ?? 0, 0.155, 2.2]} scale={[1.4, 0.015, 0.09]} opacity={0.55} />
+          </>
+        )}
+      </group>
+    )
+  }
+
+  if (restoration >= 4) {
+    return (
+      <group name="restoration-premium">
+        <PremiumPlanter name="premium-planter-exit-left" position={[-1.5, 0, 5.3]} theme={theme} />
+        <PremiumPlanter name="premium-planter-exit-right" position={[1.5, 0, 5.3]} theme={theme} />
+        <FlagPole name="premium-flag-west" position={[-6.55, 0, 5.35]} color={theme.accent} />
+        <FlagPole name="premium-flag-east" position={[6.55, 0, 5.35]} color={theme.trim} />
+        {restoration >= 5 && (
+          <>
+            <PremiumPlanter name="premium-planter-exit-far-left" position={[-3.6, 0, 5.3]} theme={theme} />
+            <PremiumPlanter name="premium-planter-exit-far-right" position={[3.6, 0, 5.3]} theme={theme} />
+            <FlagPole name="premium-flag-front-west" position={[-6.5, 0, -5.55]} color={theme.trim} />
+            <FlagPole name="premium-flag-front-east" position={[6.5, 0, -5.55]} color={theme.accent} />
+            <Box name="premium-exit-banner" color={theme.accent} position={[0, 2.96, 5.32]} scale={[6.0, 0.09, 0.06]} />
+          </>
+        )}
+      </group>
+    )
+  }
+
+  return null
+}
+
+function PremiumPlanter({ name, position, theme }: { name: string; position: Vec3; theme: CityThemeSpec }) {
+  return (
+    <group name={name} position={position}>
+      <Box name={`${name}-box`} color="#8c7e62" position={[0, 0.16, 0]} scale={[0.6, 0.3, 0.6]} />
+      <Box name={`${name}-soil`} color="#3d3a36" position={[0, 0.32, 0]} scale={[0.5, 0.05, 0.5]} />
+      <Box name={`${name}-bush`} color="#3f6b46" position={[0, 0.52, 0]} scale={[0.4, 0.38, 0.4]} />
+      <Box name={`${name}-bush-top`} color={theme.foliage ?? '#4d7a53'} position={[0, 0.74, 0]} scale={[0.26, 0.2, 0.26]} />
+    </group>
+  )
+}
+
+function FlagPole({ name, position, color }: { name: string; position: Vec3; color: string }) {
+  return (
+    <group name={name} position={position}>
+      <Box name={`${name}-pole`} color="#8fa2ae" position={[0, 1.3, 0]} scale={[0.07, 2.6, 0.07]} />
+      <Box name={`${name}-flag`} color={color} position={[0.32, 2.38, 0]} scale={[0.56, 0.3, 0.05]} />
     </group>
   )
 }
@@ -4199,8 +4279,8 @@ function BayRow({ state, onCollect, theme }: { state: GameState; onCollect: () =
         />
       ))}
       <Box name="row-header" color="#26323d" position={[0, 2.44, -2.88]} scale={[headerWidth, 0.28, 0.22]} />
-      <Box name="row-front-fascia" color="#0f172a" position={[0, 2.74, -2.88]} scale={[headerWidth + 0.25, 0.22, 0.5]} />
-      <Box name="row-rear-fascia" color="#0f172a" position={[0, 2.58, 2.78]} scale={[headerWidth + 0.25, 0.18, 0.34]} />
+      <Box name="row-front-fascia" color="#54707f" position={[0, 2.74, -2.88]} scale={[headerWidth + 0.25, 0.18, 0.44]} />
+      <Box name="row-rear-fascia" color="#54707f" position={[0, 2.58, 2.78]} scale={[headerWidth + 0.25, 0.14, 0.3]} />
       <Box name="row-blue-trim-front" color="#0284c7" position={[0, 2.91, -2.88]} scale={[headerWidth + 0.45, 0.08, 0.56]} />
       <Box name="row-wash-awning" color="#e5e7eb" position={[0, 2.36, -3.18]} scale={[headerWidth - 0.15, 0.09, 0.42]} />
       <Text color="#f8fafc" fontSize={count === 2 ? 0.2 : 0.26} position={[count === 2 ? -1.55 : -1.35, 2.42, -3.03]}>
@@ -4257,9 +4337,10 @@ function SelfServeBay({
       />
       <Box name={`bay-${bay.id}-front-post-left`} color={trimColor} position={[-1.28, 1.15, -2.78]} scale={[0.25, 2.3, 0.2]} />
       <Box name={`bay-${bay.id}-front-post-right`} color={trimColor} position={[1.28, 1.15, -2.78]} scale={[0.25, 2.3, 0.2]} />
-      <Box name={`bay-${bay.id}-roof-left`} color="#26323d" position={[-1.28, 2.55, 0]} scale={[0.22, 0.2, 5.95]} />
-      <Box name={`bay-${bay.id}-roof-right`} color="#26323d" position={[1.28, 2.55, 0]} scale={[0.22, 0.2, 5.95]} />
-      <Box name={`bay-${bay.id}-roof-center-beam`} color="#0f172a" position={[0, 2.5, 0]} scale={[0.14, 0.15, 5.78]} />
+      {/* Light, slim roof rails — the bays must read from the default camera. */}
+      <Box name={`bay-${bay.id}-roof-left`} color="#a9b8c2" position={[-1.28, 2.55, 0]} scale={[0.18, 0.13, 5.95]} />
+      <Box name={`bay-${bay.id}-roof-right`} color="#a9b8c2" position={[1.28, 2.55, 0]} scale={[0.18, 0.13, 5.95]} />
+      <Box name={`bay-${bay.id}-roof-center-beam`} color="#8fa2ae" position={[0, 2.5, 0]} scale={[0.09, 0.09, 5.78]} />
       <Text color="#111827" fontSize={0.3} position={[-0.22, 0.16, -2.22]} rotation={[-Math.PI / 2, 0, 0]}>
         {bay.id}
       </Text>
@@ -4284,6 +4365,72 @@ function SelfServeBay({
   )
 }
 
+const SPRAY_DROP_COUNT = 9
+const SPRAY_CYCLE_SECONDS = 1.35
+
+/** Looped low-count spray + suds while a wash runs (art bible §17: 5–20 particles). */
+function WashSprayFX({ bayId }: { bayId: number }) {
+  const seeds = useMemo(
+    () =>
+      Array.from({ length: SPRAY_DROP_COUNT }, (_, index) => ({
+        phase: (index / SPRAY_DROP_COUNT) * SPRAY_CYCLE_SECONDS,
+        x: -0.55 + (index % 3) * 0.55 + (index % 2) * 0.1,
+        z: -0.55 + ((index * 0.47) % 1.65),
+        speed: 0.85 + ((index * 0.13) % 0.5),
+      })),
+    [],
+  )
+  const dropRefs = useRef<(THREE.Mesh | null)[]>([])
+  const sudsRefs = useRef<(THREE.Mesh | null)[]>([])
+  const time = useRef(0)
+
+  useFrame((_, delta) => {
+    time.current += delta
+    const t = time.current
+    seeds.forEach((seed, index) => {
+      const drop = dropRefs.current[index]
+      if (!drop) return
+      const cycle = ((t * seed.speed + seed.phase) % SPRAY_CYCLE_SECONDS) / SPRAY_CYCLE_SECONDS
+      drop.position.set(seed.x, 0.35 + cycle * 1.15, seed.z)
+      drop.scale.setScalar(0.06 + Math.sin(cycle * Math.PI) * 0.085)
+    })
+    sudsRefs.current.forEach((suds, index) => {
+      if (!suds) return
+      const pulse = 0.75 + Math.sin(t * 2.1 + index * 1.7) * 0.25
+      suds.scale.setScalar((0.2 + index * 0.04) * pulse)
+    })
+  })
+
+  return (
+    <group name={`bay-${bayId}-wash-spray`}>
+      {seeds.map((seed, index) => (
+        <mesh
+          key={`drop-${index}`}
+          position={[seed.x, 0.4, seed.z]}
+          ref={(el) => {
+            dropRefs.current[index] = el
+          }}
+        >
+          <primitive attach="geometry" object={getSphereGeometry(1, 6, 5)} />
+          <meshStandardMaterial color="#38bdf8" emissive="#0ea5e9" emissiveIntensity={0.55} transparent opacity={0.9} roughness={0.25} />
+        </mesh>
+      ))}
+      {[0, 1, 2, 3].map((index) => (
+        <mesh
+          key={`suds-${index}`}
+          position={[index % 2 === 0 ? -0.34 : 0.34, 0.58, -0.5 + index * 0.4]}
+          ref={(el) => {
+            sudsRefs.current[index] = el
+          }}
+        >
+          <primitive attach="geometry" object={getSphereGeometry(1, 6, 5)} />
+          <meshStandardMaterial color="#ffffff" emissive="#bfdbfe" emissiveIntensity={0.2} roughness={0.45} />
+        </mesh>
+      ))}
+    </group>
+  )
+}
+
 function BayWashActivity({ bayIndex, car }: { bayIndex: number; car: Car }) {
   const side = (Math.floor(car.progress * 4) + bayIndex) % 2 === 0 ? 1 : -1
   const sweep = (car.progress * 2.2) % 1
@@ -4293,6 +4440,7 @@ function BayWashActivity({ bayIndex, car }: { bayIndex: number; car: Car }) {
 
   return (
     <group>
+      <WashSprayFX bayId={bayIndex + 1} />
       <group position={[0, 2.62, -2.42]}>
         <Box name={`bay-${bayIndex + 1}-occupied-header`} color="#0f172a" position={[0, 0, 0]} scale={[1.52, 0.2, 0.08]} />
         <Box name={`bay-${bayIndex + 1}-occupied-state`} color={mistColor} position={[-0.58, 0.01, -0.05]} scale={[0.14, 0.12, 0.04]} />
