@@ -6,10 +6,12 @@ import {
   averageCondition,
   bayUpgradeCost,
   bayUpgradeDefinitions,
+  bayUpgradeDisplay,
   cashBoxValue,
   cityDefinitions,
   currentCityDefinition,
   currentCityDistrict,
+  stallNoun,
   totalCashBox,
   upgradeDefinitions,
   weeklyRushTarget,
@@ -168,7 +170,7 @@ function momentumGoals(state: GameState): MomentumGoal[] {
     goals.push({
       id: 'ad-boost',
       title: 'Run a driver campaign',
-      detail: `${state.ads.slotsAvailable} ad boosts ready`,
+      detail: `${state.ads.slotsAvailable} campaigns ready — 3x cash while active`,
       progress: 1,
       action: 'ad',
       actionLabel: 'Boost',
@@ -228,12 +230,13 @@ function nextUpgradeGoal(state: GameState): MomentumGoal | null {
 
     const cost = bayUpgradeCost(nextBayUpgrade.id, bay.upgrades[nextBayUpgrade.id], bayIndex)
     const affordable = state.cash >= cost
+    const displayName = bayUpgradeDisplay(state, nextBayUpgrade.id).name
     return {
       id: `bay-${bay.id}-${nextBayUpgrade.id}`,
-      title: `Upgrade Bay ${bay.id}`,
+      title: `Upgrade ${stallNoun(state)} ${bay.id}`,
       detail: affordable
-        ? `${nextBayUpgrade.name} — ${money(cost)}, ready to buy`
-        : `${nextBayUpgrade.name} — saved ${money(state.cash)} of ${money(cost)}`,
+        ? `${displayName} — ${money(cost)}, ready to buy`
+        : `${displayName} — saved ${money(state.cash)} of ${money(cost)}`,
       progress: Math.min(1, state.cash / cost),
       complete: false,
       action: 'upgrades',

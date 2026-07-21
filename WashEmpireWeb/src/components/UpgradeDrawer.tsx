@@ -5,9 +5,11 @@ import {
   activeBayCount,
   bayUpgradeCost,
   bayUpgradeDefinitions,
+  bayUpgradeDisplay,
   currentCityDefinition,
   employeeDefinitions,
   progressionProgress,
+  stallNoun,
   upgradeDefinitions,
 } from '../game/simulation'
 
@@ -62,7 +64,7 @@ export function UpgradeDrawer({ open, state, onBuy, onBuyBay, onHireEmployee, on
         </div>
       </div>
 
-      <div className="drawer-tabs" role="tablist" aria-label="Bay selector">
+      <div className="drawer-tabs" role="tablist" aria-label={`${stallNoun(state)} selector`}>
         {bayTabs.map((item, index) => (
           <button
             type="button"
@@ -70,14 +72,14 @@ export function UpgradeDrawer({ open, state, onBuy, onBuyBay, onHireEmployee, on
             key={item.id}
             onClick={() => setSelectedBay(index)}
           >
-            Bay {item.id}
+            {stallNoun(state)} {item.id}
           </button>
         ))}
       </div>
 
       <div className="upgrade-list">
         <SectionHeader
-          title={`Bay ${bay.id} Equipment`}
+          title={`${stallNoun(state)} ${bay.id} Equipment`}
           open={!collapsed.bay}
           onToggle={() => toggleSection('bay')}
         />
@@ -87,19 +89,20 @@ export function UpgradeDrawer({ open, state, onBuy, onBuyBay, onHireEmployee, on
             const maxed = level >= upgrade.maxLevel
             const cost = bayUpgradeCost(upgrade.id, level, selectedIndex)
             const affordable = state.cash >= cost
+            const display = bayUpgradeDisplay(state, upgrade.id)
 
             return (
               <article className={maxed ? 'owned' : ''} key={upgrade.id}>
                 <div className="upgrade-icon">{maxed ? <Check size={18} /> : <Wrench size={18} />}</div>
                 <div>
                   <div className="upgrade-title-row">
-                    <h3>{upgrade.name}</h3>
+                    <h3>{display.name}</h3>
                     <span className="level-pill">
                       Lv {level}/{upgrade.maxLevel}
                     </span>
                   </div>
                   <p>{upgrade.effect}</p>
-                  <span>{upgrade.visual}</span>
+                  <span>{display.visual}</span>
                 </div>
                 <button type="button" disabled={maxed || !affordable} onClick={() => onBuyBay(selectedIndex, upgrade.id)}>
                   {maxed ? 'Max' : money(cost)}

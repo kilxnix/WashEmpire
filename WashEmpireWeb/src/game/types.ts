@@ -166,6 +166,8 @@ export interface GameState {
   lastTickAt: number
   pendingOfflineSummary: OfflineSummary | null
   lastReview: WeekReview | null
+  /** True once the all-districts celebration has been shown for this run. */
+  empireCelebrated: boolean
 }
 
 export interface UpgradeDefinition {

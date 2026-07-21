@@ -43,6 +43,12 @@ type RewardAdMobPlugin = Pick<
 type WebRewardedAdPresenter = () => Promise<boolean>
 type BrowserImaPresenter = (adTagUrl: string) => Promise<boolean>
 
+/**
+ * Paid builds never show ads: the boost button becomes a free driver campaign
+ * on the same slot economy. Set VITE_PAID_BUILD=false for an ad-supported build.
+ */
+export const PAID_BUILD = readBoolEnv('VITE_PAID_BUILD', true)
+
 export const ADMOB_CONFIG: AdMobConfig = {
   androidAppId: readEnv('VITE_ADMOB_ANDROID_APP_ID') || 'ca-app-pub-0396642445880935~1557835307',
   rewardedAdUnitId:

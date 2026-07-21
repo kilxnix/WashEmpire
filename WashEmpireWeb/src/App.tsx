@@ -8,14 +8,17 @@ import { StartMenu } from './components/StartMenu'
 import { UpgradeDrawer } from './components/UpgradeDrawer'
 import {
   advanceGame,
+  allDistrictsOwned,
   bayUpgradeCost,
   bayUpgradeDefinitions,
   buyBayUpgrade,
   buyCityDistrict,
   buyUpgrade,
   cashBoxValue,
+  cityDefinitions,
   collectPayBox,
   createInitialState,
+  employeeDefinitions,
   exportGameState,
   hireEmployee,
   hydrateGameState,
@@ -29,7 +32,18 @@ import {
   upgradeDefinitions,
   watchAdForBoost,
 } from './game/simulation'
-import { showRewardedAd } from './services/ads'
+import { PAID_BUILD, showRewardedAd } from './services/ads'
+import {
+  isSoundEnabled,
+  playBoost,
+  playCollect,
+  playDistrict,
+  playHire,
+  playPurchase,
+  playWeekOpen,
+  playWin,
+  setSoundEnabled,
+} from './services/sound'
 import type { BayUpgradeId, CityId, EmployeeId, GameState, GraphicsQuality, SpeedSetting, UpgradeId, WeekReview } from './game/types'
 
 const SAVE_KEY = 'wash-empire-browser-save-v1'
@@ -54,6 +68,7 @@ function App() {
   const [dismissedAutoReviewWeek, setDismissedAutoReviewWeek] = useState(0)
   const [sceneFocus, setSceneFocus] = useState<SceneFocus | null>(null)
   const [collectFx, setCollectFx] = useState<CollectFx | null>(null)
+  const [soundOn, setSoundOn] = useState(isSoundEnabled)
   const [coachProgress, setCoachProgress] = useState({
     collected: false,
     upgraded: false,
@@ -167,9 +182,12 @@ function App() {
       setCoachProgress((progress) => ({ ...progress, collected: true }))
       setCollectionToast({ id: Date.now(), title: 'Collected', amount: due })
       setCollectFx({ id: Date.now(), amount: due })
+      playCollect()
+      if (openingWeek) playWeekOpen()
     } else if (openingWeek) {
       setCoachProgress((progress) => ({ ...progress, collected: true }))
       setCollectionToast({ id: Date.now(), title: 'Week opened', amount: 0 })
+      playWeekOpen()
     }
   }
 
@@ -192,6 +210,7 @@ function App() {
     const def = upgradeDefinitions.find((upgrade) => upgrade.id === upgradeId)
     if (def && !current.upgrades[upgradeId] && current.cash >= def.cost) {
       setSceneFocus({ id: Date.now(), kind: 'lot' })
+      playPurchase()
     }
     setGame((state) => buyUpgrade(state, upgradeId))
     setCoachProgress((progress) => ({ ...progress, upgraded: true }))
@@ -209,16 +228,31 @@ function App() {
       current.cash >= bayUpgradeCost(upgradeId, level, bayIndex)
     ) {
       setSceneFocus({ id: Date.now(), kind: 'bay', bayIndex })
+      playPurchase()
     }
     setGame((state) => buyBayUpgrade(state, bayIndex, upgradeId))
     setCoachProgress((progress) => ({ ...progress, upgraded: true }))
   }
 
   function handleHireEmployee(employeeId: EmployeeId) {
+    const current = gameRef.current
+    const def = employeeDefinitions.find((employee) => employee.id === employeeId)
+    if (def && !current.employees[employeeId] && current.cash >= def.hireCost) {
+      playHire()
+    }
     setGame((state) => hireEmployee(state, employeeId))
   }
 
   function handleBuyCity(cityId: CityId) {
+    const current = gameRef.current
+    const def = cityDefinitions.find((city) => city.id === cityId)
+    const district = current.cityMap.districts.find((item) => item.id === cityId)
+    if (def && district && !district.owned && current.cash >= def.purchaseCost) {
+      // District purchases are the biggest moments in the run — celebrate them.
+      setCollectionToast({ id: Date.now(), title: `District unlocked — ${def.name}`, amount: 0 })
+      setSceneFocus({ id: Date.now() + 1, kind: 'lot' })
+      playDistrict()
+    }
     setGame((state) => buyCityDistrict(state, cityId))
     setRideAlong(false)
     setCityOpen(false)
@@ -273,17 +307,34 @@ function App() {
 
   async function handleWatchAd() {
     if (adLoading || gameRef.current.ads.slotsAvailable <= 0) return
+
+    // Paid builds never show ads: campaigns arm instantly on the same slot economy.
+    if (PAID_BUILD) {
+      setGame((state) => watchAdForBoost(state))
+      setCollectionToast({ id: Date.now(), title: 'Campaign launched — 3x boost armed', amount: 0 })
+      playBoost()
+      return
+    }
+
     setAdLoading(true)
     try {
       if (await showRewardedAd()) {
         setGame((state) => watchAdForBoost(state))
         setCollectionToast({ id: Date.now(), title: 'Ad boost armed', amount: 0 })
+        playBoost()
       } else {
         setCollectionToast({ id: Date.now(), title: 'No ad reward — try again later', amount: 0 })
       }
     } finally {
       setAdLoading(false)
     }
+  }
+
+  function handleToggleSound() {
+    setSoundOn((current) => {
+      setSoundEnabled(!current)
+      return !current
+    })
   }
 
   function handleCycleGraphics() {
@@ -294,10 +345,31 @@ function App() {
     setGame((state) => ({ ...state, pendingOfflineSummary: null }))
   }
 
-  const activeRideAlong = rideAlong && isConveyorCity(game)
+  function handleDismissEmpireComplete() {
+    setGame((state) => ({ ...state, empireCelebrated: true }))
+  }
+
+  function handleExportSave(): string {
+    return exportGameState(gameRef.current)
+  }
+
+  function handleImportSave(raw: string): boolean {
+    try {
+      const hydrated = hydrateGameState(JSON.parse(raw))
+      if (!hydrated) return false
+      localStorage.setItem(SAVE_KEY, exportGameState(hydrated))
+      setGame(prepareLoadedGame(reconcileOffline(hydrated, Date.now())))
+      return true
+    } catch {
+      return false
+    }
+  }
+
   const gameVisible = game.gameStarted && !titleOpen
   const showTitle = titleOpen || !game.gameStarted
   const weekReviewOpen = gameVisible && Boolean(game.collectRequired && game.lastReview)
+  // The weekly review owns the screen — the ride pauses while it is open.
+  const activeRideAlong = rideAlong && isConveyorCity(game) && !weekReviewOpen
   const autoClosedReview = gameVisible && !weekReviewOpen && game.lastReview?.autoClosed ? game.lastReview : null
   const autoClosedReviewWeek = autoClosedReview?.week ?? 0
   const autoReviewVisible = autoClosedReview !== null && autoClosedReviewWeek > dismissedAutoReviewWeek
@@ -307,14 +379,18 @@ function App() {
     const timer = window.setTimeout(() => setDismissedAutoReviewWeek(autoClosedReviewWeek), 9000)
     return () => window.clearTimeout(timer)
   }, [autoClosedReviewWeek, dismissedAutoReviewWeek])
+
   // Week review owns the screen: never leave drawers stacked over it.
   const upgradesDrawerOpen = upgradesOpen && !weekReviewOpen
   const cityDrawerOpen = cityOpen && !weekReviewOpen
 
   const showCoach = coachOpen && gameVisible && !activeRideAlong && !weekReviewOpen
+  const empireComplete = gameVisible && !game.empireCelebrated && allDistrictsOwned(game)
 
   return (
-    <main className={`app-shell${showCoach ? ' coach-active' : ''}`}>
+    <main
+      className={`app-shell${showCoach ? ' coach-active' : ''}${gameVisible && activeRideAlong ? ' ride-active' : ''}`}
+    >
       <Suspense fallback={<SceneLoading />}>
         <WashScene
           state={game}
@@ -332,12 +408,14 @@ function App() {
             state={game}
             graphicsQuality={graphicsQuality}
             rideAlong={activeRideAlong}
+            soundOn={soundOn}
             onSetSpeed={handleSetSpeed}
             onCollect={handleCollect}
             onOpenUpgrades={openUpgrades}
             onOpenCityMap={openCityMap}
             onCycleGraphics={handleCycleGraphics}
             onToggleRideAlong={handleToggleRideAlong}
+            onToggleSound={handleToggleSound}
             onWatchAd={handleWatchAd}
             adLoading={adLoading}
           />
@@ -370,6 +448,8 @@ function App() {
           onContinue={handleContinue}
           onNewGame={handleNewGame}
           onStart={handleStart}
+          onExportSave={handleExportSave}
+          onImportSave={handleImportSave}
         />
       ) : null}
       {collectionToast && (
@@ -416,6 +496,7 @@ function App() {
           onDismiss={handleDismissOfflineSummary}
         />
       )}
+      {empireComplete && <EmpireCompletePanel state={game} onDismiss={handleDismissEmpireComplete} />}
     </main>
   )
 }
@@ -467,6 +548,44 @@ function CollectionToast({ title, amount }: { title: string; amount: number }) {
     <section className="collection-toast" aria-live="polite">
       <span className="mini-label">{amount > 0 ? title : 'Notice'}</span>
       <strong>{amount > 0 ? `+${money(amount)}` : title}</strong>
+    </section>
+  )
+}
+
+function EmpireCompletePanel({ state, onDismiss }: { state: GameState; onDismiss: () => void }) {
+  useEffect(() => {
+    playWin()
+  }, [])
+
+  return (
+    <section className="empire-complete" aria-label="Empire complete" role="dialog" aria-modal="true">
+      <span className="mini-label">Empire complete</span>
+      <h2>You own the whole map</h2>
+      <p className="empire-complete-sub">
+        Every district from Rustwater Junction to the Beltline tunnel is yours. The empire keeps earning — push
+        restorations, max the equipment, and see how high the weekly take can go.
+      </p>
+      <dl>
+        <div>
+          <dt>Weeks in business</dt>
+          <dd>{state.week}</dd>
+        </div>
+        <div>
+          <dt>Lifetime revenue</dt>
+          <dd>{money(state.lifetimeRevenue)}</dd>
+        </div>
+        <div>
+          <dt>Customers washed</dt>
+          <dd>{state.totalCars.toLocaleString()}</dd>
+        </div>
+        <div>
+          <dt>Cash on hand</dt>
+          <dd>{money(state.cash)}</dd>
+        </div>
+      </dl>
+      <button type="button" onClick={onDismiss}>
+        Keep building
+      </button>
     </section>
   )
 }

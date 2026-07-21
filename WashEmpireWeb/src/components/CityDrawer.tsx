@@ -5,6 +5,8 @@ import {
   cityRestorationCost,
   currentCityDefinition,
   currentCityDistrict,
+  districtEffectiveTraffic,
+  estimatedWeeklyProfit,
 } from '../game/simulation'
 
 interface CityDrawerProps {
@@ -48,6 +50,11 @@ export function CityDrawer({ open, state, onBuy, onRestore, onSwitch, onClose }:
           const restoreCost = cityRestorationCost(state.cityMap, city.id)
           const canRestore = owned && (district?.restoration ?? 0) < 5 && state.cash >= restoreCost
           const canBuy = !owned && state.cash >= city.purchaseCost
+          const restoration = district?.restoration ?? 0
+          const trafficNow = districtEffectiveTraffic(city.id, owned ? restoration : 0)
+          const trafficRestored = districtEffectiveTraffic(city.id, 5)
+          const projection = estimatedWeeklyProfit(state, city.id)
+          const losing = projection.profit < 0
 
           return (
             <article className={active ? 'active' : owned ? 'owned' : ''} key={city.id}>
@@ -59,12 +66,26 @@ export function CityDrawer({ open, state, onBuy, onRestore, onSwitch, onClose }:
                   <h3>{city.name}</h3>
                   <span className="level-pill">{cityThemeLabel(city.theme)}</span>
                   <span className="level-pill">{city.washModel === 'conveyor' ? 'Auto tunnel' : `${city.bayCount} bays`}</span>
-                  <span className="level-pill">Traffic x{city.trafficMultiplier.toFixed(2)}</span>
+                  <span
+                    className="level-pill"
+                    title={`Effective traffic at ${owned ? 'current' : 'starting'} restoration — reaches x${trafficRestored.toFixed(2)} fully restored`}
+                  >
+                    Traffic x{trafficNow.toFixed(2)} → x{trafficRestored.toFixed(2)}
+                  </span>
                 </div>
                 <p>{city.story}</p>
                 <span>{city.visual}</span>
+                <p
+                  className={`city-projection${losing ? ' negative' : ''}`}
+                  title="Projected from your current equipment, before collections and boosts"
+                >
+                  Est. weekly with your gear: {money(projection.revenue)} revenue − {money(projection.costs)} costs ={' '}
+                  {projection.profit >= 0 ? '+' : '−'}
+                  {money(Math.abs(projection.profit))}
+                  {losing ? ' · upgrade equipment before moving here' : ''}
+                </p>
                 <div className="restore-meter" aria-label={`${city.name} restoration`}>
-                  <i style={{ width: `${((district?.restoration ?? 0) / 5) * 100}%` }} />
+                  <i style={{ width: `${(restoration / 5) * 100}%` }} />
                 </div>
               </div>
               <div className="city-actions">

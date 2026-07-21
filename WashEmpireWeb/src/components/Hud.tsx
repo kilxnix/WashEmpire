@@ -7,10 +7,13 @@ import {
   Map,
   Pause,
   Play,
+  Volume2,
+  VolumeX,
   WalletCards,
   Wrench,
   Zap,
 } from 'lucide-react'
+import { PAID_BUILD } from '../services/ads'
 import type { GameState, GraphicsQuality, SpeedSetting } from '../game/types'
 import {
   activeBayCount,
@@ -31,12 +34,14 @@ interface HudProps {
   state: GameState
   graphicsQuality: GraphicsQuality
   rideAlong: boolean
+  soundOn: boolean
   onSetSpeed: (speed: SpeedSetting) => void
   onCollect: () => void
   onOpenUpgrades: () => void
   onOpenCityMap: () => void
   onCycleGraphics: () => void
   onToggleRideAlong: () => void
+  onToggleSound: () => void
   onWatchAd: () => void
   adLoading: boolean
 }
@@ -45,12 +50,14 @@ export function Hud({
   state,
   graphicsQuality,
   rideAlong,
+  soundOn,
   onSetSpeed,
   onCollect,
   onOpenUpgrades,
   onOpenCityMap,
   onCycleGraphics,
   onToggleRideAlong,
+  onToggleSound,
   onWatchAd,
   adLoading,
 }: HudProps) {
@@ -142,6 +149,10 @@ export function Hud({
           <Gauge size={18} />
           <span>{graphicsLabel(graphicsQuality)}</span>
         </button>
+        <button type="button" title={soundOn ? 'Sound on' : 'Sound off'} onClick={onToggleSound}>
+          {soundOn ? <Volume2 size={18} /> : <VolumeX size={18} />}
+          <span>{soundOn ? 'Sound' : 'Muted'}</span>
+        </button>
         {conveyor && (
           <button
             type="button"
@@ -153,7 +164,14 @@ export function Hud({
             <span>Ride View</span>
           </button>
         )}
-        <div className="hud-ad" title="Watch a rewarded ad for a temporary 3x boost">
+        <div
+          className="hud-ad"
+          title={
+            PAID_BUILD
+              ? 'Launch a driver campaign for a temporary 3x cash boost'
+              : 'Watch a rewarded ad for a temporary 3x boost'
+          }
+        >
           <button
             type="button"
             className="hud-ad-button"
@@ -163,21 +181,29 @@ export function Hud({
               adLoading
                 ? 'Loading ad'
                 : adSlots <= 0
-                  ? 'No ad slots available'
-                  : `Watch Ad, ${adSlots} of 5 slots`
+                  ? PAID_BUILD
+                    ? 'No campaigns ready'
+                    : 'No ad slots available'
+                  : PAID_BUILD
+                    ? `Launch campaign, ${adSlots} of 5 ready`
+                    : `Watch Ad, ${adSlots} of 5 slots`
             }
-            title={adLoading ? 'Loading ad…' : `Watch Ad (${adSlots}/5)`}
+            title={
+              adLoading ? 'Loading ad…' : PAID_BUILD ? `Boost (${adSlots}/5)` : `Watch Ad (${adSlots}/5)`
+            }
           >
             <BadgeDollarSign size={18} aria-hidden="true" />
             <span className="hud-ad-label">
-              {adLoading ? 'Loading…' : `Watch Ad (${adSlots}/5)`}
+              {adLoading ? 'Loading…' : PAID_BUILD ? `Boost (${adSlots}/5)` : `Watch Ad (${adSlots}/5)`}
             </span>
           </button>
           {adBoostActive && (
             <span className="hud-ad-line hud-ad-boost">Boost: {formatHm(adBoostSeconds)}</span>
           )}
           {adSlots < 5 && (
-            <span className="hud-ad-line hud-ad-refill">Next slot in {formatHm(adNextSlotSeconds)}</span>
+            <span className="hud-ad-line hud-ad-refill">
+              Next {PAID_BUILD ? 'campaign' : 'slot'} in {formatHm(adNextSlotSeconds)}
+            </span>
           )}
         </div>
       </section>

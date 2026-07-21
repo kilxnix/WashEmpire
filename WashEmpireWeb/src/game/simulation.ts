@@ -106,7 +106,7 @@ export const upgradeDefinitions: UpgradeDefinition[] = [
     id: 'mobileCampaign',
     name: 'Mobile Ad Campaign',
     cost: 105000,
-    effect: '+22% lot demand, bigger rewarded-ad payouts',
+    effect: '+22% lot demand, stronger campaign payouts',
     visual: 'Local mobile placements for Wash Empire',
   },
   {
@@ -305,6 +305,7 @@ export function createInitialState(): GameState {
     lastTickAt: Date.now(),
     pendingOfflineSummary: null,
     lastReview: null,
+    empireCelebrated: false,
   }
 }
 
@@ -707,6 +708,84 @@ export function expectedHourlyRevenue(state: GameState): number {
   return effectivePerSec * avgPrice * 3600 * CUSTOMERS_PER_VISIBLE_CAR
 }
 
+/** Share of theoretical throughput a lot actually captures (arrival gaps, queue churn). */
+const CAPTURE_FACTOR = 0.75
+
+const CONVEYOR_BAY_UPGRADE_DISPLAY: Record<BayUpgradeId, { name: string; visual: string }> = {
+  selector: { name: 'Entry Console', visual: 'Lane guidance screens and package selector' },
+  wand: { name: 'High-Pressure Arch', visual: 'Pre-soak lances over the conveyor track' },
+  soap: { name: 'Foam Curtain', visual: 'Full-width foam curtain and side jets' },
+  rinse: { name: 'Spot-Free Arch', visual: 'Final rinse arch with polished water' },
+  dryer: { name: 'Dryer Arch', visual: 'Exit blower arch over the conveyor' },
+  vault: { name: 'Toll Vault', visual: 'Reinforced lane kiosks and token cassette' },
+}
+
+/** Equipment reads as tunnel hardware in conveyor districts, bay gear elsewhere. */
+export function bayUpgradeDisplay(state: GameState, upgradeId: BayUpgradeId): { name: string; visual: string } {
+  if (isConveyorCity(state)) return CONVEYOR_BAY_UPGRADE_DISPLAY[upgradeId]
+  const def = bayUpgradeDefinitions.find((item) => item.id === upgradeId)
+  return { name: def?.name ?? upgradeId, visual: def?.visual ?? '' }
+}
+
+/** "Bay" in self-serve districts, "Lane" in conveyor districts. */
+export function stallNoun(state: GameState): string {
+  return isConveyorCity(state) ? 'Lane' : 'Bay'
+}
+
+export function allDistrictsOwned(state: GameState): boolean {
+  return state.cityMap.districts.length > 0 && state.cityMap.districts.every((district) => district.owned)
+}
+
+export function districtEffectiveTraffic(cityId: CityId, restoration: number): number {
+  const def = cityDefinitions.find((city) => city.id === cityId)
+  if (!def) return 1
+  return roundStat(def.trafficMultiplier * (0.86 + restoration * 0.045))
+}
+
+/**
+ * Projects a week at the given district with the player's current equipment,
+ * so district cards can warn before a money-losing move.
+ */
+export function estimatedWeeklyProfit(
+  state: GameState,
+  cityId: CityId,
+): { revenue: number; costs: number; profit: number } {
+  const probe = cloneState(state)
+  probe.cityMap.currentCityId = cityId
+  const district = probe.cityMap.districts.find((item) => item.id === cityId)
+  if (district && !district.owned) {
+    // Unowned districts start at restoration 0.
+    district.restoration = 0
+  }
+
+  const bays = activeBays(probe)
+  if (bays.length === 0) return { revenue: 0, costs: weeklyCosts(probe), profit: -weeklyCosts(probe) }
+
+  const automatic = isConveyorCity(probe)
+  const priceBonus = marketPriceBonus(probe)
+  let avgWashSeconds = 0
+  let avgPrice = 0
+  for (const bay of bays) {
+    const price = bayWashPrice(probe.upgrades, bay, priceBonus)
+    const payment: Payment = automatic
+      ? { kind: 'card', quarters: 0, bills: price, tokens: 0 }
+      : { kind: 'quarters', quarters: Math.round(price * 4), bills: 0, tokens: 0 }
+    avgWashSeconds += washDurationForPayment(payment, probe.upgrades, bay, priceBonus, automatic)
+    avgPrice += price
+  }
+  avgWashSeconds /= bays.length
+  avgPrice /= bays.length
+
+  const cycleSeconds = avgWashSeconds + ENTERING_SECONDS + 2.6
+  const arrivalsPerSec = 1 / spawnInterval(probe)
+  const capacityPerSec = bays.length / cycleSeconds
+  const revenue =
+    Math.min(arrivalsPerSec, capacityPerSec) * WEEK_SECONDS * CUSTOMERS_PER_VISIBLE_CAR * avgPrice * CAPTURE_FACTOR
+  const costs = weeklyCosts(probe)
+
+  return { revenue: Math.round(revenue), costs: Math.round(costs), profit: Math.round(revenue - costs) }
+}
+
 export function weeklyRushTarget(state: GameState): number {
   const bays = activeBays(state)
   if (bays.length === 0) return 40
@@ -728,8 +807,8 @@ export function weeklyRushTarget(state: GameState): number {
   const capacityPerSec = bays.length / cycleSeconds
   const weeklyCustomers = Math.min(arrivalsPerSec, capacityPerSec) * WEEK_SECONDS * CUSTOMERS_PER_VISIBLE_CAR
 
-  // Stretch-but-achievable: ~75% of theoretical throughput, in steps of 5.
-  return Math.max(40, Math.round((weeklyCustomers * 0.75) / 5) * 5)
+  // Stretch-but-achievable: capture-rate share of theoretical throughput, in steps of 5.
+  return Math.max(40, Math.round((weeklyCustomers * CAPTURE_FACTOR) / 5) * 5)
 }
 
 export function progressionProgress(state: GameState): number {
@@ -806,6 +885,7 @@ export function hydrateGameState(value: unknown): GameState | null {
     pendingOfflineSummary: candidate.pendingOfflineSummary ?? null,
     lastReview: candidate.lastReview ?? null,
     resumeSpeed: normalizeResumeSpeed(candidate.resumeSpeed, candidate.speed),
+    empireCelebrated: candidate.empireCelebrated ?? false,
   }
 }
 
