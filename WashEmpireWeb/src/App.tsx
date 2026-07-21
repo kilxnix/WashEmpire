@@ -8,6 +8,8 @@ import { StartMenu } from './components/StartMenu'
 import { UpgradeDrawer } from './components/UpgradeDrawer'
 import {
   advanceGame,
+  bayUpgradeCost,
+  bayUpgradeDefinitions,
   buyBayUpgrade,
   buyCityDistrict,
   buyUpgrade,
@@ -24,6 +26,7 @@ import {
   startGame,
   switchCityDistrict,
   totalCashBox,
+  upgradeDefinitions,
   watchAdForBoost,
 } from './game/simulation'
 import { showRewardedAd } from './services/ads'
@@ -36,6 +39,8 @@ const SIMULATION_STEP_SECONDS = 1 / 20
 const GRAPHICS_SEQUENCE: GraphicsQuality[] = ['low', 'balanced', 'high']
 const WashScene = lazy(() => import('./components/WashScene').then((module) => ({ default: module.WashScene })))
 
+import type { CollectFx, SceneFocus } from './components/WashScene'
+
 function App() {
   const [game, setGame] = useState<GameState>(loadSavedGame)
   const [graphicsQuality, setGraphicsQuality] = useState<GraphicsQuality>(loadGraphicsQuality)
@@ -47,6 +52,8 @@ function App() {
   const [collectionToast, setCollectionToast] = useState<CollectionToastState | null>(null)
   const [coachOpen, setCoachOpen] = useState(() => !hasDismissedCoach())
   const [dismissedAutoReviewWeek, setDismissedAutoReviewWeek] = useState(0)
+  const [sceneFocus, setSceneFocus] = useState<SceneFocus | null>(null)
+  const [collectFx, setCollectFx] = useState<CollectFx | null>(null)
   const [coachProgress, setCoachProgress] = useState({
     collected: false,
     upgraded: false,
@@ -123,6 +130,12 @@ function App() {
   }, [collectionToast])
 
   useEffect(() => {
+    if (!collectFx) return
+    const timeout = window.setTimeout(() => setCollectFx(null), 1400)
+    return () => window.clearTimeout(timeout)
+  }, [collectFx])
+
+  useEffect(() => {
     localStorage.setItem(GRAPHICS_SAVE_KEY, graphicsQuality)
   }, [graphicsQuality])
 
@@ -153,6 +166,7 @@ function App() {
     if (due > 0) {
       setCoachProgress((progress) => ({ ...progress, collected: true }))
       setCollectionToast({ id: Date.now(), title: 'Collected', amount: due })
+      setCollectFx({ id: Date.now(), amount: due })
     } else if (openingWeek) {
       setCoachProgress((progress) => ({ ...progress, collected: true }))
       setCollectionToast({ id: Date.now(), title: 'Week opened', amount: 0 })
@@ -174,11 +188,28 @@ function App() {
   }
 
   function handleBuy(upgradeId: UpgradeId) {
+    const current = gameRef.current
+    const def = upgradeDefinitions.find((upgrade) => upgrade.id === upgradeId)
+    if (def && !current.upgrades[upgradeId] && current.cash >= def.cost) {
+      setSceneFocus({ id: Date.now(), kind: 'lot' })
+    }
     setGame((state) => buyUpgrade(state, upgradeId))
     setCoachProgress((progress) => ({ ...progress, upgraded: true }))
   }
 
   function handleBuyBay(bayIndex: number, upgradeId: BayUpgradeId) {
+    const current = gameRef.current
+    const bay = current.bays[bayIndex]
+    const def = bayUpgradeDefinitions.find((upgrade) => upgrade.id === upgradeId)
+    const level = bay?.upgrades[upgradeId] ?? 0
+    if (
+      bay &&
+      def &&
+      level < def.maxLevel &&
+      current.cash >= bayUpgradeCost(upgradeId, level, bayIndex)
+    ) {
+      setSceneFocus({ id: Date.now(), kind: 'bay', bayIndex })
+    }
     setGame((state) => buyBayUpgrade(state, bayIndex, upgradeId))
     setCoachProgress((progress) => ({ ...progress, upgraded: true }))
   }
@@ -290,6 +321,9 @@ function App() {
           onCollect={handleCollect}
           rideAlong={gameVisible && activeRideAlong}
           graphicsQuality={graphicsQuality}
+          focus={gameVisible ? sceneFocus : null}
+          onFocusDone={() => setSceneFocus(null)}
+          collectFx={gameVisible ? collectFx : null}
         />
       </Suspense>
       {gameVisible ? (

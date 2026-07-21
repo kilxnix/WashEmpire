@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react'
 import {
   BadgeDollarSign,
   Eye,
@@ -78,7 +79,7 @@ export function Hud({
     <div className="hud" aria-label="Wash Empire controls">
       <section className="hud-cluster hud-status" aria-label="Lot status">
         <strong>
-          {money(state.cash)}
+          <AnimatedCash value={state.cash} />
           {adBoostActive && <span className="cash-boost-chip">3x</span>}
         </strong>
         <em>{state.locationName}</em>
@@ -280,6 +281,41 @@ export function Hud({
       </section>
     </div>
   )
+}
+
+/**
+ * Rolls the cash number up over ~600ms on meaningful gains so collections
+ * feel like money arriving. Spends and small ticks snap instantly.
+ */
+function AnimatedCash({ value }: { value: number }) {
+  const [display, setDisplay] = useState(value)
+  const displayRef = useRef(value)
+
+  useEffect(() => {
+    displayRef.current = display
+  }, [display])
+
+  useEffect(() => {
+    const from = displayRef.current
+    const delta = value - from
+    if (delta <= 50) {
+      setDisplay(value)
+      return
+    }
+
+    const start = performance.now()
+    let raf = 0
+    const step = (now: number) => {
+      const alpha = Math.min(1, (now - start) / 600)
+      const eased = 1 - Math.pow(1 - alpha, 3)
+      setDisplay(from + delta * eased)
+      if (alpha < 1) raf = requestAnimationFrame(step)
+    }
+    raf = requestAnimationFrame(step)
+    return () => cancelAnimationFrame(raf)
+  }, [value])
+
+  return <>{money(display)}</>
 }
 
 function money(value: number): string {

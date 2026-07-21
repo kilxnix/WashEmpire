@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect, useRef } from 'react'
+import { type ReactNode, useEffect, useMemo, useRef } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { ContactShadows, OrbitControls, Sky } from '@react-three/drei'
 import * as THREE from 'three'
@@ -7,11 +7,25 @@ import { activeBayCount, cashBoxValue, cityDefinitions, currentCityDefinition, i
 import { activeEnvironmentRewards, type EnvironmentRewardVisualId } from '../game/environmentRewards'
 import { PrototypeAssetLayer } from './PrototypeAssetLayer'
 
+export interface SceneFocus {
+  id: number
+  kind: 'bay' | 'lot'
+  bayIndex?: number
+}
+
+export interface CollectFx {
+  id: number
+  amount: number
+}
+
 interface WashSceneProps {
   state: GameState
   onCollect: () => void
   graphicsQuality: GraphicsQuality
   rideAlong?: boolean
+  focus?: SceneFocus | null
+  onFocusDone?: () => void
+  collectFx?: CollectFx | null
 }
 
 type Vec3 = [number, number, number]
@@ -323,7 +337,15 @@ function getCylinderGeometry(radiusTop: number, radiusBottom: number, height: nu
   )
 }
 
-export function WashScene({ state, onCollect, graphicsQuality, rideAlong = false }: WashSceneProps) {
+export function WashScene({
+  state,
+  onCollect,
+  graphicsQuality,
+  rideAlong = false,
+  focus = null,
+  onFocusDone,
+  collectFx = null,
+}: WashSceneProps) {
   const preset = GRAPHICS_PRESETS[graphicsQuality]
 
   return (
@@ -349,6 +371,10 @@ export function WashScene({ state, onCollect, graphicsQuality, rideAlong = false
       {state.cars.map((car) => (
         <CarWithCustomer car={car} key={car.id} state={state} />
       ))}
+      {collectFx && <CollectBurst key={collectFx.id} state={state} />}
+      {!rideAlong && focus && (
+        <PurchaseVignette key={focus.id} focus={focus} state={state} onDone={onFocusDone} />
+      )}
       {preset.contactShadows && <ContactShadows opacity={0.28} scale={22} blur={2.5} far={5} position={[0, 0.02, 0]} />}
       {!rideAlong && (
         <OrbitControls
@@ -376,6 +402,187 @@ function CameraSetup() {
   }, [camera, size.width])
 
   return null
+}
+
+const VIGNETTE_IN_SECONDS = 0.7
+const VIGNETTE_HOLD_SECONDS = 1.2
+const VIGNETTE_OUT_SECONDS = 0.7
+
+/**
+ * Brief camera dolly toward a freshly purchased upgrade, then back.
+ * OrbitControls are disabled for the duration so the moves don't fight.
+ */
+type ControlsLike = { enabled: boolean; target: THREE.Vector3; update: () => void }
+
+function sceneControls(root: { controls: unknown }): ControlsLike | null {
+  const controls = root.controls as ControlsLike | null
+  return controls && typeof controls.update === 'function' ? controls : null
+}
+
+function setControlsEnabled(controls: ControlsLike | null, enabled: boolean): void {
+  if (controls) controls.enabled = enabled
+}
+
+function PurchaseVignette({
+  focus,
+  state,
+  onDone,
+}: {
+  focus: SceneFocus
+  state: GameState
+  onDone?: () => void
+}) {
+  const camera = useThree((three) => three.camera)
+  const getRoot = useThree((three) => three.get)
+  const elapsed = useRef(0)
+  const saved = useRef<{ position: THREE.Vector3; target: THREE.Vector3 } | null>(null)
+  const finished = useRef(false)
+
+  const destination = useMemo(() => {
+    if (focus.kind === 'bay') {
+      // Approach low from the bay mouth so the equipment reads under the roof frame.
+      const bayX = bayXForIndex(focus.bayIndex ?? 0, activeBayCount(state))
+      const target = new THREE.Vector3(bayX, 1.0, -0.2)
+      const position = target.clone().add(new THREE.Vector3(4.2, 3.1, 7.6))
+      return { target, position }
+    }
+    // Lot purchases get a gentler pull toward the property as a whole.
+    const dir = new THREE.Vector3(...CAMERA_POSITION).sub(new THREE.Vector3(...CAMERA_TARGET)).normalize()
+    const target = new THREE.Vector3(2.2, 1.0, 0.6)
+    return { target, position: target.clone().addScaledVector(dir, 11) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focus.id])
+
+  useEffect(() => {
+    const controls = sceneControls(getRoot())
+    saved.current = {
+      position: camera.position.clone(),
+      target: controls ? controls.target.clone() : new THREE.Vector3(...CAMERA_TARGET),
+    }
+    setControlsEnabled(controls, false)
+    return () => {
+      const home = saved.current
+      if (home) {
+        camera.position.copy(home.position)
+        camera.lookAt(home.target)
+        camera.updateProjectionMatrix()
+        if (controls) {
+          controls.target.copy(home.target)
+          controls.update()
+        }
+      }
+      setControlsEnabled(controls, true)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  useFrame((_, delta) => {
+    const home = saved.current
+    if (!home || finished.current) return
+
+    elapsed.current += delta
+    const t = elapsed.current
+    const inEnd = VIGNETTE_IN_SECONDS
+    const holdEnd = inEnd + VIGNETTE_HOLD_SECONDS
+    const outEnd = holdEnd + VIGNETTE_OUT_SECONDS
+
+    let alpha: number
+    if (t < inEnd) {
+      alpha = smoothstep(t / VIGNETTE_IN_SECONDS)
+    } else if (t < holdEnd) {
+      alpha = 1
+    } else if (t < outEnd) {
+      alpha = 1 - smoothstep((t - holdEnd) / VIGNETTE_OUT_SECONDS)
+    } else {
+      finished.current = true
+      onDone?.()
+      return
+    }
+
+    camera.position.lerpVectors(home.position, destination.position, alpha)
+    const look = new THREE.Vector3().lerpVectors(home.target, destination.target, alpha)
+    camera.lookAt(look)
+    camera.updateProjectionMatrix()
+  })
+
+  return null
+}
+
+function smoothstep(value: number): number {
+  const clamped = Math.min(1, Math.max(0, value))
+  return clamped * clamped * (3 - 2 * clamped)
+}
+
+const BURST_COINS_PER_SOURCE = 7
+const BURST_LIFE_SECONDS = 1.05
+
+/** Gold coin burst above every pay point when the player collects. */
+function CollectBurst({ state }: { state: GameState }) {
+  const seeds = useMemo(() => {
+    // Launch well above the rooflines so the fountain reads in open air
+    // from the default camera instead of against the roof framework.
+    const origins: Vec3[] = isConveyorCity(state)
+      ? [
+          [-4.45, 3.6, -4.24],
+          [6.17, 3.6, 2.13],
+        ]
+      : [
+          ...bayXPositions(activeBayCount(state)).map((x): Vec3 => [x - 1.08, 4.0, 0.4]),
+          [6.92, 3.6, 2.11],
+        ]
+
+    return origins.flatMap((origin) =>
+      Array.from({ length: BURST_COINS_PER_SOURCE }, () => ({
+        origin,
+        velocity: [
+          (Math.random() - 0.5) * 2.6,
+          1.8 + Math.random() * 2.2,
+          (Math.random() - 0.5) * 2.6,
+        ] as Vec3,
+        spin: 2 + Math.random() * 7,
+      })),
+    )
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+  const coinRefs = useRef<(THREE.Mesh | null)[]>([])
+  const life = useRef(0)
+
+  useFrame((_, delta) => {
+    life.current = Math.min(BURST_LIFE_SECONDS, life.current + delta)
+    const t = life.current
+    // Hold near full size for most of the flight, then shrink out at the end.
+    const fade = Math.max(0.001, 1 - Math.pow(t / BURST_LIFE_SECONDS, 3))
+
+    seeds.forEach((seed, index) => {
+      const coin = coinRefs.current[index]
+      if (!coin) return
+      coin.position.set(
+        seed.origin[0] + seed.velocity[0] * t,
+        seed.origin[1] + seed.velocity[1] * t - 3.0 * t * t,
+        seed.origin[2] + seed.velocity[2] * t,
+      )
+      coin.rotation.set(seed.spin * t * 0.7, seed.spin * t, Math.PI / 2)
+      coin.scale.setScalar(0.35 * fade)
+    })
+  })
+
+  return (
+    <group>
+      {seeds.map((seed, index) => (
+        <mesh
+          key={index}
+          position={seed.origin}
+          scale={[0.001, 0.001, 0.001]}
+          ref={(el) => {
+            coinRefs.current[index] = el
+          }}
+        >
+          <cylinderGeometry args={[1, 1, 0.32, 10]} />
+          <meshStandardMaterial color="#fbbf24" emissive="#b45309" emissiveIntensity={0.4} roughness={0.28} />
+        </mesh>
+      ))}
+    </group>
+  )
 }
 
 function RideAlongCamera({ state }: { state: GameState }) {

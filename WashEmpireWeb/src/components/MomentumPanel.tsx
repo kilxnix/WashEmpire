@@ -132,6 +132,11 @@ function momentumGoals(state: GameState): MomentumGoal[] {
     progress: state.weekCars / rushTarget,
   })
 
+  // From week 4 the empire ladder is the mid-game direction — keep it visible
+  // in the top three instead of buried behind maintenance goals.
+  const districtGoal = nextDistrictGoal(state)
+  if (districtGoal && state.week >= 4) goals.push(districtGoal)
+
   if (condition < 0.86) {
     goals.push({
       id: 'wash-condition',
@@ -157,21 +162,7 @@ function momentumGoals(state: GameState): MomentumGoal[] {
     })
   }
 
-  const nextCity = cityDefinitions.find((city) => !state.cityMap.districts.find((district) => district.id === city.id)?.owned)
-  if (nextCity) {
-    const affordable = state.cash >= nextCity.purchaseCost
-    goals.push({
-      id: `unlock-${nextCity.id}`,
-      title: `Unlock ${nextCity.name}`,
-      detail: affordable
-        ? `${money(nextCity.purchaseCost)} — ready to buy`
-        : `Saved ${money(state.cash)} of ${money(nextCity.purchaseCost)}`,
-      progress: Math.min(1, state.cash / nextCity.purchaseCost),
-      complete: false,
-      action: 'map',
-      actionLabel: 'Map',
-    })
-  }
+  if (districtGoal && state.week < 4) goals.push(districtGoal)
 
   if (state.ads.boostSeconds <= 0 && state.ads.slotsAvailable > 0) {
     goals.push({
@@ -185,6 +176,44 @@ function momentumGoals(state: GameState): MomentumGoal[] {
   }
 
   return goals.slice(0, 3)
+}
+
+function nextDistrictGoal(state: GameState): MomentumGoal | null {
+  const nextCity = cityDefinitions.find(
+    (city) => !state.cityMap.districts.find((district) => district.id === city.id)?.owned,
+  )
+  if (!nextCity) return null
+
+  // Ladder toward the next district: prove the weekly engine first, then save.
+  // The revenue milestone is a near-term step instead of a distant price wall.
+  const revenueMilestone = Math.max(1000, Math.round(nextCity.purchaseCost / 20 / 100) * 100)
+  const bestWeeklyRevenue = Math.max(state.lastReview?.revenue ?? 0, state.weekRevenue)
+  const engineProven = bestWeeklyRevenue >= revenueMilestone
+  const affordable = state.cash >= nextCity.purchaseCost
+
+  if (!engineProven && state.cash < nextCity.purchaseCost * 0.5) {
+    return {
+      id: `ladder-${nextCity.id}`,
+      title: `Grow toward ${nextCity.name}`,
+      detail: `Lift weekly revenue to ${money(revenueMilestone)} — best ${money(bestWeeklyRevenue)}`,
+      progress: Math.min(1, bestWeeklyRevenue / revenueMilestone),
+      complete: false,
+      action: 'upgrades',
+      actionLabel: 'Upgrades',
+    }
+  }
+
+  return {
+    id: `unlock-${nextCity.id}`,
+    title: `Unlock ${nextCity.name}`,
+    detail: affordable
+      ? `${money(nextCity.purchaseCost)} — ready to buy`
+      : `Saved ${money(state.cash)} of ${money(nextCity.purchaseCost)}`,
+    progress: Math.min(1, state.cash / nextCity.purchaseCost),
+    complete: false,
+    action: 'map',
+    actionLabel: 'Map',
+  }
 }
 
 function nextUpgradeGoal(state: GameState): MomentumGoal | null {
