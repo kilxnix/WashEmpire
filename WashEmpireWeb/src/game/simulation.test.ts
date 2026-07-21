@@ -72,6 +72,8 @@ describe('advanceAds', () => {
       slotsAvailable: 4,
       nextSlotInSeconds: 17_280,
       boostSeconds: 0,
+      flyerSeconds: 0,
+      weekendSeconds: 0,
       totalWatched: 0,
       totalRewardedCash: 0,
       ...overrides,
@@ -661,3 +663,40 @@ function seededRandom(seedStart: number): () => number {
     return (seed - 1) / 2147483646
   }
 }
+
+import { launchCampaign } from './simulation'
+
+describe('marketing campaigns', () => {
+  it('deducts cash and slots and arms the matching channel', () => {
+    let state = startGame(createInitialState(), 'Campaign Lot')
+    state = { ...state, cash: 5000 }
+
+    const flyer = launchCampaign(state, 'flyer')
+    expect(flyer.cash).toBe(4750)
+    expect(flyer.ads.slotsAvailable).toBe(4)
+    expect(flyer.ads.flyerSeconds).toBe(3600)
+
+    const weekend = launchCampaign(flyer, 'weekend')
+    expect(weekend.cash).toBe(1250)
+    expect(weekend.ads.slotsAvailable).toBe(2)
+    expect(weekend.ads.weekendSeconds).toBe(14400)
+
+    const driver = launchCampaign(weekend, 'driver')
+    expect(driver.cash).toBe(350)
+    expect(driver.ads.boostSeconds).toBe(8640)
+  })
+
+  it('rejects launches without cash or slots and honors waived cost', () => {
+    let state = startGame(createInitialState(), 'Broke Lot')
+    state = { ...state, cash: 100 }
+
+    expect(launchCampaign(state, 'driver')).toBe(state)
+
+    const freebie = launchCampaign(state, 'driver', { waiveCost: true })
+    expect(freebie.cash).toBe(100)
+    expect(freebie.ads.boostSeconds).toBe(8640)
+
+    state = { ...state, cash: 50_000, ads: { ...state.ads, slotsAvailable: 1 } }
+    expect(launchCampaign(state, 'weekend')).toBe(state)
+  })
+})

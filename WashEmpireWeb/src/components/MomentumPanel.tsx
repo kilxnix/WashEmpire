@@ -36,7 +36,7 @@ interface MomentumPanelProps {
   onCollect: () => void
   onOpenUpgrades: () => void
   onOpenCityMap: () => void
-  onWatchAd: () => void
+  onOpenMarketing: () => void
 }
 
 export function MomentumPanel({
@@ -45,7 +45,7 @@ export function MomentumPanel({
   onCollect,
   onOpenUpgrades,
   onOpenCityMap,
-  onWatchAd,
+  onOpenMarketing,
 }: MomentumPanelProps) {
   const goals = momentumGoals(state)
 
@@ -77,7 +77,7 @@ export function MomentumPanel({
                 <button
                   type="button"
                   disabled={action === 'ad' && (adLoading || state.ads.slotsAvailable <= 0)}
-                  onClick={() => runAction(action, { onCollect, onOpenUpgrades, onOpenCityMap, onWatchAd })}
+                  onClick={() => runAction(action, { onCollect, onOpenUpgrades, onOpenCityMap, onOpenMarketing })}
                 >
                   {iconForGoal(action)}
                   <span>{goal.actionLabel ?? actionLabel(action)}</span>
@@ -166,14 +166,14 @@ function momentumGoals(state: GameState): MomentumGoal[] {
 
   if (districtGoal && state.week < 4) goals.push(districtGoal)
 
-  if (state.ads.boostSeconds <= 0 && state.ads.slotsAvailable > 0) {
+  if (state.ads.boostSeconds <= 0 && state.ads.flyerSeconds <= 0 && state.ads.weekendSeconds <= 0 && state.ads.slotsAvailable > 0) {
     goals.push({
       id: 'ad-boost',
-      title: 'Run a driver campaign',
-      detail: `${state.ads.slotsAvailable} campaigns ready — 3x cash while active`,
+      title: 'Run a marketing campaign',
+      detail: `${state.ads.slotsAvailable} campaign slots ready — drive traffic to the wash`,
       progress: 1,
       action: 'ad',
-      actionLabel: 'Boost',
+      actionLabel: 'Marketing',
     })
   }
 
@@ -282,13 +282,13 @@ function runAction(
     onCollect: () => void
     onOpenUpgrades: () => void
     onOpenCityMap: () => void
-    onWatchAd: () => void
+    onOpenMarketing: () => void
   },
 ) {
   if (action === 'collect') handlers.onCollect()
   if (action === 'upgrades') handlers.onOpenUpgrades()
   if (action === 'map') handlers.onOpenCityMap()
-  if (action === 'ad') handlers.onWatchAd()
+  if (action === 'ad') handlers.onOpenMarketing()
 }
 
 function money(value: number): string {

@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import {
-  BadgeDollarSign,
   Eye,
   FastForward,
   Gauge,
   Map,
+  Megaphone,
   Pause,
   Play,
   Volume2,
@@ -13,7 +13,6 @@ import {
   Wrench,
   Zap,
 } from 'lucide-react'
-import { PAID_BUILD } from '../services/ads'
 import type { GameState, GraphicsQuality, SpeedSetting } from '../game/types'
 import {
   activeBayCount,
@@ -42,8 +41,7 @@ interface HudProps {
   onCycleGraphics: () => void
   onToggleRideAlong: () => void
   onToggleSound: () => void
-  onWatchAd: () => void
-  adLoading: boolean
+  onOpenMarketing: () => void
 }
 
 export function Hud({
@@ -58,8 +56,7 @@ export function Hud({
   onCycleGraphics,
   onToggleRideAlong,
   onToggleSound,
-  onWatchAd,
-  adLoading,
+  onOpenMarketing,
 }: HudProps) {
   const visibleBays = activeBays(state)
   const visibleBayCount = activeBayCount(state)
@@ -73,7 +70,6 @@ export function Hud({
   const adSlots = state.ads.slotsAvailable
   const adBoostSeconds = state.ads.boostSeconds
   const adNextSlotSeconds = state.ads.nextSlotInSeconds
-  const adButtonDisabled = adLoading || adSlots <= 0
   const adBoostActive = adBoostSeconds > 0
   const staffCount = Object.values(state.employees).filter(Boolean).length
   const city = currentCityDefinition(state)
@@ -164,46 +160,22 @@ export function Hud({
             <span>Ride View</span>
           </button>
         )}
-        <div
-          className="hud-ad"
-          title={
-            PAID_BUILD
-              ? 'Launch a driver campaign for a temporary 3x cash boost'
-              : 'Watch a rewarded ad for a temporary 3x boost'
-          }
-        >
+        <div className="hud-ad" title="Open the marketing board — campaigns drive traffic to the wash">
           <button
             type="button"
             className="hud-ad-button"
-            disabled={adButtonDisabled}
-            onClick={onWatchAd}
-            aria-label={
-              adLoading
-                ? 'Loading ad'
-                : adSlots <= 0
-                  ? PAID_BUILD
-                    ? 'No campaigns ready'
-                    : 'No ad slots available'
-                  : PAID_BUILD
-                    ? `Launch campaign, ${adSlots} of 5 ready`
-                    : `Watch Ad, ${adSlots} of 5 slots`
-            }
-            title={
-              adLoading ? 'Loading ad…' : PAID_BUILD ? `Boost (${adSlots}/5)` : `Watch Ad (${adSlots}/5)`
-            }
+            onClick={onOpenMarketing}
+            aria-label={`Marketing, ${adSlots} of 5 campaign slots ready`}
+            title={`Marketing (${adSlots}/5)`}
           >
-            <BadgeDollarSign size={18} aria-hidden="true" />
-            <span className="hud-ad-label">
-              {adLoading ? 'Loading…' : PAID_BUILD ? `Boost (${adSlots}/5)` : `Watch Ad (${adSlots}/5)`}
-            </span>
+            <Megaphone size={18} aria-hidden="true" />
+            <span className="hud-ad-label">{`Marketing (${adSlots}/5)`}</span>
           </button>
           {adBoostActive && (
-            <span className="hud-ad-line hud-ad-boost">Boost: {formatHm(adBoostSeconds)}</span>
+            <span className="hud-ad-line hud-ad-boost">3x cash: {formatHm(adBoostSeconds)}</span>
           )}
           {adSlots < 5 && (
-            <span className="hud-ad-line hud-ad-refill">
-              Next {PAID_BUILD ? 'campaign' : 'slot'} in {formatHm(adNextSlotSeconds)}
-            </span>
+            <span className="hud-ad-line hud-ad-refill">Next slot in {formatHm(adNextSlotSeconds)}</span>
           )}
         </div>
       </section>
@@ -357,8 +329,12 @@ function collectButtonLabel(weekReady: boolean, due: number): string {
 function formatHm(seconds: number): string {
   if (seconds <= 0) return '0m'
   const total = Math.ceil(seconds)
-  const hours = Math.floor(total / 3600)
-  const mins = Math.ceil((total % 3600) / 60)
+  let hours = Math.floor(total / 3600)
+  let mins = Math.ceil((total % 3600) / 60)
+  if (mins === 60) {
+    hours += 1
+    mins = 0
+  }
   if (hours === 0) return `${mins}m`
   if (mins === 0) return `${hours}h`
   return `${hours}h ${mins}m`

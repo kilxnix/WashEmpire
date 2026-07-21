@@ -6,7 +6,8 @@ const config: CapacitorConfig = {
   webDir: 'dist',
   android: {
     buildOptions: {
-      releaseType: 'APK',
+      // Google Play requires AAB for new apps.
+      releaseType: 'AAB',
     },
   },
 }

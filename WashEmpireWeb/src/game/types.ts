@@ -84,12 +84,29 @@ export interface UpgradeState {
   laserWash: boolean
 }
 
+export type CampaignId = 'flyer' | 'driver' | 'weekend'
+
 export interface AdState {
   slotsAvailable: number
   nextSlotInSeconds: number
+  /** Driver campaign: 3x cash while active. */
   boostSeconds: number
+  /** Flyer run: demand bump while active. */
+  flyerSeconds: number
+  /** Wash weekend: demand + queue patience while active. */
+  weekendSeconds: number
   totalWatched: number
   totalRewardedCash: number
+}
+
+export interface CampaignDefinition {
+  id: CampaignId
+  name: string
+  cost: number
+  slotCost: number
+  durationSeconds: number
+  effect: string
+  flavor: string
 }
 
 export interface OfflineSummary {

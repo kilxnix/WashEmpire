@@ -4,6 +4,8 @@ import type {
   BayUpgradeDefinition,
   BayUpgradeId,
   BayUpgradeLevels,
+  CampaignDefinition,
+  CampaignId,
   Car,
   CashBox,
   CityDefinition,
@@ -174,6 +176,67 @@ export const bayUpgradeDefinitions: BayUpgradeDefinition[] = [
     visual: 'Larger pay box and token cassette',
   },
 ]
+
+export const campaignDefinitions: CampaignDefinition[] = [
+  {
+    id: 'flyer',
+    name: 'Flyer Run',
+    cost: 250,
+    slotCost: 1,
+    durationSeconds: 3_600,
+    effect: '+18% demand for 1h',
+    flavor: 'Windshield flyers across the neighborhood',
+  },
+  {
+    id: 'driver',
+    name: 'Driver Campaign',
+    cost: 900,
+    slotCost: 1,
+    durationSeconds: AD_BOOST_PER_WATCH_SECONDS,
+    effect: '3x cash for 2h 24m',
+    flavor: 'A local TV spot pulls drivers off the road',
+  },
+  {
+    id: 'weekend',
+    name: 'Wash Weekend',
+    cost: 3_500,
+    slotCost: 2,
+    durationSeconds: 14_400,
+    effect: '+30% demand, patient queues for 4h',
+    flavor: 'Banner event — the whole block shows up',
+  },
+]
+
+/** Launches a campaign: validates cash and slots, arms the matching timed channel. */
+export function launchCampaign(
+  input: GameState,
+  campaignId: CampaignId,
+  options?: { waiveCost?: boolean },
+): GameState {
+  const def = campaignDefinitions.find((campaign) => campaign.id === campaignId)
+  if (!def) return input
+
+  const cost = options?.waiveCost ? 0 : def.cost
+  if (input.ads.slotsAvailable < def.slotCost || input.cash < cost) return input
+
+  const state = cloneState(input)
+  state.cash = roundMoney(state.cash - cost)
+  state.ads = {
+    ...state.ads,
+    slotsAvailable: state.ads.slotsAvailable - def.slotCost,
+    totalWatched: state.ads.totalWatched + 1,
+  }
+
+  if (campaignId === 'flyer') {
+    state.ads.flyerSeconds = Math.min(4 * 3_600, state.ads.flyerSeconds + def.durationSeconds)
+  } else if (campaignId === 'driver') {
+    state.ads.boostSeconds = clampBoost(state.ads.boostSeconds + def.durationSeconds)
+  } else {
+    state.ads.weekendSeconds = Math.min(8 * 3_600, state.ads.weekendSeconds + def.durationSeconds)
+  }
+
+  return state
+}
 
 export const employeeDefinitions: EmployeeDefinition[] = [
   {
@@ -670,7 +733,9 @@ export function demandMultiplier(
   const bayDemand = bays.length > 0 ? bays.reduce((sum, bay) => sum + bayDemandBonus(bay), 0) / bays.length : 0
   const conditionDemand = 0.72 + Math.max(0, condition) * 0.28
   const adDemand = ads && ads.boostSeconds > 0 ? 0.35 : 0
-  return roundStat((1 + upgradeDemand + bayDemand + staffDemand + adDemand) * conditionDemand)
+  const flyerDemand = ads && (ads.flyerSeconds ?? 0) > 0 ? 0.18 : 0
+  const weekendDemand = ads && (ads.weekendSeconds ?? 0) > 0 ? 0.3 : 0
+  return roundStat((1 + upgradeDemand + bayDemand + staffDemand + adDemand + flyerDemand + weekendDemand) * conditionDemand)
 }
 
 export function cashMultiplier(state: GameState): number {
@@ -1228,7 +1293,8 @@ function spawnInterval(state: GameState): number {
 function queuePatienceSeconds(state: GameState): number {
   const district = currentCityDistrict(state)
   const def = currentCityDefinition(state)
-  return BASE_QUEUE_SECONDS + district.restoration * 1.15 + def.patienceBonus * 16
+  const weekendPatience = (state.ads.weekendSeconds ?? 0) > 0 ? 4 : 0
+  return BASE_QUEUE_SECONDS + district.restoration * 1.15 + def.patienceBonus * 16 + weekendPatience
 }
 
 function marketPriceBonus(state: GameState): number {
@@ -1289,6 +1355,8 @@ function hasAutoCollector(employees: EmployeeState): boolean {
 export function advanceAds(ads: AdState, realDeltaSeconds: number): AdState {
   let { slotsAvailable, nextSlotInSeconds, boostSeconds } = ads
   boostSeconds = Math.max(0, boostSeconds - realDeltaSeconds)
+  const flyerSeconds = Math.max(0, (ads.flyerSeconds ?? 0) - realDeltaSeconds)
+  const weekendSeconds = Math.max(0, (ads.weekendSeconds ?? 0) - realDeltaSeconds)
 
   if (slotsAvailable < AD_SLOTS_MAX) {
     nextSlotInSeconds -= realDeltaSeconds
@@ -1306,6 +1374,8 @@ export function advanceAds(ads: AdState, realDeltaSeconds: number): AdState {
     slotsAvailable,
     nextSlotInSeconds,
     boostSeconds,
+    flyerSeconds,
+    weekendSeconds,
   }
 }
 
@@ -1366,6 +1436,8 @@ function createAdState(seed?: Partial<AdState>): AdState {
     slotsAvailable: clampSlots(seed?.slotsAvailable ?? AD_SLOTS_MAX),
     nextSlotInSeconds: clampNextSlot(seed?.nextSlotInSeconds ?? AD_SLOT_REFILL_SECONDS),
     boostSeconds: clampBoost(seed?.boostSeconds ?? 0),
+    flyerSeconds: Math.min(4 * 3_600, Math.max(0, seed?.flyerSeconds ?? 0)),
+    weekendSeconds: Math.min(8 * 3_600, Math.max(0, seed?.weekendSeconds ?? 0)),
     totalWatched: seed?.totalWatched ?? 0,
     totalRewardedCash: seed?.totalRewardedCash ?? 0,
   }

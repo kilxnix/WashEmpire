@@ -2,6 +2,7 @@ import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import './App.css'
 import { CityDrawer } from './components/CityDrawer'
 import { Hud } from './components/Hud'
+import { CampaignVignette, MarketingPanel } from './components/MarketingPanel'
 import { MomentumPanel } from './components/MomentumPanel'
 import { OfflineReturnPanel } from './components/OfflineReturnPanel'
 import { StartMenu } from './components/StartMenu'
@@ -23,6 +24,8 @@ import {
   hireEmployee,
   hydrateGameState,
   isConveyorCity,
+  campaignDefinitions,
+  launchCampaign,
   reconcileOffline,
   restoreCityDistrict,
   setSpeed,
@@ -30,7 +33,6 @@ import {
   switchCityDistrict,
   totalCashBox,
   upgradeDefinitions,
-  watchAdForBoost,
 } from './game/simulation'
 import { PAID_BUILD, showRewardedAd } from './services/ads'
 import {
@@ -44,7 +46,7 @@ import {
   playWin,
   setSoundEnabled,
 } from './services/sound'
-import type { BayUpgradeId, CityId, EmployeeId, GameState, GraphicsQuality, SpeedSetting, UpgradeId, WeekReview } from './game/types'
+import type { BayUpgradeId, CampaignId, CityId, EmployeeId, GameState, GraphicsQuality, SpeedSetting, UpgradeId, WeekReview } from './game/types'
 
 const SAVE_KEY = 'wash-empire-browser-save-v1'
 const GRAPHICS_SAVE_KEY = 'wash-empire-graphics-quality-v1'
@@ -69,6 +71,8 @@ function App() {
   const [sceneFocus, setSceneFocus] = useState<SceneFocus | null>(null)
   const [collectFx, setCollectFx] = useState<CollectFx | null>(null)
   const [soundOn, setSoundOn] = useState(isSoundEnabled)
+  const [marketingOpen, setMarketingOpen] = useState(false)
+  const [vignetteSpot, setVignetteSpot] = useState<number | null>(null)
   const [coachProgress, setCoachProgress] = useState({
     collected: false,
     upgraded: false,
@@ -305,28 +309,44 @@ function App() {
     setTitleOpen(false)
   }
 
-  async function handleWatchAd() {
-    if (adLoading || gameRef.current.ads.slotsAvailable <= 0) return
+  function openMarketing() {
+    setUpgradesOpen(false)
+    setCityOpen(false)
+    setMarketingOpen(true)
+  }
 
-    // Paid builds never show ads: campaigns arm instantly on the same slot economy.
-    if (PAID_BUILD) {
-      setGame((state) => watchAdForBoost(state))
-      setCollectionToast({ id: Date.now(), title: 'Campaign launched — 3x boost armed', amount: 0 })
-      playBoost()
-      return
+  async function handleLaunchCampaign(campaignId: CampaignId) {
+    const def = campaignDefinitions.find((campaign) => campaign.id === campaignId)
+    if (!def || adLoading) return
+
+    // Free builds gate the flagship campaign behind a rewarded ad instead of cash.
+    const freeViaAd = !PAID_BUILD && campaignId === 'driver'
+    const current = gameRef.current
+    const cost = freeViaAd ? 0 : def.cost
+    if (current.ads.slotsAvailable < def.slotCost || current.cash < cost) return
+
+    if (freeViaAd) {
+      setAdLoading(true)
+      try {
+        if (!(await showRewardedAd())) {
+          setCollectionToast({ id: Date.now(), title: 'No ad reward — try again later', amount: 0 })
+          return
+        }
+      } finally {
+        setAdLoading(false)
+      }
+      setGame((state) => launchCampaign(state, campaignId, { waiveCost: true }))
+    } else {
+      setGame((state) => launchCampaign(state, campaignId))
     }
 
-    setAdLoading(true)
-    try {
-      if (await showRewardedAd()) {
-        setGame((state) => watchAdForBoost(state))
-        setCollectionToast({ id: Date.now(), title: 'Ad boost armed', amount: 0 })
-        playBoost()
-      } else {
-        setCollectionToast({ id: Date.now(), title: 'No ad reward — try again later', amount: 0 })
-      }
-    } finally {
-      setAdLoading(false)
+    setCollectionToast({ id: Date.now(), title: `${def.name} launched`, amount: 0 })
+    if (campaignId === 'flyer') {
+      playPurchase()
+    } else {
+      playBoost()
+      // The ad break airs as an in-world skit — instantly skippable.
+      setVignetteSpot(Math.floor(Math.random() * 5))
     }
   }
 
@@ -416,8 +436,7 @@ function App() {
             onCycleGraphics={handleCycleGraphics}
             onToggleRideAlong={handleToggleRideAlong}
             onToggleSound={handleToggleSound}
-            onWatchAd={handleWatchAd}
-            adLoading={adLoading}
+            onOpenMarketing={openMarketing}
           />
           {!activeRideAlong && !weekReviewOpen && (
             <MomentumPanel
@@ -426,7 +445,7 @@ function App() {
               onCollect={handleCollect}
               onOpenUpgrades={openUpgrades}
               onOpenCityMap={openCityMap}
-              onWatchAd={handleWatchAd}
+              onOpenMarketing={openMarketing}
             />
           )}
           {showCoach && (
@@ -481,6 +500,16 @@ function App() {
         onSwitch={handleSwitchCity}
         onClose={() => setCityOpen(false)}
       />
+      <MarketingPanel
+        open={marketingOpen && gameVisible && !weekReviewOpen}
+        state={game}
+        adLoading={adLoading}
+        onLaunch={handleLaunchCampaign}
+        onClose={() => setMarketingOpen(false)}
+      />
+      {vignetteSpot !== null && gameVisible && (
+        <CampaignVignette spotIndex={vignetteSpot} onDone={() => setVignetteSpot(null)} />
+      )}
       {weekReviewOpen && (
         <WeekReviewPanel state={game} onCollect={handleWeekReviewCollect} />
       )}
