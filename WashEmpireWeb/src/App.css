@@ -1278,6 +1278,49 @@ button:disabled {
   color: var(--muted);
 }
 
+/* Short embeds (itch.io 1280x720 and similar): condense the left stack so
+   header, momentum, and pay box never overlap. */
+@media (min-width: 701px) and (max-height: 800px) {
+  .momentum-panel {
+    top: 168px;
+    width: min(262px, calc(100vw - 36px));
+    padding: 8px 10px;
+    gap: 6px;
+  }
+
+  .momentum-panel header strong {
+    font-size: 14px;
+  }
+
+  .momentum-goals {
+    gap: 6px;
+  }
+
+  .momentum-goals article {
+    padding: 7px 8px;
+  }
+
+  .momentum-goals p {
+    font-size: 11.5px;
+    margin: 2px 0 0;
+  }
+
+  .momentum-goals button {
+    min-height: 28px;
+    font-size: 11.5px;
+  }
+
+  /* Two goals fit cleanly above the pay box; the third returns on taller screens. */
+  .momentum-goals article:nth-child(n + 3) {
+    display: none;
+  }
+
+  /* While the coach is teaching, give it the left rail alone. */
+  .coach-active .momentum-panel {
+    display: none;
+  }
+}
+
 .marketing-panel {
   position: absolute;
   top: 50%;
