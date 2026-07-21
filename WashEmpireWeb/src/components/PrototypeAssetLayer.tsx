@@ -11,7 +11,14 @@ interface PrototypeSceneAsset {
   scale: Vec3
 }
 
-const MANIFEST_URL = '/prototype-assets/manifest.json'
+// Paths must resolve under a subdirectory host (itch.io serves games from
+// /html/<id>/), so everything is re-rooted through Vite's base URL.
+const ASSET_BASE = import.meta.env.BASE_URL
+const MANIFEST_URL = `${ASSET_BASE}prototype-assets/manifest.json`
+
+function resolveAssetUrl(url: string): string {
+  return url.startsWith('/') ? `${ASSET_BASE}${url.slice(1)}` : url
+}
 
 export function PrototypeAssetLayer() {
   const [assets, setAssets] = useState<PrototypeSceneAsset[]>([])
@@ -94,7 +101,7 @@ function normalizeAsset(value: unknown): PrototypeSceneAsset | null {
 
   return {
     id: record.id,
-    url: record.url,
+    url: resolveAssetUrl(record.url),
     position: toVec3(record.position, [0, 0, 0]),
     rotation: toVec3(record.rotation, [0, 0, 0]),
     scale: toVec3(record.scale, [1, 1, 1]),

@@ -1319,6 +1319,13 @@ button:disabled {
   .coach-active .momentum-panel {
     display: none;
   }
+
+  /* Lift the coach clear of the pay box card on short embeds. */
+  .hud-paybox ~ .first-coach,
+  .app-shell .first-coach,
+  .first-coach-done {
+    bottom: 238px;
+  }
 }
 
 .marketing-panel {
