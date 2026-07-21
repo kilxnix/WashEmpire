@@ -1,5 +1,6 @@
 import { Check, ChevronDown, Lock, Wrench, X } from 'lucide-react'
 import { useState } from 'react'
+import { useScrollGuard } from './useScrollGuard'
 import type { BayUpgradeId, EmployeeId, GameState, UpgradeId } from '../game/types'
 import {
   activeBayCount,
@@ -28,9 +29,10 @@ export function UpgradeDrawer({ open, state, onBuy, onBuyBay, onHireEmployee, on
   const [selectedBay, setSelectedBay] = useState(0)
   const [collapsed, setCollapsed] = useState<Record<SectionId, boolean>>({
     bay: false,
-    lot: false,
+    lot: true,
     employees: true,
   })
+  const { onScroll, guard } = useScrollGuard()
   const activeCount = activeBayCount(state)
   const selectedIndex = Math.min(selectedBay, activeCount - 1)
   const bayTabs = state.bays.slice(0, activeCount)
@@ -77,7 +79,7 @@ export function UpgradeDrawer({ open, state, onBuy, onBuyBay, onHireEmployee, on
         ))}
       </div>
 
-      <div className="upgrade-list">
+      <div className="upgrade-list" onScroll={onScroll}>
         <SectionHeader
           title={`${stallNoun(state)} ${bay.id} Equipment`}
           open={!collapsed.bay}
@@ -104,7 +106,11 @@ export function UpgradeDrawer({ open, state, onBuy, onBuyBay, onHireEmployee, on
                   <p>{upgrade.effect}</p>
                   <span>{display.visual}</span>
                 </div>
-                <button type="button" disabled={maxed || !affordable} onClick={() => onBuyBay(selectedIndex, upgrade.id)}>
+                <button
+                  type="button"
+                  disabled={maxed || !affordable}
+                  onClick={guard(() => onBuyBay(selectedIndex, upgrade.id))}
+                >
                   {maxed ? 'Max' : money(cost)}
                 </button>
               </article>
@@ -128,7 +134,7 @@ export function UpgradeDrawer({ open, state, onBuy, onBuyBay, onHireEmployee, on
                   <p>{upgrade.effect}</p>
                   <span>{upgrade.visual}</span>
                 </div>
-                <button type="button" disabled={owned || !affordable} onClick={() => onBuy(upgrade.id)}>
+                <button type="button" disabled={owned || !affordable} onClick={guard(() => onBuy(upgrade.id))}>
                   {owned ? 'Owned' : money(upgrade.cost)}
                 </button>
               </article>
@@ -152,7 +158,11 @@ export function UpgradeDrawer({ open, state, onBuy, onBuyBay, onHireEmployee, on
                   <p>{employee.effect}</p>
                   <span>{employee.visual}</span>
                 </div>
-                <button type="button" disabled={hired || !affordable} onClick={() => onHireEmployee(employee.id)}>
+                <button
+                  type="button"
+                  disabled={hired || !affordable}
+                  onClick={guard(() => onHireEmployee(employee.id))}
+                >
                   {hired ? 'Hired' : money(employee.hireCost)}
                 </button>
               </article>

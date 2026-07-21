@@ -404,16 +404,21 @@ button:disabled {
 }
 
 .upgrade-section-toggle {
+  /* Sticky so you always know which section you are scrolling through. */
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  backdrop-filter: blur(6px);
   display: flex;
   justify-content: space-between;
   align-items: center;
   width: 100%;
   margin: 10px 0 6px;
-  padding: 8px 10px;
+  padding: 10px;
   border: 1px solid rgba(15, 23, 42, 0.12);
   border-radius: 8px;
   color: var(--ink);
-  background: rgba(255, 255, 255, 0.55);
+  background: rgb(243, 240, 231);
   font-size: 13px;
   font-weight: 900;
   text-transform: uppercase;
@@ -464,6 +469,10 @@ button:disabled {
   max-height: calc(100svh - 160px);
   overflow: auto;
   padding-right: 4px;
+  /* Keep flicks inside the drawer and let vertical drags win over taps. */
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  scrollbar-gutter: stable;
 }
 
 .upgrade-section-title {
@@ -519,6 +528,9 @@ button:disabled {
   max-height: calc(100svh - 128px);
   overflow: auto;
   padding-right: 4px;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  scrollbar-gutter: stable;
 }
 
 .city-list article {
@@ -907,6 +919,30 @@ button:disabled {
 .collection-toast strong {
   font-size: 24px;
   line-height: 1.1;
+}
+
+/* A closeout that nets nothing (or less) should not look like a payday. */
+.collection-toast.flat {
+  background: rgb(254, 249, 231);
+}
+
+.collection-toast-detail {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.week-review dl .week-review-net {
+  margin-top: 4px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(22, 31, 38, 0.18);
+  font-size: 15px;
+}
+
+.week-review-net dt,
+.week-review-net dd {
+  font-weight: 900;
 }
 
 .week-summary-toast {

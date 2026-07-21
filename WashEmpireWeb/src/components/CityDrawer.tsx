@@ -1,5 +1,6 @@
 import { Check, Hammer, Lock, MapPinned, Navigation, X } from 'lucide-react'
 import type { CityId, GameState } from '../game/types'
+import { useScrollGuard } from './useScrollGuard'
 import {
   cityDefinitions,
   cityRestorationCost,
@@ -21,6 +22,7 @@ interface CityDrawerProps {
 export function CityDrawer({ open, state, onBuy, onRestore, onSwitch, onClose }: CityDrawerProps) {
   const currentCity = currentCityDefinition(state)
   const currentDistrict = currentCityDistrict(state)
+  const { onScroll, guard } = useScrollGuard()
 
   return (
     <aside className={`city-drawer ${open ? 'open' : ''}`} aria-hidden={!open} inert={!open}>
@@ -42,7 +44,7 @@ export function CityDrawer({ open, state, onBuy, onRestore, onSwitch, onClose }:
         </div>
       </section>
 
-      <div className="city-list">
+      <div className="city-list" onScroll={onScroll}>
         {cityDefinitions.map((city) => {
           const district = state.cityMap.districts.find((item) => item.id === city.id)
           const owned = Boolean(district?.owned)
@@ -91,7 +93,7 @@ export function CityDrawer({ open, state, onBuy, onRestore, onSwitch, onClose }:
               <div className="city-actions">
                 {owned ? (
                   <>
-                    <button type="button" disabled={active} onClick={() => onSwitch(city.id)}>
+                    <button type="button" disabled={active} onClick={guard(() => onSwitch(city.id))}>
                       {active ? 'Here' : 'Move'}
                     </button>
                     <button
@@ -104,7 +106,7 @@ export function CityDrawer({ open, state, onBuy, onRestore, onSwitch, onClose }:
                             ? 'Fully restored'
                             : 'Not enough cash to restore'
                       }
-                      onClick={() => onRestore(city.id)}
+                      onClick={guard(() => onRestore(city.id))}
                     >
                       <Hammer size={15} />
                       <span>
@@ -115,7 +117,7 @@ export function CityDrawer({ open, state, onBuy, onRestore, onSwitch, onClose }:
                     </button>
                   </>
                 ) : (
-                  <button type="button" disabled={!canBuy} title="Buy this district wash" onClick={() => onBuy(city.id)}>
+                  <button type="button" disabled={!canBuy} title="Buy this district wash" onClick={guard(() => onBuy(city.id))}>
                     Buy {money(city.purchaseCost)}
                   </button>
                 )}

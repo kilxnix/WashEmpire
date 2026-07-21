@@ -173,25 +173,42 @@ function App() {
       panel?.classList.add('week-review-pulse')
       panel?.focus?.()
       window.setTimeout(() => panel?.classList.remove('week-review-pulse'), 900)
-      setCollectionToast({ id: Date.now(), title: 'Close the week review first', amount: 0 })
+      setCollectionToast({ id: Date.now(), title: 'Close the week review first', amount: null })
       return
     }
 
-    const due = cashBoxValue(totalCashBox(gameRef.current.bays))
-    const openingWeek = gameRef.current.collectRequired
+    const current = gameRef.current
+    const due = cashBoxValue(totalCashBox(current.bays))
+    const openingWeek = current.collectRequired
+    // At closeout the week's overhead comes straight out of the collection, so
+    // report what actually lands in cash — not the gross pull.
+    const costsDue = openingWeek ? current.lastReview?.costsDue ?? current.lastReview?.costs ?? 0 : 0
+    const net = roundCash(due - costsDue)
+
     setGame((state) => collectPayBox(state))
     setUpgradesOpen(false)
     setCityOpen(false)
+
     if (due > 0) {
       setCoachProgress((progress) => ({ ...progress, collected: true }))
-      setCollectionToast({ id: Date.now(), title: 'Collected', amount: due })
       setCollectFx({ id: Date.now(), amount: due })
       playCollect()
-      if (openingWeek) playWeekOpen()
-    } else if (openingWeek) {
+    }
+
+    if (openingWeek) {
       setCoachProgress((progress) => ({ ...progress, collected: true }))
-      setCollectionToast({ id: Date.now(), title: 'Week opened', amount: 0 })
+      setCollectionToast({
+        id: Date.now(),
+        title: costsDue > 0 ? `Week ${current.week} closed` : 'Week opened',
+        amount: costsDue > 0 ? net : null,
+        detail:
+          costsDue > 0
+            ? `${money(due)} collected − ${money(costsDue)} overhead`
+            : undefined,
+      })
       playWeekOpen()
+    } else if (due > 0) {
+      setCollectionToast({ id: Date.now(), title: 'Collected', amount: due })
     }
   }
 
@@ -253,7 +270,7 @@ function App() {
     const district = current.cityMap.districts.find((item) => item.id === cityId)
     if (def && district && !district.owned && current.cash >= def.purchaseCost) {
       // District purchases are the biggest moments in the run — celebrate them.
-      setCollectionToast({ id: Date.now(), title: `District unlocked — ${def.name}`, amount: 0 })
+      setCollectionToast({ id: Date.now(), title: `District unlocked — ${def.name}`, amount: null })
       setSceneFocus({ id: Date.now() + 1, kind: 'lot' })
       playDistrict()
     }
@@ -329,7 +346,7 @@ function App() {
       setAdLoading(true)
       try {
         if (!(await showRewardedAd())) {
-          setCollectionToast({ id: Date.now(), title: 'No ad reward — try again later', amount: 0 })
+          setCollectionToast({ id: Date.now(), title: 'No ad reward — try again later', amount: null })
           return
         }
       } finally {
@@ -340,7 +357,7 @@ function App() {
       setGame((state) => launchCampaign(state, campaignId))
     }
 
-    setCollectionToast({ id: Date.now(), title: `${def.name} launched`, amount: 0 })
+    setCollectionToast({ id: Date.now(), title: `${def.name} launched`, amount: null })
     if (campaignId === 'flyer') {
       playPurchase()
     } else {
@@ -474,8 +491,10 @@ function App() {
       {collectionToast && (
         <CollectionToast
           key={collectionToast.id}
+          id={collectionToast.id}
           amount={collectionToast.amount}
           title={collectionToast.title}
+          detail={collectionToast.detail}
         />
       )}
       {gameVisible && activeRideAlong && (
@@ -569,14 +588,29 @@ function rideStageLabel(stage: GameState['cars'][number]['stage']): string {
 interface CollectionToastState {
   id: number
   title: string
-  amount: number
+  /** null shows the title alone; a number shows a signed cash delta. */
+  amount: number | null
+  detail?: string
 }
 
-function CollectionToast({ title, amount }: { title: string; amount: number }) {
+function CollectionToast({ title, amount, detail }: CollectionToastState) {
+  if (amount === null) {
+    return (
+      <section className="collection-toast" aria-live="polite">
+        <span className="mini-label">Notice</span>
+        <strong>{title}</strong>
+      </section>
+    )
+  }
+
   return (
-    <section className="collection-toast" aria-live="polite">
-      <span className="mini-label">{amount > 0 ? title : 'Notice'}</span>
-      <strong>{amount > 0 ? `+${money(amount)}` : title}</strong>
+    <section className={`collection-toast${amount <= 0 ? ' flat' : ''}`} aria-live="polite">
+      <span className="mini-label">{title}</span>
+      <strong>
+        {amount > 0 ? '+' : ''}
+        {money(amount)}
+      </strong>
+      {detail && <span className="collection-toast-detail">{detail}</span>}
     </section>
   )
 }
@@ -714,6 +748,13 @@ function WeekReviewPanel({ state, onCollect }: { state: GameState; onCollect: ()
         <div>
           <dt>Pay box due</dt>
           <dd>{money(review.physicalDue)}</dd>
+        </div>
+        <div className="week-review-net">
+          <dt>Lands in your cash</dt>
+          <dd>
+            {review.physicalDue - costsDue > 0 ? '+' : ''}
+            {money(review.physicalDue - costsDue)}
+          </dd>
         </div>
       </dl>
       <button type="button" onClick={onCollect}>
@@ -887,7 +928,12 @@ function isGraphicsQuality(value: unknown): value is GraphicsQuality {
 }
 
 function money(value: number): string {
-  return `$${Math.round(value).toLocaleString()}`
+  const rounded = Math.round(value)
+  return `${rounded < 0 ? '-' : ''}$${Math.abs(rounded).toLocaleString()}`
+}
+
+function roundCash(value: number): number {
+  return Math.round(value * 100) / 100
 }
 
 export default App
