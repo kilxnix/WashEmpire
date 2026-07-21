@@ -27,7 +27,7 @@ import {
   watchAdForBoost,
 } from './game/simulation'
 import { showRewardedAd } from './services/ads'
-import type { BayUpgradeId, CityId, EmployeeId, GameState, GraphicsQuality, SpeedSetting, UpgradeId } from './game/types'
+import type { BayUpgradeId, CityId, EmployeeId, GameState, GraphicsQuality, SpeedSetting, UpgradeId, WeekReview } from './game/types'
 
 const SAVE_KEY = 'wash-empire-browser-save-v1'
 const GRAPHICS_SAVE_KEY = 'wash-empire-graphics-quality-v1'
@@ -46,6 +46,7 @@ function App() {
   const [adLoading, setAdLoading] = useState(false)
   const [collectionToast, setCollectionToast] = useState<CollectionToastState | null>(null)
   const [coachOpen, setCoachOpen] = useState(() => !hasDismissedCoach())
+  const [dismissedAutoReviewWeek, setDismissedAutoReviewWeek] = useState(0)
   const [coachProgress, setCoachProgress] = useState({
     collected: false,
     upgraded: false,
@@ -222,6 +223,9 @@ function App() {
   }
 
   function handleContinue() {
+    // Credit time spent idle on the title screen now, so the welcome-back
+    // panel appears immediately on entry instead of minutes into play.
+    setGame((state) => reconcileOffline(state, Date.now()))
     setTitleOpen(false)
   }
 
@@ -262,7 +266,16 @@ function App() {
   const activeRideAlong = rideAlong && isConveyorCity(game)
   const gameVisible = game.gameStarted && !titleOpen
   const showTitle = titleOpen || !game.gameStarted
-  const weekReviewOpen = Boolean(game.collectRequired && game.lastReview)
+  const weekReviewOpen = gameVisible && Boolean(game.collectRequired && game.lastReview)
+  const autoClosedReview = gameVisible && !weekReviewOpen && game.lastReview?.autoClosed ? game.lastReview : null
+  const autoClosedReviewWeek = autoClosedReview?.week ?? 0
+  const autoReviewVisible = autoClosedReview !== null && autoClosedReviewWeek > dismissedAutoReviewWeek
+
+  useEffect(() => {
+    if (autoClosedReviewWeek === 0 || autoClosedReviewWeek <= dismissedAutoReviewWeek) return
+    const timer = window.setTimeout(() => setDismissedAutoReviewWeek(autoClosedReviewWeek), 9000)
+    return () => window.clearTimeout(timer)
+  }, [autoClosedReviewWeek, dismissedAutoReviewWeek])
   // Week review owns the screen: never leave drawers stacked over it.
   const upgradesDrawerOpen = upgradesOpen && !weekReviewOpen
   const cityDrawerOpen = cityOpen && !weekReviewOpen
@@ -357,7 +370,13 @@ function App() {
       {weekReviewOpen && (
         <WeekReviewPanel state={game} onCollect={handleWeekReviewCollect} />
       )}
-      {game.gameStarted && game.pendingOfflineSummary && (
+      {autoReviewVisible && autoClosedReview && (
+        <WeekSummaryToast
+          review={autoClosedReview}
+          onDismiss={() => setDismissedAutoReviewWeek(autoClosedReview.week)}
+        />
+      )}
+      {gameVisible && game.pendingOfflineSummary && (
         <OfflineReturnPanel
           summary={game.pendingOfflineSummary}
           onDismiss={handleDismissOfflineSummary}
@@ -418,6 +437,31 @@ function CollectionToast({ title, amount }: { title: string; amount: number }) {
   )
 }
 
+function WeekSummaryToast({ review, onDismiss }: { review: WeekReview; onDismiss: () => void }) {
+  const rushMet = review.rushTarget != null && review.cars >= review.rushTarget
+  return (
+    <section className="week-summary-toast" aria-live="polite">
+      <div>
+        <span className="mini-label">Week {review.week} closed by staff</span>
+        <strong>{money(review.profit)} profit</strong>
+        <span className="week-summary-detail">
+          Collected {money(review.autoCollected)} · paid {money(review.costsPaid)} costs
+          {review.rushTarget != null && (
+            <>
+              {' · rush '}
+              {review.cars}/{review.rushTarget}
+              {rushMet ? ' ✓' : ''}
+            </>
+          )}
+        </span>
+      </div>
+      <button type="button" onClick={onDismiss} aria-label="Dismiss week summary">
+        ✕
+      </button>
+    </section>
+  )
+}
+
 function WeekReviewPanel({ state, onCollect }: { state: GameState; onCollect: () => void }) {
   const review = state.lastReview
   if (!review) return null
@@ -447,20 +491,29 @@ function WeekReviewPanel({ state, onCollect }: { state: GameState; onCollect: ()
         </div>
         <div>
           <dt>Lot overhead</dt>
-          <dd>{money(review.costs)}</dd>
-        </div>
-        <div>
-          <dt>{costsDue > 0 ? 'Overhead due' : 'Overhead paid'}</dt>
-          <dd>{money(costsDue > 0 ? costsDue : review.costsPaid ?? review.costs)}</dd>
+          <dd>{money(Math.max(0, review.costs - (review.employeeWages ?? 0)))}</dd>
         </div>
         <div>
           <dt>Employee wages</dt>
           <dd>{money(review.employeeWages ?? 0)}</dd>
         </div>
         <div>
+          <dt>{costsDue > 0 ? 'Costs due at closeout' : 'Costs paid'}</dt>
+          <dd>{money(costsDue > 0 ? costsDue : review.costsPaid ?? review.costs)}</dd>
+        </div>
+        <div>
           <dt>Cars washed</dt>
           <dd>{served}</dd>
         </div>
+        {review.rushTarget != null && (
+          <div>
+            <dt>Rush goal</dt>
+            <dd>
+              {served} / {review.rushTarget}
+              {served >= review.rushTarget ? ' ✓' : ''}
+            </dd>
+          </div>
+        )}
         <div>
           <dt>Passing traffic</dt>
           <dd>

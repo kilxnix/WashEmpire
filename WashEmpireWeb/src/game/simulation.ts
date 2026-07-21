@@ -345,12 +345,6 @@ export function advanceGame(input: GameState, realDeltaSeconds: number): GameSta
       }))
     }
 
-    state.clockSeconds = WEEK_SECONDS
-    state.collectRequired = true
-    if (state.speed > 0) {
-      state.resumeSpeed = state.speed
-    }
-    state.speed = 0
     state.lastReview = {
       week: state.week,
       revenue: roundMoney(state.weekRevenue),
@@ -364,6 +358,25 @@ export function advanceGame(input: GameState, realDeltaSeconds: number): GameSta
       lostRevenue: roundMoney(state.weekLostRevenue),
       physicalDue: autoCollected > 0 ? 0 : physicalDue,
       autoCollected,
+      rushTarget: weeklyRushTarget(state),
+      autoClosed: autoCollector,
+    }
+
+    if (autoCollector) {
+      // Staff settled the closeout — roll straight into the next week without pausing.
+      state.week += 1
+      state.clockSeconds = 0
+      state.weekRevenue = 0
+      state.weekCars = 0
+      state.weekDriveBys = 0
+      state.weekLostRevenue = 0
+    } else {
+      state.clockSeconds = WEEK_SECONDS
+      state.collectRequired = true
+      if (state.speed > 0) {
+        state.resumeSpeed = state.speed
+      }
+      state.speed = 0
     }
   }
 
@@ -692,6 +705,31 @@ export function expectedHourlyRevenue(state: GameState): number {
   const effectivePerSec = Math.min(spawnPerSec, washPerSec)
 
   return effectivePerSec * avgPrice * 3600 * CUSTOMERS_PER_VISIBLE_CAR
+}
+
+export function weeklyRushTarget(state: GameState): number {
+  const bays = activeBays(state)
+  if (bays.length === 0) return 40
+
+  const automatic = isConveyorCity(state)
+  const priceBonus = marketPriceBonus(state)
+  const avgWashSeconds =
+    bays.reduce((sum, bay) => {
+      const price = bayWashPrice(state.upgrades, bay, priceBonus)
+      const payment: Payment = automatic
+        ? { kind: 'card', quarters: 0, bills: price, tokens: 0 }
+        : { kind: 'quarters', quarters: Math.round(price * 4), bills: 0, tokens: 0 }
+      return sum + washDurationForPayment(payment, state.upgrades, bay, priceBonus, automatic)
+    }, 0) / bays.length
+
+  // A bay is also blocked while a car pulls in and while it clears the stall.
+  const cycleSeconds = avgWashSeconds + ENTERING_SECONDS + 2.6
+  const arrivalsPerSec = 1 / spawnInterval(state)
+  const capacityPerSec = bays.length / cycleSeconds
+  const weeklyCustomers = Math.min(arrivalsPerSec, capacityPerSec) * WEEK_SECONDS * CUSTOMERS_PER_VISIBLE_CAR
+
+  // Stretch-but-achievable: ~75% of theoretical throughput, in steps of 5.
+  return Math.max(40, Math.round((weeklyCustomers * 0.75) / 5) * 5)
 }
 
 export function progressionProgress(state: GameState): number {
@@ -1148,11 +1186,12 @@ function weeklyCosts(state: GameState): number {
   return overhead + managerCost + laserCost + conveyorCost + employeeWeeklyWages(state.employees)
 }
 
-/** Week 1 = 40%, 2 = 60%, 3 = 80%, then full lot overhead. */
+/** Week 1 = 40%, 2 = 60%, 3 = 80%, 4 = 90%, then full lot overhead. */
 function earlyWeekOverheadScale(week: number): number {
   if (week <= 1) return 0.4
   if (week === 2) return 0.6
   if (week === 3) return 0.8
+  if (week === 4) return 0.9
   return 1
 }
 

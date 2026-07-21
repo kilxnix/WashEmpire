@@ -33,6 +33,22 @@
   pointer-events: none;
 }
 
+/* Game chrome is not copy text — dragging on the scene must not select the HUD. */
+.hud,
+.hud-cluster,
+.upgrade-drawer,
+.city-drawer,
+.week-review,
+.week-summary-toast,
+.collection-toast,
+.offline-return,
+.first-coach,
+.ride-overlay,
+.start-menu-brand {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
 .hud-cluster,
 .upgrade-drawer,
 .city-drawer,
@@ -869,15 +885,17 @@ button:disabled {
   position: absolute;
   left: 50%;
   bottom: 112px;
-  z-index: 22;
+  z-index: 26;
   display: grid;
   min-width: 170px;
+  max-width: calc(100vw - 24px);
   justify-items: center;
+  text-align: center;
   padding: 12px 18px;
   border: 1px solid rgba(22, 31, 38, 0.16);
   border-radius: 8px;
   color: var(--ink);
-  background: rgba(220, 252, 231, 0.94);
+  background: rgb(220, 252, 231);
   box-shadow: 0 16px 34px rgba(15, 23, 42, 0.2);
   transform: translateX(-50%);
   animation: collect-pop 2200ms ease forwards;
@@ -887,6 +905,55 @@ button:disabled {
 .collection-toast strong {
   font-size: 24px;
   line-height: 1.1;
+}
+
+.week-summary-toast {
+  position: absolute;
+  left: 50%;
+  bottom: 112px;
+  z-index: 25;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  max-width: min(440px, calc(100vw - 24px));
+  padding: 12px 14px;
+  border: 1px solid rgba(22, 31, 38, 0.16);
+  border-radius: 10px;
+  color: var(--ink);
+  background: rgba(247, 244, 235, 0.97);
+  box-shadow: 0 16px 34px rgba(15, 23, 42, 0.2);
+  transform: translateX(-50%);
+  pointer-events: auto;
+}
+
+.week-summary-toast strong {
+  display: block;
+  font-size: 20px;
+  line-height: 1.15;
+}
+
+.week-summary-detail {
+  display: block;
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 12.5px;
+  font-weight: 650;
+}
+
+.week-summary-toast button {
+  padding: 2px 6px;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+@media (max-width: 700px) {
+  .week-summary-toast {
+    bottom: 214px;
+  }
 }
 
 .ride-overlay {
@@ -1009,7 +1076,9 @@ button:disabled {
   border: 1px solid rgba(22, 31, 38, 0.18);
   box-shadow: 0 26px 64px rgba(15, 23, 42, 0.32);
   pointer-events: auto;
-  z-index: 35;
+  /* Above the week review (45): the welcome-back credit explains the money
+     the review is about to reference, so it reads first. */
+  z-index: 55;
   display: flex;
   flex-direction: column;
   gap: 12px;

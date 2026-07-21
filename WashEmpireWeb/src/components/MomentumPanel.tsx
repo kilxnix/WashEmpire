@@ -12,6 +12,7 @@ import {
   currentCityDistrict,
   totalCashBox,
   upgradeDefinitions,
+  weeklyRushTarget,
 } from '../game/simulation'
 
 type MomentumAction = 'collect' | 'upgrades' | 'map' | 'ad'
@@ -23,6 +24,8 @@ interface MomentumGoal {
   progress: number
   action?: MomentumAction
   actionLabel?: string
+  /** Overrides the progress>=1 check — affordability goals are never "done" until bought. */
+  complete?: boolean
 }
 
 interface MomentumPanelProps {
@@ -56,11 +59,12 @@ export function MomentumPanel({
       <div className="momentum-goals">
         {goals.map((goal) => {
           const action = goal.action
+          const done = goal.complete ?? goal.progress >= 1
 
           return (
-            <article className={goal.progress >= 1 ? 'complete' : ''} key={goal.id}>
+            <article className={done ? 'complete' : ''} key={goal.id}>
               <div className="momentum-goal-title">
-                <span>{goal.progress >= 1 ? <Check size={15} /> : iconForGoal(action)}</span>
+                <span>{done ? <Check size={15} /> : iconForGoal(action)}</span>
                 <strong>{goal.title}</strong>
               </div>
               <p>{goal.detail}</p>
@@ -120,11 +124,12 @@ function momentumGoals(state: GameState): MomentumGoal[] {
     })
   }
 
+  const rushTarget = weeklyRushTarget(state)
   goals.push({
     id: 'weekly-rush',
     title: "Serve this week's rush",
-    detail: `${state.weekCars} / 80 customers washed`,
-    progress: state.weekCars / 80,
+    detail: `${state.weekCars} / ${rushTarget} customers washed`,
+    progress: state.weekCars / rushTarget,
   })
 
   if (condition < 0.86) {
@@ -154,11 +159,15 @@ function momentumGoals(state: GameState): MomentumGoal[] {
 
   const nextCity = cityDefinitions.find((city) => !state.cityMap.districts.find((district) => district.id === city.id)?.owned)
   if (nextCity) {
+    const affordable = state.cash >= nextCity.purchaseCost
     goals.push({
       id: `unlock-${nextCity.id}`,
       title: `Unlock ${nextCity.name}`,
-      detail: `${money(state.cash)} / ${money(nextCity.purchaseCost)}`,
-      progress: state.cash / nextCity.purchaseCost,
+      detail: affordable
+        ? `${money(nextCity.purchaseCost)} — ready to buy`
+        : `Saved ${money(state.cash)} of ${money(nextCity.purchaseCost)}`,
+      progress: Math.min(1, state.cash / nextCity.purchaseCost),
+      complete: false,
       action: 'map',
       actionLabel: 'Map',
     })
@@ -189,11 +198,15 @@ function nextUpgradeGoal(state: GameState): MomentumGoal | null {
     if (!nextBayUpgrade) continue
 
     const cost = bayUpgradeCost(nextBayUpgrade.id, bay.upgrades[nextBayUpgrade.id], bayIndex)
+    const affordable = state.cash >= cost
     return {
       id: `bay-${bay.id}-${nextBayUpgrade.id}`,
       title: `Upgrade Bay ${bay.id}`,
-      detail: `${nextBayUpgrade.name}: ${money(state.cash)} / ${money(cost)}`,
-      progress: state.cash / cost,
+      detail: affordable
+        ? `${nextBayUpgrade.name} — ${money(cost)}, ready to buy`
+        : `${nextBayUpgrade.name} — saved ${money(state.cash)} of ${money(cost)}`,
+      progress: Math.min(1, state.cash / cost),
+      complete: false,
       action: 'upgrades',
       actionLabel: 'Upgrades',
     }
@@ -202,11 +215,15 @@ function nextUpgradeGoal(state: GameState): MomentumGoal | null {
   const nextLotUpgrade = upgradeDefinitions.find((upgrade) => !state.upgrades[upgrade.id])
   if (!nextLotUpgrade) return null
 
+  const affordable = state.cash >= nextLotUpgrade.cost
   return {
     id: `lot-${nextLotUpgrade.id}`,
     title: nextLotUpgrade.name,
-    detail: `${money(state.cash)} / ${money(nextLotUpgrade.cost)}`,
-    progress: state.cash / nextLotUpgrade.cost,
+    detail: affordable
+      ? `${money(nextLotUpgrade.cost)} — ready to buy`
+      : `Saved ${money(state.cash)} of ${money(nextLotUpgrade.cost)}`,
+    progress: Math.min(1, state.cash / nextLotUpgrade.cost),
+    complete: false,
     action: 'upgrades',
     actionLabel: 'Upgrades',
   }

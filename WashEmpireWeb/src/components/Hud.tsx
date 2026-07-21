@@ -60,7 +60,8 @@ export function Hud({
   const condition = averageCondition(visibleBays)
   const demand = demandMultiplier(state.upgrades, condition, visibleBays, state.ads, state.employees)
   const progress = progressionProgress(state)
-  const collectDisabled = due <= 0 && !state.collectRequired
+  const reviewOpen = state.collectRequired && Boolean(state.lastReview)
+  const collectDisabled = (due <= 0 && !state.collectRequired) || reviewOpen
   const adSlots = state.ads.slotsAvailable
   const adBoostSeconds = state.ads.boostSeconds
   const adNextSlotSeconds = state.ads.nextSlotInSeconds
@@ -199,9 +200,14 @@ export function Hud({
             <dd>{money(cashBox.tokens)}</dd>
           </div>
         </dl>
-        <button type="button" disabled={collectDisabled} onClick={onCollect}>
+        <button
+          type="button"
+          disabled={collectDisabled}
+          onClick={onCollect}
+          title={reviewOpen ? 'Close the week from the review panel' : undefined}
+        >
           <WalletCards size={18} />
-          <span>{collectButtonLabel(state.collectRequired, due)}</span>
+          <span>{reviewOpen ? 'See week review' : collectButtonLabel(state.collectRequired, due)}</span>
         </button>
       </section>
 
@@ -234,8 +240,8 @@ export function Hud({
           <span>{conveyor ? 'Lanes' : 'Bays'}</span>
           <strong>{conveyor ? 2 : visibleBayCount}</strong>
         </div>
-        <div title="Cars currently on the lot / washed this run">
-          <span>Live / Washed</span>
+        <div title="Cars on the lot right now / customers washed all-time">
+          <span>Live / All-time</span>
           <strong>
             {liveCars} / {state.totalCars}
           </strong>

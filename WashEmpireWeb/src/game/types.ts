@@ -130,6 +130,10 @@ export interface WeekReview {
   lostRevenue: number
   physicalDue: number
   autoCollected: number
+  /** Weekly rush goal captured at closeout, in customers. */
+  rushTarget?: number
+  /** True when staff settled the closeout and the next week opened without pausing. */
+  autoClosed?: boolean
 }
 
 export interface GameState {

@@ -271,31 +271,55 @@ describe('weekly closeout economy', () => {
 
     const reviewReady = advanceGame(state, 0.2)
 
-    expect(reviewReady.collectRequired).toBe(true)
+    // Staff settle the closeout and the next week opens without pausing.
+    expect(reviewReady.collectRequired).toBe(false)
+    expect(reviewReady.week).toBe(2)
+    expect(reviewReady.speed).toBe(1)
+    expect(reviewReady.weekRevenue).toBe(0)
     // Week 1: 40% of 520 fixed + 240 cash runner wage = 208 + 240 = 448
     // 100 cash + 1000 auto-collect - 448 costs
     expect(reviewReady.cash).toBe(652)
     expect(reviewReady.lastReview!.autoCollected).toBe(1000)
     expect(reviewReady.lastReview!.costsPaid).toBe(448)
     expect(reviewReady.lastReview!.costsDue).toBe(0)
+    expect(reviewReady.lastReview!.autoClosed).toBe(true)
   })
 
-  it('uses full lot overhead from week 4 onward', () => {
-    let state = startGame(createInitialState(), 'Mature Lot')
-    state = {
-      ...state,
-      week: 4,
-      cash: 100,
-      clockSeconds: 209.99,
-      nextCarIn: 999,
-      weekRevenue: 1000,
-      bays: state.bays.map((bay, index) =>
-        index === 0 ? { ...bay, cashBox: { bills: 1000, coins: 0, tokens: 0 } } : bay,
-      ),
-    }
+  it('ramps overhead to 90% in week 4 and full from week 5 onward', () => {
+    const base = startGame(createInitialState(), 'Mature Lot')
 
-    const reviewReady = advanceGame(state, 0.2)
-    expect(reviewReady.lastReview!.costsDue).toBe(520)
+    const week4 = advanceGame(
+      {
+        ...base,
+        week: 4,
+        cash: 100,
+        clockSeconds: 209.99,
+        nextCarIn: 999,
+        weekRevenue: 1000,
+        bays: base.bays.map((bay, index) =>
+          index === 0 ? { ...bay, cashBox: { bills: 1000, coins: 0, tokens: 0 } } : bay,
+        ),
+      },
+      0.2,
+    )
+    // 90% of $520 fixed = $468
+    expect(week4.lastReview!.costsDue).toBe(468)
+
+    const week5 = advanceGame(
+      {
+        ...base,
+        week: 5,
+        cash: 100,
+        clockSeconds: 209.99,
+        nextCarIn: 999,
+        weekRevenue: 1000,
+        bays: base.bays.map((bay, index) =>
+          index === 0 ? { ...bay, cashBox: { bills: 1000, coins: 0, tokens: 0 } } : bay,
+        ),
+      },
+      0.2,
+    )
+    expect(week5.lastReview!.costsDue).toBe(520)
   })
 })
 
