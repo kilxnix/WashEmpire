@@ -84,6 +84,11 @@ export function Hud({
         <strong>
           <AnimatedCash value={state.cash} />
           {adBoostActive && <span className="cash-boost-chip">3x</span>}
+          {state.legacy > 0 && (
+            <span className="cash-boost-chip legacy-chip" title={`Legacy ${state.legacy}: +${state.legacy * 25}% earnings forever`}>
+              ★{state.legacy}
+            </span>
+          )}
         </strong>
         <em>{state.locationName}</em>
         <span>

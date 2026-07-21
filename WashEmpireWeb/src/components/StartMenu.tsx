@@ -7,6 +7,7 @@ interface StartMenuProps {
   hasRun: boolean
   initialName: string
   week: number
+  legacy: number
   onContinue: () => void
   onNewGame: (locationName: string) => void
   onStart: (locationName: string) => void
@@ -19,6 +20,7 @@ export function StartMenu({
   hasRun,
   initialName,
   week,
+  legacy,
   onContinue,
   onNewGame,
   onStart,
@@ -78,6 +80,7 @@ export function StartMenu({
               <strong>{initialName}</strong>
               <span>
                 Week {week} - {money(cash)}
+                {legacy > 0 ? ` · ★ Legacy ${legacy} (+${legacy * 25}%)` : ''}
               </span>
             </div>
             <button type="button" onClick={onContinue}>

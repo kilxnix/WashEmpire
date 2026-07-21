@@ -10,7 +10,7 @@ import { StartMenu } from './components/StartMenu'
 import { UpgradeDrawer } from './components/UpgradeDrawer'
 import {
   advanceGame,
-  allDistrictsOwned,
+  allCrownsEarned,
   bayUpgradeCost,
   bayUpgradeDefinitions,
   buyBayUpgrade,
@@ -29,8 +29,11 @@ import {
   launchCampaign,
   reconcileOffline,
   restoreCityDistrict,
+  REVENUE_CROWN_STREAK,
+  REVENUE_CROWN_TARGET,
   setSpeed,
   startGame,
+  startLegacyRun,
   switchCityDistrict,
   totalCashBox,
   upgradeDefinitions,
@@ -383,8 +386,20 @@ function App() {
     setGame((state) => ({ ...state, pendingOfflineSummary: null }))
   }
 
-  function handleDismissEmpireComplete() {
-    setGame((state) => ({ ...state, empireCelebrated: true }))
+  function handleDismissCrown() {
+    setGame((state) => ({ ...state, crownsCelebrated: state.crownsCelebrated + 1, empireCelebrated: true }))
+  }
+
+  function handleStartLegacyRun() {
+    const next = startLegacyRun(gameRef.current, gameRef.current.locationName)
+    localStorage.setItem(SAVE_KEY, exportGameState(next))
+    setGame(next)
+    setMarketingOpen(false)
+    setUpgradesOpen(false)
+    setCityOpen(false)
+    setRideAlong(false)
+    setCollectionToast({ id: Date.now(), title: `Legacy run ${next.legacy} — earnings +${next.legacy * 25}% forever`, amount: null })
+    playWin()
   }
 
   function handleExportSave(): string {
@@ -425,7 +440,11 @@ function App() {
   const cityDrawerOpen = cityOpen && !weekReviewOpen
 
   const showCoach = coachOpen && gameVisible && !activeRideAlong && !weekReviewOpen
-  const empireComplete = gameVisible && !game.empireCelebrated && allDistrictsOwned(game)
+  const earnedCrowns = (['empire', 'pristine', 'revenue'] as const)
+    .filter((id) => game.crowns[id] !== null)
+    .sort((a, b) => (game.crowns[a] ?? 0) - (game.crowns[b] ?? 0))
+  const pendingCrown =
+    gameVisible && earnedCrowns.length > game.crownsCelebrated ? earnedCrowns[game.crownsCelebrated] : null
 
   return (
     <main
@@ -486,6 +505,7 @@ function App() {
           hasRun={game.gameStarted}
           initialName={game.locationName}
           week={game.week}
+          legacy={game.legacy}
           onContinue={handleContinue}
           onNewGame={handleNewGame}
           onStart={handleStart}
@@ -540,6 +560,7 @@ function App() {
       {autoReviewVisible && autoClosedReview && !activeRideAlong && (
         <StaffWeekReport
           review={autoClosedReview}
+          state={game}
           onDismiss={() => setDismissedAutoReviewWeek(autoClosedReview.week)}
         />
       )}
@@ -549,7 +570,14 @@ function App() {
           onDismiss={handleDismissOfflineSummary}
         />
       )}
-      {empireComplete && <EmpireCompletePanel state={game} onDismiss={handleDismissEmpireComplete} />}
+      {pendingCrown && (
+        <CrownPanel
+          crownId={pendingCrown}
+          state={game}
+          onDismiss={handleDismissCrown}
+          onStartLegacy={handleStartLegacyRun}
+        />
+      )}
     </main>
   )
 }
@@ -620,19 +648,56 @@ function CollectionToast({ title, amount, detail }: CollectionToastState) {
   )
 }
 
-function EmpireCompletePanel({ state, onDismiss }: { state: GameState; onDismiss: () => void }) {
+const CROWN_META: Record<
+  'empire' | 'pristine' | 'revenue',
+  { title: string; line: string; sub: string }
+> = {
+  empire: {
+    title: 'Empire Crown',
+    line: 'You own the whole map',
+    sub: 'Every district from Rustwater Junction to the Beltline tunnel is yours.',
+  },
+  pristine: {
+    title: 'Pristine Crown',
+    line: 'Every lot at full shine',
+    sub: 'All five districts restored to showcase condition. The whole city noticed.',
+  },
+  revenue: {
+    title: 'Wealth Crown',
+    line: 'The numbers do not lie',
+    sub: `Four straight weeks over ${money(REVENUE_CROWN_TARGET)} in wash revenue. A thriving operation, not a pile of gold.`,
+  },
+}
+
+function CrownPanel({
+  crownId,
+  state,
+  onDismiss,
+  onStartLegacy,
+}: {
+  crownId: 'empire' | 'pristine' | 'revenue'
+  state: GameState
+  onDismiss: () => void
+  onStartLegacy: () => void
+}) {
+  const meta = CROWN_META[crownId]
+  const crowns = state.crowns
+  const ordinal = Math.min(3, state.crownsCelebrated + 1)
+  const isFinal = allCrownsEarned(state) && state.crownsCelebrated >= 2
+
   useEffect(() => {
     playWin()
   }, [])
 
   return (
-    <section className="empire-complete" aria-label="Empire complete" role="dialog" aria-modal="true">
-      <span className="mini-label">Empire complete</span>
-      <h2>You own the whole map</h2>
-      <p className="empire-complete-sub">
-        Every district from Rustwater Junction to the Beltline tunnel is yours. The empire keeps earning — push
-        restorations, max the equipment, and see how high the weekly take can go.
-      </p>
+    <section className="empire-complete" aria-label={meta.title} role="dialog" aria-modal="true">
+      <span className="mini-label">
+        {'👑'.repeat(ordinal)} Crown {ordinal} of 3 — week {crowns[crownId]}
+      </span>
+      <h2>
+        {meta.title}: {meta.line}
+      </h2>
+      <p className="empire-complete-sub">{meta.sub}</p>
       <dl>
         <div>
           <dt>Weeks in business</dt>
@@ -651,9 +716,27 @@ function EmpireCompletePanel({ state, onDismiss }: { state: GameState; onDismiss
           <dd>{money(state.cash)}</dd>
         </div>
       </dl>
-      <button type="button" onClick={onDismiss}>
-        Keep building
-      </button>
+      {isFinal ? (
+        <>
+          <p className="empire-complete-sub legend-line">
+            <strong>All three crowns.</strong> You are a Wash Empire Legend. Start a legacy run to carry a permanent
+            +25% earnings bonus into a fresh campaign{state.legacy > 0 ? ` (currently +${state.legacy * 25}%)` : ''} —
+            or keep this empire running.
+          </p>
+          <div className="legend-actions">
+            <button type="button" className="legend-primary" onClick={onStartLegacy}>
+              Start Legacy Run ★{state.legacy + 1}
+            </button>
+            <button type="button" onClick={onDismiss}>
+              Keep building
+            </button>
+          </div>
+        </>
+      ) : (
+        <button type="button" onClick={onDismiss}>
+          Keep building
+        </button>
+      )}
     </section>
   )
 }
@@ -733,11 +816,38 @@ function WeekReviewRows({ review }: { review: WeekReview }) {
   )
 }
 
+/** The doc's rule: always show the closest crown so players know their path. */
+function CrownProgressLine({ state }: { state: GameState }) {
+  const crowns = state.crowns
+  const districts = state.cityMap.districts
+  const owned = districts.filter((district) => district.owned).length
+  const restored = districts.filter((district) => district.owned && district.restoration >= 5).length
+  const total = districts.length
+
+  const parts = [
+    crowns.empire ? '👑 Empire' : `Empire ${owned}/${total}`,
+    crowns.pristine ? '👑 Pristine' : `Pristine ${restored}/${total}`,
+    crowns.revenue
+      ? '👑 Wealth'
+      : `Wealth ${state.revenueStreakWeeks}/${REVENUE_CROWN_STREAK} wks ≥ ${money(REVENUE_CROWN_TARGET)}`,
+  ]
+
+  return <p className="crown-progress">Crowns: {parts.join(' · ')}</p>
+}
+
 /**
  * Staff-run weeks show the same report without stopping the wash: the sim keeps
  * ticking, drawers still open, and the card simply steps aside when dismissed.
  */
-function StaffWeekReport({ review, onDismiss }: { review: WeekReview; onDismiss: () => void }) {
+function StaffWeekReport({
+  review,
+  state,
+  onDismiss,
+}: {
+  review: WeekReview
+  state: GameState
+  onDismiss: () => void
+}) {
   return (
     <section className="week-passive" aria-label={`Week ${review.week} report`} aria-live="polite">
       <header>
@@ -750,6 +860,7 @@ function StaffWeekReport({ review, onDismiss }: { review: WeekReview; onDismiss:
         </button>
       </header>
       <WeekReviewRows review={review} />
+      <CrownProgressLine state={state} />
       <p className="week-passive-foot">Your crew collected and paid the week. The wash never stopped.</p>
     </section>
   )
@@ -777,6 +888,7 @@ function WeekReviewPanel({ state, onCollect }: { state: GameState; onCollect: ()
       <h2>{money(review.profit)} profit</h2>
       <p className="week-review-tip">{tip}</p>
       <WeekReviewRows review={review} />
+      {state.week >= 3 && <CrownProgressLine state={state} />}
       <button type="button" onClick={onCollect}>
         {closeoutAction} Week {state.week + 1}
       </button>

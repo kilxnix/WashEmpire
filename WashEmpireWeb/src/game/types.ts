@@ -185,6 +185,20 @@ export interface GameState {
   lastReview: WeekReview | null
   /** True once the all-districts celebration has been shown for this run. */
   empireCelebrated: boolean
+  /** Week each crown was earned, or null. The three-crown set is the campaign win. */
+  crowns: CrownState
+  /** Consecutive week closes at or above the wealth-crown revenue target. */
+  revenueStreakWeeks: number
+  /** Completed legacy runs. Each grants a permanent +25% earnings multiplier. */
+  legacy: number
+  /** How many earned crowns have been celebrated (sequencing for the panels). */
+  crownsCelebrated: number
+}
+
+export interface CrownState {
+  empire: number | null
+  pristine: number | null
+  revenue: number | null
 }
 
 export interface UpgradeDefinition {

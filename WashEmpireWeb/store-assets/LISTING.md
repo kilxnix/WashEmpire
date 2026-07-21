@@ -20,9 +20,11 @@ FEATURES
 • Buy and restore five districts, each with its own traffic and pricing
 • Ride through your own automatic wash tunnel in first-person Ride View
 • Offline earnings while you're away — the empire keeps washing
+• Earn the three Crowns — Empire, Pristine, and Wealth — to become a Legend
+• Legacy runs: restart with a permanent earnings bonus and climb again
 • Premium: pay once, no ads, no in-app purchases, no data collection
 
-Complete the empire. Then push the weekly take as high as it can go.
+Three crowns. One legend. How many legacies deep can you go?
 
 ## Category
 Games > Simulation

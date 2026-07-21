@@ -1408,6 +1408,36 @@ button:disabled {
   cursor: pointer;
 }
 
+.legend-line {
+  padding-top: 10px;
+  border-top: 1px solid rgba(202, 138, 4, 0.4);
+}
+
+.legend-actions {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 10px;
+}
+
+.legend-actions .legend-primary {
+  background: linear-gradient(135deg, #facc15, #f59e0b);
+}
+
+.crown-progress {
+  margin: 10px 0 0;
+  padding-top: 8px;
+  border-top: 1px dashed rgba(22, 31, 38, 0.22);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 750;
+  line-height: 1.4;
+}
+
+.legacy-chip {
+  background: rgba(250, 204, 21, 0.35);
+  color: #92400e;
+}
+
 .city-projection {
   margin: 6px 0 0;
   font-size: 12.5px;

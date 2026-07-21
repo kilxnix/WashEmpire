@@ -369,7 +369,37 @@ export function createInitialState(): GameState {
     pendingOfflineSummary: null,
     lastReview: null,
     empireCelebrated: false,
+    crowns: { empire: null, pristine: null, revenue: null },
+    revenueStreakWeeks: 0,
+    legacy: 0,
+    crownsCelebrated: 0,
   }
+}
+
+/** Sustained weekly revenue needed for the Wealth Crown (4 closes in a row). */
+export const REVENUE_CROWN_TARGET = 4_000
+export const REVENUE_CROWN_STREAK = 4
+/** Permanent earnings bonus per completed legacy run. */
+export const LEGACY_BONUS_PER_RUN = 0.25
+
+export function legacyEarningsMultiplier(state: GameState): number {
+  return 1 + (state.legacy ?? 0) * LEGACY_BONUS_PER_RUN
+}
+
+export function crownCount(state: GameState): number {
+  const crowns = state.crowns
+  return (crowns.empire ? 1 : 0) + (crowns.pristine ? 1 : 0) + (crowns.revenue ? 1 : 0)
+}
+
+export function allCrownsEarned(state: GameState): boolean {
+  return crownCount(state) >= 3
+}
+
+/** Begin a fresh campaign that carries the legacy bonus forward, plus one. */
+export function startLegacyRun(input: GameState, locationName: string): GameState {
+  const fresh = createInitialState()
+  fresh.legacy = (input.legacy ?? 0) + 1
+  return startGame(fresh, locationName)
 }
 
 export function advanceGame(input: GameState, realDeltaSeconds: number): GameState {
@@ -426,6 +456,23 @@ export function advanceGame(input: GameState, realDeltaSeconds: number): GameSta
       autoClosed: autoCollector,
     }
 
+    // Crown checks run at every week close, on both manual and staffed paths.
+    state.revenueStreakWeeks = state.weekRevenue >= REVENUE_CROWN_TARGET ? state.revenueStreakWeeks + 1 : 0
+    const crowns = { ...state.crowns }
+    if (crowns.revenue === null && state.revenueStreakWeeks >= REVENUE_CROWN_STREAK) {
+      crowns.revenue = state.week
+    }
+    if (crowns.empire === null && state.cityMap.districts.every((district) => district.owned)) {
+      crowns.empire = state.week
+    }
+    if (
+      crowns.pristine === null &&
+      state.cityMap.districts.every((district) => district.owned && district.restoration >= 5)
+    ) {
+      crowns.pristine = state.week
+    }
+    state.crowns = crowns
+
     if (autoCollector) {
       // Staff settled the closeout — roll straight into the next week without pausing.
       state.week += 1
@@ -470,7 +517,8 @@ export function reconcileOffline(input: GameState, nowMs: number): GameState {
   const boostBefore = state.ads.boostSeconds
   const slotsBefore = state.ads.slotsAvailable
 
-  const ratePerSec = (expectedHourlyRevenue(state) * OFFLINE_BASELINE_RATE_FRACTION) / 3600
+  const ratePerSec =
+    (expectedHourlyRevenue(state) * legacyEarningsMultiplier(state) * OFFLINE_BASELINE_RATE_FRACTION) / 3600
 
   state.ads = advanceAds(state.ads, elapsed)
 
@@ -951,6 +999,14 @@ export function hydrateGameState(value: unknown): GameState | null {
     lastReview: candidate.lastReview ?? null,
     resumeSpeed: normalizeResumeSpeed(candidate.resumeSpeed, candidate.speed),
     empireCelebrated: candidate.empireCelebrated ?? false,
+    crowns: {
+      empire: candidate.crowns?.empire ?? null,
+      pristine: candidate.crowns?.pristine ?? null,
+      revenue: candidate.crowns?.revenue ?? null,
+    },
+    revenueStreakWeeks: candidate.revenueStreakWeeks ?? 0,
+    legacy: candidate.legacy ?? 0,
+    crownsCelebrated: candidate.crownsCelebrated ?? 0,
   }
 }
 
@@ -1135,7 +1191,7 @@ function createPayment(upgrades: UpgradeState, bay: BayState, priceBonus = 0, au
 }
 
 function settlePayment(state: GameState, car: Car): void {
-  const baseGross = paymentValue(car.payment) * CUSTOMERS_PER_VISIBLE_CAR
+  const baseGross = paymentValue(car.payment) * CUSTOMERS_PER_VISIBLE_CAR * legacyEarningsMultiplier(state)
   const bay = state.bays[car.bayIndex]
   if (!bay) return
 
@@ -1596,6 +1652,7 @@ function cloneState(state: GameState): GameState {
     cityMap: normalizeCityMap(state.cityMap),
     cars: state.cars.map((car) => ({ ...car, payment: { ...car.payment } })),
     lastReview: state.lastReview ? { ...state.lastReview } : null,
+    crowns: { ...(state.crowns ?? { empire: null, pristine: null, revenue: null }) },
   }
 }
 

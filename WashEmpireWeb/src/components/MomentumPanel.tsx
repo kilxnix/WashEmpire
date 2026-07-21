@@ -11,6 +11,8 @@ import {
   cityDefinitions,
   currentCityDefinition,
   currentCityDistrict,
+  REVENUE_CROWN_STREAK,
+  REVENUE_CROWN_TARGET,
   stallNoun,
   totalCashBox,
   upgradeDefinitions,
@@ -184,7 +186,35 @@ function nextDistrictGoal(state: GameState): MomentumGoal | null {
   const nextCity = cityDefinitions.find(
     (city) => !state.cityMap.districts.find((district) => district.id === city.id)?.owned,
   )
-  if (!nextCity) return null
+
+  // All districts owned: the ladder continues as the remaining crowns.
+  if (!nextCity) {
+    if (state.crowns.pristine === null) {
+      const districts = state.cityMap.districts
+      const restored = districts.filter((district) => district.restoration >= 5).length
+      return {
+        id: 'crown-pristine',
+        title: 'Pristine Crown',
+        detail: `${restored}/${districts.length} districts fully restored`,
+        progress: restored / districts.length,
+        complete: false,
+        action: 'map',
+        actionLabel: 'Map',
+      }
+    }
+    if (state.crowns.revenue === null) {
+      return {
+        id: 'crown-wealth',
+        title: 'Wealth Crown',
+        detail: `${state.revenueStreakWeeks}/${REVENUE_CROWN_STREAK} weeks over ${money(REVENUE_CROWN_TARGET)} — keep campaigns running`,
+        progress: state.revenueStreakWeeks / REVENUE_CROWN_STREAK,
+        complete: false,
+        action: 'ad',
+        actionLabel: 'Marketing',
+      }
+    }
+    return null
+  }
 
   // Ladder toward the next district: prove the weekly engine first, then save.
   // The revenue milestone is a near-term step instead of a distant price wall.
