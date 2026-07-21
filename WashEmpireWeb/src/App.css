@@ -483,6 +483,93 @@ button:disabled {
   text-transform: uppercase;
 }
 
+/* Equipment tiles: the picture and the level pips carry the message. */
+.equip-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.equip-tile {
+  display: grid;
+  justify-items: center;
+  gap: 5px;
+  padding: 12px 10px 10px;
+  border: 1px solid rgba(15, 23, 42, 0.14);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.78);
+  color: var(--ink);
+  text-align: center;
+  cursor: pointer;
+  transition: transform 90ms ease, box-shadow 90ms ease;
+}
+
+.equip-tile:not(:disabled):hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.16);
+}
+
+.equip-tile.locked {
+  opacity: 0.62;
+  cursor: default;
+}
+
+.equip-tile.maxed {
+  background: rgba(220, 252, 231, 0.85);
+  cursor: default;
+}
+
+.equip-pictogram {
+  width: 52px;
+  height: 52px;
+}
+
+.equip-tile strong {
+  font-size: 13px;
+  line-height: 1.15;
+}
+
+.equip-effect {
+  min-height: 26px;
+  color: var(--muted);
+  font-size: 10.5px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+/* Outranks the blanket `.upgrade-list span` block rule. */
+.upgrade-list .equip-pips {
+  display: flex;
+  gap: 4px;
+}
+
+.equip-pips i {
+  display: block;
+  width: 13px;
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(15, 23, 42, 0.16);
+}
+
+.equip-price {
+  min-width: 74px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: #facc15;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.equip-tile.locked .equip-price {
+  background: rgba(15, 23, 42, 0.08);
+  color: var(--muted);
+}
+
+.equip-price.done {
+  background: #22c55e;
+  color: #f0fdf4;
+}
+
 .upgrade-list article {
   display: grid;
   grid-template-columns: 34px 1fr auto;

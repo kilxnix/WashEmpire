@@ -1,5 +1,6 @@
 import { Check, ChevronDown, Lock, Wrench, X } from 'lucide-react'
 import { useState } from 'react'
+import { EquipPictogram } from './EquipPictograms'
 import { useScrollGuard } from './useScrollGuard'
 import type { BayUpgradeId, EmployeeId, GameState, UpgradeId } from '../game/types'
 import {
@@ -24,6 +25,16 @@ interface UpgradeDrawerProps {
 }
 
 type SectionId = 'bay' | 'lot' | 'employees'
+
+/** Matches the rooftop skyline colors so menu and lot speak the same language. */
+const EQUIP_COLORS: Record<BayUpgradeId, string> = {
+  selector: '#f97316',
+  wand: '#2563eb',
+  soap: '#10b981',
+  rinse: '#38bdf8',
+  dryer: '#facc15',
+  vault: '#22c55e',
+}
 
 export function UpgradeDrawer({ open, state, onBuy, onBuyBay, onHireEmployee, onClose }: UpgradeDrawerProps) {
   const [selectedBay, setSelectedBay] = useState(0)
@@ -85,37 +96,43 @@ export function UpgradeDrawer({ open, state, onBuy, onBuyBay, onHireEmployee, on
           open={!collapsed.bay}
           onToggle={() => toggleSection('bay')}
         />
-        {!collapsed.bay &&
-          bayUpgradeDefinitions.map((upgrade) => {
-            const level = bay.upgrades[upgrade.id]
-            const maxed = level >= upgrade.maxLevel
-            const cost = bayUpgradeCost(upgrade.id, level, selectedIndex)
-            const affordable = state.cash >= cost
-            const display = bayUpgradeDisplay(state, upgrade.id)
+        {!collapsed.bay && (
+          <div className="equip-grid">
+            {bayUpgradeDefinitions.map((upgrade) => {
+              const level = bay.upgrades[upgrade.id]
+              const maxed = level >= upgrade.maxLevel
+              const cost = bayUpgradeCost(upgrade.id, level, selectedIndex)
+              const affordable = state.cash >= cost
+              const display = bayUpgradeDisplay(state, upgrade.id)
+              const pipColor = EQUIP_COLORS[upgrade.id]
 
-            return (
-              <article className={maxed ? 'owned' : ''} key={upgrade.id}>
-                <div className="upgrade-icon">{maxed ? <Check size={18} /> : <Wrench size={18} />}</div>
-                <div>
-                  <div className="upgrade-title-row">
-                    <h3>{display.name}</h3>
-                    <span className="level-pill">
-                      Lv {level}/{upgrade.maxLevel}
-                    </span>
-                  </div>
-                  <p>{upgrade.effect}</p>
-                  <span>{display.visual}</span>
-                </div>
+              return (
                 <button
                   type="button"
+                  className={`equip-tile${maxed ? ' maxed' : affordable ? '' : ' locked'}`}
+                  key={upgrade.id}
                   disabled={maxed || !affordable}
                   onClick={guard(() => onBuyBay(selectedIndex, upgrade.id))}
+                  title={display.visual}
                 >
-                  {maxed ? 'Max' : money(cost)}
+                  <EquipPictogram id={upgrade.id} />
+                  <strong>{display.name}</strong>
+                  <span className="equip-effect">{upgrade.effect}</span>
+                  <span className="equip-pips" aria-label={`Level ${level} of ${upgrade.maxLevel}`}>
+                    {Array.from({ length: upgrade.maxLevel }, (_, index) => (
+                      <i
+                        key={index}
+                        className={index < level ? 'on' : ''}
+                        style={index < level ? { background: pipColor } : undefined}
+                      />
+                    ))}
+                  </span>
+                  <span className={`equip-price${maxed ? ' done' : ''}`}>{maxed ? 'MAX' : money(cost)}</span>
                 </button>
-              </article>
-            )
-          })}
+              )
+            })}
+          </div>
+        )}
 
         <SectionHeader title="Lot Expansion" open={!collapsed.lot} onToggle={() => toggleSection('lot')} />
         {!collapsed.lot &&

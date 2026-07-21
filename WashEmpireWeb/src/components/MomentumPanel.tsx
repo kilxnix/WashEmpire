@@ -134,10 +134,10 @@ function momentumGoals(state: GameState): MomentumGoal[] {
     progress: state.weekCars / rushTarget,
   })
 
-  // From week 4 the empire ladder is the mid-game direction — keep it visible
-  // in the top three instead of buried behind maintenance goals.
+  // From week 2 the empire ladder is the direction — keep it visible in the
+  // top three instead of buried behind maintenance goals.
   const districtGoal = nextDistrictGoal(state)
-  if (districtGoal && state.week >= 4) goals.push(districtGoal)
+  if (districtGoal && state.week >= 2) goals.push(districtGoal)
 
   if (condition < 0.86) {
     goals.push({
@@ -164,7 +164,7 @@ function momentumGoals(state: GameState): MomentumGoal[] {
     })
   }
 
-  if (districtGoal && state.week < 4) goals.push(districtGoal)
+  if (districtGoal && state.week < 2) goals.push(districtGoal)
 
   if (state.ads.boostSeconds <= 0 && state.ads.flyerSeconds <= 0 && state.ads.weekendSeconds <= 0 && state.ads.slotsAvailable > 0) {
     goals.push({

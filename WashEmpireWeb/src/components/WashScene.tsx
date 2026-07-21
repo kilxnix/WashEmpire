@@ -2,7 +2,7 @@ import { type ReactNode, useEffect, useMemo, useRef } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { ContactShadows, OrbitControls, Sky } from '@react-three/drei'
 import * as THREE from 'three'
-import type { BayState, Car, CityDefinition, CityDistrictState, CityTheme, GameState, GraphicsQuality } from '../game/types'
+import type { BayState, BayUpgradeId, Car, CityDefinition, CityDistrictState, CityTheme, GameState, GraphicsQuality } from '../game/types'
 import { activeBayCount, cashBoxValue, cityDefinitions, currentCityDefinition, currentCityDistrict, isConveyorCity, totalCashBox } from '../game/simulation'
 import { activeEnvironmentRewards, type EnvironmentRewardVisualId } from '../game/environmentRewards'
 import { PrototypeAssetLayer } from './PrototypeAssetLayer'
@@ -374,6 +374,9 @@ export function WashScene({
       {collectFx && <CollectBurst key={collectFx.id} state={state} />}
       {!rideAlong && focus && (
         <PurchaseVignette key={focus.id} focus={focus} state={state} onDone={onFocusDone} />
+      )}
+      {!rideAlong && focus?.kind === 'bay' && (
+        <UpgradePop key={`pop-${focus.id}`} bayX={bayXForIndex(focus.bayIndex ?? 0, activeBayCount(state))} />
       )}
       {preset.contactShadows && <ContactShadows opacity={0.28} scale={22} blur={2.5} far={5} position={[0, 0.02, 0]} />}
       {!rideAlong && (
@@ -4350,6 +4353,7 @@ function SelfServeBay({
       {bay.upgrades.dryer > 0 && <DryerBoom level={bay.upgrades.dryer} />}
       {bay.upgrades.vault > 0 && <VaultMarker level={bay.upgrades.vault} />}
       <BayUpgradeRewardSet bay={bay} theme={theme} />
+      <BayEquipmentSkyline bay={bay} />
       {bay.upgrades.rinse + bay.upgrades.dryer + bay.upgrades.selector > 5 && (
         <Box name={`bay-${bay.id}-premium-strip`} color="#22d3ee" position={[0, 2.34, -2.65]} scale={[2.05, 0.07, 0.09]} />
       )}
@@ -4550,7 +4554,9 @@ function PressureWand({ wandLevel, soapLevel }: { wandLevel: number; soapLevel: 
       {soapLevel > 0 && (
         <group position={[0.86, 0.62, -1.75]}>
           <mesh castShadow>
-            <cylinderGeometry args={[0.18 + soapLevel * 0.012, 0.18 + soapLevel * 0.012, 0.64, 28]} />
+            <cylinderGeometry
+              args={[0.18 + soapLevel * 0.028, 0.18 + soapLevel * 0.028, 0.56 + soapLevel * 0.09, 28]}
+            />
             <meshStandardMaterial color="#10b981" roughness={0.42} />
           </mesh>
         </group>
@@ -4572,11 +4578,20 @@ function RinseRail({ level }: { level: number }) {
 }
 
 function DryerBoom({ level }: { level: number }) {
+  const nozzles = Math.min(5, 1 + level)
+  const width = 1.4 + level * 0.12
   return (
     <group position={[0, 1.8, 2.35]}>
-      <Box name="dryer-header" color={level >= 4 ? '#0f766e' : '#334155'} position={[0, 0, 0]} scale={[1.5, 0.16, 0.18]} />
-      <Box name="dryer-nozzle-left" color="#111827" position={[-0.46, -0.15, -0.06]} scale={[0.18, 0.22, 0.14]} />
-      <Box name="dryer-nozzle-right" color="#111827" position={[0.46, -0.15, -0.06]} scale={[0.18, 0.22, 0.14]} />
+      <Box name="dryer-header" color={level >= 4 ? '#0f766e' : '#334155'} position={[0, 0, 0]} scale={[width, 0.16, 0.18]} />
+      {Array.from({ length: nozzles }, (_, index) => (
+        <Box
+          key={`dryer-nozzle-${index}`}
+          name={`dryer-nozzle-${index}`}
+          color="#111827"
+          position={[-(width / 2 - 0.28) + index * ((width - 0.56) / Math.max(1, nozzles - 1)), -0.15, -0.06]}
+          scale={[0.16, 0.22, 0.14]}
+        />
+      ))}
     </group>
   )
 }
@@ -4615,6 +4630,114 @@ function BayUpgradeRewardSet({ bay, theme }: { bay: BayState; theme: CityThemeSp
       {levels.rinse > 0 && <RinseUpgradeProps bayId={bay.id} level={levels.rinse} />}
       {levels.dryer > 0 && <DryerUpgradeProps bayId={bay.id} level={levels.dryer} />}
       {levels.vault > 0 && <VaultUpgradeProps bayId={bay.id} level={levels.vault} />}
+    </group>
+  )
+}
+
+const SKYLINE_ENTRIES: Array<{ id: BayUpgradeId; color: string }> = [
+  { id: 'selector', color: '#f97316' },
+  { id: 'wand', color: '#2563eb' },
+  { id: 'soap', color: '#10b981' },
+  { id: 'rinse', color: '#38bdf8' },
+  { id: 'dryer', color: '#facc15' },
+  { id: 'vault', color: '#22c55e' },
+]
+
+/**
+ * Rooftop equipment that grows with each level — height reads at any zoom, so
+ * every purchase visibly changes the building (art bible: upgrades are *seen*).
+ */
+function BayEquipmentSkyline({ bay }: { bay: BayState }) {
+  const levels = bay.upgrades
+  const total = levels.selector + levels.wand + levels.soap + levels.rinse + levels.dryer + levels.vault
+  if (total <= 0) return null
+
+  return (
+    <group position={[0, 2.62, 1.05]}>
+      <Box name={`bay-${bay.id}-skyline-base`} color="#8fa2ae" position={[0, 0.05, 0]} scale={[2.14, 0.1, 0.56]} />
+      {SKYLINE_ENTRIES.map((entry, index) => {
+        const level = levels[entry.id]
+        if (level <= 0) return null
+        const height = 0.14 + level * 0.1
+        const maxed = level >= 6
+        return (
+          <group key={`bay-${bay.id}-skyline-${entry.id}`} position={[-0.85 + index * 0.34, 0.1, 0]}>
+            <Box
+              name={`bay-${bay.id}-skyline-${entry.id}-unit`}
+              color={entry.color}
+              position={[0, height / 2, 0]}
+              scale={[0.25, height, 0.32]}
+            />
+            <Box
+              name={`bay-${bay.id}-skyline-${entry.id}-vent`}
+              color="#f8fafc"
+              position={[0, height + 0.03, 0]}
+              scale={[maxed ? 0.31 : 0.17, 0.06, maxed ? 0.38 : 0.2]}
+            />
+            {maxed && (
+              <mesh position={[0, height + 0.16, 0]} castShadow>
+                <sphereGeometry args={[0.07, 12, 10]} />
+                <meshStandardMaterial color={entry.color} emissive={entry.color} emissiveIntensity={0.6} roughness={0.3} />
+              </mesh>
+            )}
+          </group>
+        )
+      })}
+    </group>
+  )
+}
+
+const UPGRADE_POP_SPARKS = 10
+const UPGRADE_POP_LIFE = 0.85
+
+/** Short gold sparkle at a bay right after buying equipment there. */
+function UpgradePop({ bayX }: { bayX: number }) {
+  const seeds = useMemo(
+    () =>
+      Array.from({ length: UPGRADE_POP_SPARKS }, (_, index) => ({
+        velocity: [
+          Math.cos((index / UPGRADE_POP_SPARKS) * Math.PI * 2) * (1.1 + (index % 3) * 0.35),
+          1.6 + (index % 4) * 0.45,
+          Math.sin((index / UPGRADE_POP_SPARKS) * Math.PI * 2) * (1.1 + (index % 3) * 0.35),
+        ] as Vec3,
+      })),
+    [],
+  )
+  const sparkRefs = useRef<(THREE.Mesh | null)[]>([])
+  const life = useRef(0)
+
+  useFrame((_, delta) => {
+    life.current = Math.min(UPGRADE_POP_LIFE, life.current + delta)
+    const t = life.current
+    const fade = Math.max(0.001, 1 - Math.pow(t / UPGRADE_POP_LIFE, 2))
+    seeds.forEach((seed, index) => {
+      const spark = sparkRefs.current[index]
+      if (!spark) return
+      spark.position.set(bayX + seed.velocity[0] * t, 2.7 + seed.velocity[1] * t - 2.6 * t * t, 0.6 + seed.velocity[2] * t)
+      spark.scale.setScalar(0.14 * fade)
+    })
+  })
+
+  return (
+    <group>
+      {seeds.map((_, index) => (
+        <mesh
+          key={index}
+          position={[bayX, 2.7, 0.6]}
+          scale={[0.001, 0.001, 0.001]}
+          ref={(el) => {
+            sparkRefs.current[index] = el
+          }}
+        >
+          <primitive attach="geometry" object={getSphereGeometry(1, 8, 6)} />
+          <meshStandardMaterial
+            color={index % 2 === 0 ? '#facc15' : '#f8fafc'}
+            emissive="#f59e0b"
+            emissiveIntensity={0.7}
+            roughness={0.25}
+          />
+        </mesh>
+      ))}
     </group>
   )
 }
