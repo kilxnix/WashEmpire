@@ -352,6 +352,13 @@ function getCylinderGeometry(radiusTop: number, radiusBottom: number, height: nu
   )
 }
 
+function getTorusGeometry(radius: number, tube: number, radialSegments: number, tubularSegments: number, arc: number): THREE.TorusGeometry {
+  return cachedGeometry(
+    `torus|${radius}|${tube}|${radialSegments}|${tubularSegments}|${arc}`,
+    () => new THREE.TorusGeometry(radius, tube, radialSegments, tubularSegments, arc),
+  )
+}
+
 // Self-contained image-based lighting: a few Lightformers baked once into a
 // cubemap give glossy car paint, water, and glass real reflections with no
 // external HDR fetch (works offline / on itch / on mobile).
@@ -4376,6 +4383,8 @@ function SelfServeBay({
   const trimColor = state.upgrades.paint ? theme.trim : '#2f6fba'
   const due = cashBoxValue(bay.cashBox)
   const activeCar = state.cars.find((car) => car.stage === 'washing' && car.bayIndex === index)
+  const bayLevel =
+    bay.upgrades.selector + bay.upgrades.wand + bay.upgrades.soap + bay.upgrades.rinse + bay.upgrades.dryer + bay.upgrades.vault
 
   return (
     <group position={[x, 0, 0.05]}>
@@ -4394,12 +4403,8 @@ function SelfServeBay({
         scale={[1.06, 0.024, 2.42]}
         opacity={0.22}
       />
-      <Box name={`bay-${bay.id}-front-post-left`} color={trimColor} position={[-1.28, 1.15, -2.78]} scale={[0.25, 2.3, 0.2]} />
-      <Box name={`bay-${bay.id}-front-post-right`} color={trimColor} position={[1.28, 1.15, -2.78]} scale={[0.25, 2.3, 0.2]} />
-      {/* Light, slim roof rails — the bays must read from the default camera. */}
-      <Box name={`bay-${bay.id}-roof-left`} color="#a9b8c2" position={[-1.28, 2.55, 0]} scale={[0.18, 0.13, 5.95]} />
-      <Box name={`bay-${bay.id}-roof-right`} color="#a9b8c2" position={[1.28, 2.55, 0]} scale={[0.18, 0.13, 5.95]} />
-      <Box name={`bay-${bay.id}-roof-center-beam`} color="#8fa2ae" position={[0, 2.5, 0]} scale={[0.09, 0.09, 5.78]} />
+      <BayCanopy bayId={bay.id} trim={trimColor} />
+      <BayGateway bayId={bay.id} theme={theme} trim={trimColor} level={bayLevel} />
       <Text color="#111827" fontSize={0.3} position={[-0.22, 0.16, -2.22]} rotation={[-Math.PI / 2, 0, 0]}>
         {bay.id}
       </Text>
@@ -4421,6 +4426,65 @@ function SelfServeBay({
         collectRequired={state.collectRequired}
         onCollect={onCollect}
       />
+    </group>
+  )
+}
+
+// Curved open canopy: rounded coping caps kill the flat-box wall edge and slim
+// arched ribs read as a real wash roof while staying see-through so the camera
+// keeps sight of the interior gear.
+function BayCanopy({ bayId, trim }: { bayId: number; trim: string }) {
+  return (
+    <group>
+      {[-1.28, 1.28].map((wx) => (
+        <mesh key={`cope-${wx}`} name={`bay-${bayId}-coping-${wx}`} position={[wx, 2.22, 0]} rotation={[Math.PI / 2, 0, 0]} castShadow dispose={null}>
+          <primitive attach="geometry" object={getCylinderGeometry(0.12, 0.12, 5.95, 16)} />
+          <primitive attach="material" object={getStandardMaterial('#cbd5e1', 0.5, 0.06)} />
+        </mesh>
+      ))}
+      {[-2.35, -0.55, 1.55].map((rz, i) => (
+        <mesh key={`rib-${i}`} name={`bay-${bayId}-rib-${i}`} position={[0, 2.24, rz]} scale={[1, 0.42, 1]} castShadow dispose={null}>
+          <primitive attach="geometry" object={getTorusGeometry(1.28, 0.055, 8, 22, Math.PI)} />
+          <primitive attach="material" object={getStandardMaterial(trim, 0.42, 0.12)} />
+        </mesh>
+      ))}
+      <Box name={`bay-${bayId}-ridge`} color="#94a4b2" position={[0, 2.72, 0]} scale={[0.08, 0.08, 5.9]} roughness={0.5} metalness={0.12} />
+    </group>
+  )
+}
+
+// Branded entrance: cylindrical pillars + a curved accent arch with a keystone
+// that lights up once the bay carries any equipment — a curved, built silhouette
+// in place of the old flat front posts.
+function BayGateway({ bayId, theme, trim, level }: { bayId: number; theme: CityThemeSpec; trim: string; level: number }) {
+  const litPips = Math.min(6, level)
+  return (
+    <group name={`bay-${bayId}-gateway`} position={[0, 0, -2.94]}>
+      {[-1.3, 1.3].map((px) => (
+        <group key={`pillar-${px}`} position={[px, 0, 0]}>
+          <mesh position={[0, 1.12, 0]} castShadow dispose={null}>
+            <primitive attach="geometry" object={getCylinderGeometry(0.14, 0.16, 2.24, 20)} />
+            <primitive attach="material" object={getStandardMaterial(trim, 0.4, 0.14)} />
+          </mesh>
+          <mesh position={[0, 0.13, 0]} castShadow dispose={null}>
+            <primitive attach="geometry" object={getCylinderGeometry(0.22, 0.25, 0.26, 20)} />
+            <primitive attach="material" object={getStandardMaterial('#cbd5e1', 0.5, 0.06)} />
+          </mesh>
+          <mesh position={[0, 2.28, 0]} castShadow dispose={null}>
+            <primitive attach="geometry" object={getCylinderGeometry(0.19, 0.16, 0.16, 20)} />
+            <primitive attach="material" object={getStandardMaterial('#e2e8f0', 0.45, 0.08)} />
+          </mesh>
+        </group>
+      ))}
+      <mesh position={[0, 2.24, 0]} scale={[1, 0.52, 1]} castShadow dispose={null}>
+        <primitive attach="geometry" object={getTorusGeometry(1.3, 0.14, 12, 26, Math.PI)} />
+        <primitive attach="material" object={getStandardMaterial(theme.accent, 0.38, 0.18)} />
+      </mesh>
+      {/* Keystone plate on the arch crown, tinted by how upgraded the bay is. */}
+      <mesh position={[0, 2.86, 0.02]} castShadow dispose={null}>
+        <primitive attach="geometry" object={getSphereGeometry(0.13, 16, 14)} />
+        <meshStandardMaterial color={litPips > 0 ? '#fde047' : theme.trim} emissive={litPips > 0 ? '#f59e0b' : '#000000'} emissiveIntensity={litPips > 0 ? 0.5 : 0} roughness={0.3} metalness={0.15} />
+      </mesh>
     </group>
   )
 }
@@ -4678,6 +4742,17 @@ function BayUpgradeRewardSet({ bay, theme }: { bay: BayState; theme: CityThemeSp
           <sphereGeometry args={[0.09 + Math.min(0.08, totalLevel * 0.01), 16, 16]} />
           <meshStandardMaterial color={theme.accent} emissive={theme.accent} emissiveIntensity={0.55} roughness={0.35} />
         </mesh>
+        {/* Marquee lamps facing up at the camera: one per equipment type owned,
+            so every new upgrade lights another bulb — obvious upgrade feedback. */}
+        {SKYLINE_ENTRIES.map((entry, i) => {
+          const on = levels[entry.id] > 0
+          return (
+            <mesh key={`lamp-${entry.id}`} position={[-0.92 + i * 0.368, 0.09, 0.06]} dispose={null}>
+              <primitive attach="geometry" object={getSphereGeometry(0.052, 12, 10)} />
+              <meshStandardMaterial color={on ? entry.color : '#2b3542'} emissive={on ? entry.color : '#000000'} emissiveIntensity={on ? 0.9 : 0} roughness={0.3} />
+            </mesh>
+          )
+        })}
       </group>
       <BayLevelRail bayId={bay.id} levels={levels} />
       {levels.selector > 0 && <SelectorUpgradeProps bayId={bay.id} level={levels.selector} theme={theme} />}
