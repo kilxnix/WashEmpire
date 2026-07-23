@@ -4555,6 +4555,112 @@ function WashSprayFX({ bayId }: { bayId: number }) {
   )
 }
 
+const WASH_CENTER_Z = 0.42
+
+// A rotating scrub brush: a soft core with bristle fins that spin as a group.
+function SpinBrush({ x }: { x: number }) {
+  const ref = useRef<THREE.Group>(null)
+  useFrame((_, dt) => {
+    if (ref.current) ref.current.rotation.y += dt * (x < 0 ? 6.5 : -6.5)
+  })
+  return (
+    <group ref={ref} position={[x, 0.64, WASH_CENTER_Z]}>
+      <mesh dispose={null}>
+        <primitive attach="geometry" object={getCylinderGeometry(0.1, 0.1, 0.94, 12)} />
+        <primitive attach="material" object={getStandardMaterial('#0ea5e9', 0.5, 0.06)} />
+      </mesh>
+      {[0, 1, 2, 3, 4, 5].map((i) => {
+        const a = (i / 6) * Math.PI * 2
+        return (
+          <Box key={i} name={`brush-fin-${i}`} color="#f5fbff" position={[Math.cos(a) * 0.17, 0, Math.sin(a) * 0.17]} rotation={[0, a, 0]} scale={[0.06, 0.92, 0.16]} roughness={0.7} />
+        )
+      })}
+    </group>
+  )
+}
+
+// Overhead rinse jets that pulse down the length of the car.
+function WaterJets() {
+  const refs = useRef<(THREE.Mesh | null)[]>([])
+  const t = useRef(0)
+  const seeds = useMemo(() => [-0.42, -0.14, 0.14, 0.42].map((x, i) => ({ x, phase: i * 0.35 })), [])
+  useFrame((_, dt) => {
+    t.current += dt
+    seeds.forEach((s, i) => {
+      const m = refs.current[i]
+      if (!m) return
+      const c = (t.current * 2.2 + s.phase) % 1
+      m.scale.y = 0.55 + Math.sin(c * Math.PI) * 0.65
+    })
+  })
+  return (
+    <group position={[0, 1.0, WASH_CENTER_Z]}>
+      {seeds.map((s, i) => (
+        <mesh key={i} position={[s.x, 0, -0.2 + (i % 2) * 0.4]} ref={(el) => { refs.current[i] = el }} dispose={null}>
+          <primitive attach="geometry" object={getCylinderGeometry(0.018, 0.032, 0.9, 8)} />
+          <meshStandardMaterial color="#7dd3fc" emissive="#38bdf8" emissiveIntensity={0.6} transparent opacity={0.75} roughness={0.2} />
+        </mesh>
+      ))}
+    </group>
+  )
+}
+
+// Twinkling gleam once the car comes out clean.
+function CleanSparkle() {
+  const refs = useRef<(THREE.Mesh | null)[]>([])
+  const t = useRef(0)
+  const seeds = useMemo(
+    () =>
+      Array.from({ length: 9 }, (_, i) => ({
+        x: -0.42 + (i % 3) * 0.42,
+        y: 0.52 + (i % 3) * 0.26,
+        z: -0.35 + Math.floor(i / 3) * 0.35,
+        phase: i * 0.7,
+      })),
+    [],
+  )
+  useFrame((_, dt) => {
+    t.current += dt
+    seeds.forEach((s, i) => {
+      const m = refs.current[i]
+      if (!m) return
+      m.scale.setScalar(0.025 + Math.max(0, Math.sin(t.current * 4 + s.phase)) * 0.085)
+    })
+  })
+  return (
+    <group position={[0, 0, WASH_CENTER_Z]}>
+      {seeds.map((s, i) => (
+        <mesh key={i} position={[s.x, s.y, s.z]} ref={(el) => { refs.current[i] = el }} dispose={null}>
+          <primitive attach="geometry" object={getSphereGeometry(1, 8, 6)} />
+          <meshStandardMaterial color={i % 2 === 0 ? '#ffffff' : '#fde68a'} emissive="#fef9c3" emissiveIntensity={0.9} roughness={0.2} />
+        </mesh>
+      ))}
+    </group>
+  )
+}
+
+// Stages the juice by wash progress: soap + spinning brushes, then rinse jets,
+// then a clean-car sparkle.
+function WashJuice({ car }: { car: Car }) {
+  const p = car.progress
+  const brushing = p >= 0.18 && p < 0.62
+  const rinsing = p >= 0.5 && p < 0.86
+  const shining = p >= 0.8
+  return (
+    <group>
+      {brushing && (
+        <>
+          <SpinBrush x={-0.6} />
+          <SpinBrush x={0.6} />
+          <TransparentBox name={`bay-foam-${car.id}`} color="#f8fafc" opacity={0.4} position={[0, 0.74, WASH_CENTER_Z]} scale={[1.44, 0.92, 1.94]} />
+        </>
+      )}
+      {rinsing && <WaterJets />}
+      {shining && <CleanSparkle />}
+    </group>
+  )
+}
+
 function BayWashActivity({ bayIndex, car }: { bayIndex: number; car: Car }) {
   const side = (Math.floor(car.progress * 4) + bayIndex) % 2 === 0 ? 1 : -1
   const sweep = (car.progress * 2.2) % 1
@@ -4565,6 +4671,7 @@ function BayWashActivity({ bayIndex, car }: { bayIndex: number; car: Car }) {
   return (
     <group>
       <WashSprayFX bayId={bayIndex + 1} />
+      <WashJuice car={car} />
       <group position={[0, 2.62, -2.42]}>
         <Box name={`bay-${bayIndex + 1}-occupied-header`} color="#0f172a" position={[0, 0, 0]} scale={[1.52, 0.2, 0.08]} />
         <Box name={`bay-${bayIndex + 1}-occupied-state`} color={mistColor} position={[-0.58, 0.01, -0.05]} scale={[0.14, 0.12, 0.04]} />
