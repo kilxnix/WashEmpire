@@ -1,6 +1,7 @@
 import { type ReactNode, useEffect, useMemo, useRef } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
-import { ContactShadows, OrbitControls, Sky } from '@react-three/drei'
+import { ContactShadows, Environment, Lightformer, OrbitControls, Sky } from '@react-three/drei'
+import { Bloom, BrightnessContrast, EffectComposer, HueSaturation, SMAA, Vignette } from '@react-three/postprocessing'
 import * as THREE from 'three'
 import type { BayState, BayUpgradeId, Car, CityDefinition, CityDistrictState, CityTheme, GameState, GraphicsQuality } from '../game/types'
 import { activeBayCount, cashBoxValue, cityDefinitions, currentCityDefinition, currentCityDistrict, isConveyorCity, totalCashBox } from '../game/simulation'
@@ -65,6 +66,11 @@ interface GraphicsPreset {
   shadowMapSize: number
   shadows: boolean
   serviceTraffic: boolean
+  /** Image-based lighting for glossy reflections. Off on low to stay mobile-lean. */
+  environment: boolean
+  envResolution: number
+  /** Post-processing stack (bloom / grade / vignette). Off on low. */
+  postFx: boolean
 }
 
 const GRAPHICS_PRESETS: Record<GraphicsQuality, GraphicsPreset> = {
@@ -75,6 +81,9 @@ const GRAPHICS_PRESETS: Record<GraphicsQuality, GraphicsPreset> = {
     shadowMapSize: 256,
     shadows: false,
     serviceTraffic: false,
+    environment: false,
+    envResolution: 64,
+    postFx: false,
   },
   balanced: {
     antialias: true,
@@ -83,6 +92,9 @@ const GRAPHICS_PRESETS: Record<GraphicsQuality, GraphicsPreset> = {
     shadowMapSize: 512,
     shadows: false,
     serviceTraffic: true,
+    environment: true,
+    envResolution: 128,
+    postFx: true,
   },
   high: {
     antialias: true,
@@ -91,6 +103,9 @@ const GRAPHICS_PRESETS: Record<GraphicsQuality, GraphicsPreset> = {
     shadowMapSize: 1024,
     shadows: true,
     serviceTraffic: true,
+    environment: true,
+    envResolution: 256,
+    postFx: true,
   },
 }
 
@@ -337,6 +352,39 @@ function getCylinderGeometry(radiusTop: number, radiusBottom: number, height: nu
   )
 }
 
+// Self-contained image-based lighting: a few Lightformers baked once into a
+// cubemap give glossy car paint, water, and glass real reflections with no
+// external HDR fetch (works offline / on itch / on mobile).
+function StudioEnvironment({ resolution }: { resolution: number }) {
+  return (
+    <Environment resolution={resolution} frames={1} environmentIntensity={0.5}>
+      {/* Warm key from the sun side */}
+      <Lightformer form="rect" intensity={3.4} color="#fff1d2" position={[9, 9, 6]} rotation={[-Math.PI / 3, 0, 0]} scale={[16, 16, 1]} />
+      {/* Cool sky fill, opposite the sun */}
+      <Lightformer form="rect" intensity={1.1} color="#bcd6ff" position={[-9, 7, -6]} rotation={[Math.PI / 4, 0, 0]} scale={[16, 16, 1]} />
+      {/* Soft overhead sky */}
+      <Lightformer form="rect" intensity={0.9} color="#eef4ff" position={[0, 15, 0]} rotation={[Math.PI / 2, 0, 0]} scale={[20, 20, 1]} />
+      {/* Subtle greenish ground bounce */}
+      <Lightformer form="rect" intensity={0.35} color="#5c6b4d" position={[0, -6, 0]} rotation={[-Math.PI / 2, 0, 0]} scale={[26, 26, 1]} />
+    </Environment>
+  )
+}
+
+// Post-processing: bloom for lit signage / water sparkle, a gentle warm grade,
+// and a vignette to focus the diorama. SMAA handles anti-aliasing in the
+// composited pipeline. Balanced + High only.
+function SceneEffects({ multisampling }: { multisampling: number }) {
+  return (
+    <EffectComposer multisampling={multisampling} enableNormalPass={false}>
+      <Bloom mipmapBlur intensity={0.52} luminanceThreshold={0.72} luminanceSmoothing={0.22} radius={0.7} />
+      <HueSaturation hue={0} saturation={0.14} />
+      <BrightnessContrast brightness={0.012} contrast={0.08} />
+      <Vignette offset={0.3} darkness={0.42} eskil={false} />
+      <SMAA />
+    </EffectComposer>
+  )
+}
+
 export function WashScene({
   state,
   onCollect,
@@ -354,14 +402,21 @@ export function WashScene({
       shadows={preset.shadows}
       dpr={preset.dpr}
       gl={{ antialias: preset.antialias, powerPreference: graphicsQuality === 'low' ? 'default' : 'high-performance' }}
+      onCreated={({ gl }) => {
+        gl.toneMapping = THREE.ACESFilmicToneMapping
+        gl.toneMappingExposure = 1.08
+      }}
     >
-      <color attach="background" args={['#bfd8e8']} />
-      <fog attach="fog" args={['#bfd8e8', 30, 72]} />
+      <color attach="background" args={['#c6dcea']} />
+      <fog attach="fog" args={['#c6dcea', 42, 96]} />
       <Sky sunPosition={[12, 18, 8]} turbidity={3.4} rayleigh={0.8} mieCoefficient={0.004} mieDirectionalG={0.72} />
-      <ambientLight intensity={0.64} />
+      {preset.environment && <StudioEnvironment resolution={preset.envResolution} />}
+      <ambientLight intensity={preset.environment ? 0.4 : 0.62} />
+      <hemisphereLight args={['#dcecff', '#55603f', preset.environment ? 0.5 : 0.72]} />
       <directionalLight
         castShadow={preset.shadows}
-        intensity={1.95}
+        color="#fff1da"
+        intensity={2.05}
         position={[8, 12, 5]}
         shadow-mapSize={[preset.shadowMapSize, preset.shadowMapSize]}
       />
@@ -389,6 +444,7 @@ export function WashScene({
           target={CAMERA_TARGET}
         />
       )}
+      {preset.postFx && <SceneEffects multisampling={preset.antialias ? 4 : 0} />}
     </Canvas>
   )
 }
@@ -3945,7 +4001,7 @@ function Pond({ color, position, scale }: { color: string; position: Vec3; scale
   return (
     <mesh name={`pond-${position.join('-')}`} position={position} scale={scale} receiveShadow>
       <cylinderGeometry args={[0.88, 0.88, 0.045, 36]} />
-      <meshStandardMaterial color={color} roughness={0.3} metalness={0.05} />
+      <meshStandardMaterial color={color} roughness={0.12} metalness={0.2} />
     </mesh>
   )
 }
@@ -5166,26 +5222,26 @@ function VehicleModel({
     <group>
       <TransparentBox name={`${car.id}-vehicle-shadow`} color="#020617" position={[0, 0.12, 0.08]} scale={[1.18, 0.035, 1.98]} opacity={0.24} />
       <Box name={`${car.id}-chassis`} color="#111827" position={[0, 0.24, 0.04]} scale={[1.02, 0.14, 1.86]} />
-      <Box name={`${car.id}-body-main`} color={bodyColor} position={[0, 0.43, 0.1]} scale={[0.96, 0.36, isPickup ? 1.72 : 1.6]} metalness={0.04} roughness={0.42} />
+      <Box name={`${car.id}-body-main`} color={bodyColor} position={[0, 0.43, 0.1]} scale={[0.96, 0.36, isPickup ? 1.72 : 1.6]} metalness={0.16} roughness={0.24} />
       <Box
         name={`${car.id}-hood-slope`}
         color={bodyColor}
         position={[0, 0.53, -0.64]}
         rotation={[0.12, 0, 0]}
         scale={[0.86, 0.14, 0.46]}
-        metalness={0.04}
-        roughness={0.42}
+        metalness={0.16}
+        roughness={0.24}
       />
       {isPickup ? (
         <Box name={`${car.id}-pickup-bed`} color="#1f2937" position={[0, 0.56, 0.57]} scale={[0.76, 0.16, 0.54]} />
       ) : (
-        <Box name={`${car.id}-trunk-slope`} color={bodyColor} position={[0, 0.55, 0.64]} rotation={[-0.08, 0, 0]} scale={[0.84, 0.14, 0.4]} />
+        <Box name={`${car.id}-trunk-slope`} color={bodyColor} position={[0, 0.55, 0.64]} rotation={[-0.08, 0, 0]} scale={[0.84, 0.14, 0.4]} metalness={0.16} roughness={0.24} />
       )}
-      <Box name={`${car.id}-cabin`} color={cabinColor} position={[0, isVan ? 0.72 : 0.72, isVan ? -0.02 : -0.11]} scale={[0.68, isVan ? 0.5 : 0.36, isVan ? 1.0 : 0.72]} />
-      <Box name={`${car.id}-windshield`} color={windowColor} position={[0, 0.83, -0.55]} rotation={[0.22, 0, 0]} scale={[0.55, 0.055, 0.2]} />
-      <Box name={`${car.id}-rear-window`} color={windowColor} position={[0, 0.82, isVan ? 0.48 : 0.35]} rotation={[-0.18, 0, 0]} scale={[0.55, 0.055, 0.18]} />
-      <Box name={`${car.id}-left-window`} color="#1e293b" position={[-0.37, 0.74, -0.08]} scale={[0.05, 0.22, isVan ? 0.72 : 0.5]} />
-      <Box name={`${car.id}-right-window`} color="#1e293b" position={[0.37, 0.74, -0.08]} scale={[0.05, 0.22, isVan ? 0.72 : 0.5]} />
+      <Box name={`${car.id}-cabin`} color={cabinColor} position={[0, isVan ? 0.72 : 0.72, isVan ? -0.02 : -0.11]} scale={[0.68, isVan ? 0.5 : 0.36, isVan ? 1.0 : 0.72]} metalness={0.12} roughness={0.3} />
+      <Box name={`${car.id}-windshield`} color={windowColor} position={[0, 0.83, -0.55]} rotation={[0.22, 0, 0]} scale={[0.55, 0.055, 0.2]} metalness={0.2} roughness={0.08} />
+      <Box name={`${car.id}-rear-window`} color={windowColor} position={[0, 0.82, isVan ? 0.48 : 0.35]} rotation={[-0.18, 0, 0]} scale={[0.55, 0.055, 0.18]} metalness={0.2} roughness={0.08} />
+      <Box name={`${car.id}-left-window`} color="#1e293b" position={[-0.37, 0.74, -0.08]} scale={[0.05, 0.22, isVan ? 0.72 : 0.5]} metalness={0.2} roughness={0.08} />
+      <Box name={`${car.id}-right-window`} color="#1e293b" position={[0.37, 0.74, -0.08]} scale={[0.05, 0.22, isVan ? 0.72 : 0.5]} metalness={0.2} roughness={0.08} />
       <CarOccupants variant={car.variant} />
       <Box name={`${car.id}-stripe-left`} color={accentColor} position={[-0.51, 0.46, -0.02]} scale={[0.045, 0.1, 1.18]} />
       <Box name={`${car.id}-stripe-right`} color={accentColor} position={[0.51, 0.46, -0.02]} scale={[0.045, 0.1, 1.18]} />
