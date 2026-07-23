@@ -207,6 +207,21 @@ interface CityThemeSpec {
   blockTones: [string, string, string, string, string]
   skylineA: string
   skylineB: string
+  sky: ThemeSky
+}
+
+// Per-district atmosphere: background, fog, key-light colour, and tone-map
+// exposure so each city reads with its own mood instead of one shared sky.
+interface ThemeSky {
+  bg: string
+  fog: string
+  fogNear: number
+  fogFar: number
+  sun: string
+  sunIntensity: number
+  hemiSky: string
+  hemiGround: string
+  exposure: number
 }
 
 const CITY_THEMES: Record<CityTheme, CityThemeSpec> = {
@@ -228,6 +243,7 @@ const CITY_THEMES: Record<CityTheme, CityThemeSpec> = {
     blockTones: ['#d7d1c6', '#c4b5a5', '#b8c8bd', '#b9c3cc', '#d8c6a1'],
     skylineA: '#627384',
     skylineB: '#485867',
+    sky: { bg: '#cbe0ee', fog: '#cfe1ec', fogNear: 44, fogFar: 100, sun: '#fff1d6', sunIntensity: 2.05, hemiSky: '#dcecff', hemiGround: '#586138', exposure: 1.08 },
   },
   harbor: {
     id: 'harbor',
@@ -247,6 +263,7 @@ const CITY_THEMES: Record<CityTheme, CityThemeSpec> = {
     blockTones: ['#a8b7bd', '#d7d1c6', '#8aa2aa', '#b8c8bd', '#c8b99a'],
     skylineA: '#4f6571',
     skylineB: '#334a56',
+    sky: { bg: '#b7d0d6', fog: '#bdd2d6', fogNear: 38, fogFar: 90, sun: '#fdeecf', sunIntensity: 1.95, hemiSky: '#cfe6ef', hemiGround: '#48594f', exposure: 1.04 },
   },
   downtown: {
     id: 'downtown',
@@ -266,6 +283,7 @@ const CITY_THEMES: Record<CityTheme, CityThemeSpec> = {
     blockTones: ['#cbd5e1', '#94a3b8', '#64748b', '#d6d3d1', '#b8c8bd'],
     skylineA: '#334155',
     skylineB: '#1f2937',
+    sky: { bg: '#9aa6c4', fog: '#96a0bd', fogNear: 34, fogFar: 80, sun: '#e7dcff', sunIntensity: 1.7, hemiSky: '#c3ccea', hemiGround: '#33384a', exposure: 1.0 },
   },
   snow: {
     id: 'snow',
@@ -285,6 +303,7 @@ const CITY_THEMES: Record<CityTheme, CityThemeSpec> = {
     blockTones: ['#f8fafc', '#dbeafe', '#cbd5e1', '#e2e8f0', '#b7c8d2'],
     skylineA: '#94a3b8',
     skylineB: '#64748b',
+    sky: { bg: '#dcebf2', fog: '#e4eef3', fogNear: 50, fogFar: 110, sun: '#fbfdff', sunIntensity: 2.2, hemiSky: '#ecf4fb', hemiGround: '#93a3ae', exposure: 1.13 },
   },
   beltline: {
     id: 'beltline',
@@ -304,6 +323,7 @@ const CITY_THEMES: Record<CityTheme, CityThemeSpec> = {
     blockTones: ['#9ca3af', '#64748b', '#475569', '#c8b99a', '#b8c8bd'],
     skylineA: '#475569',
     skylineB: '#26323d',
+    sky: { bg: '#bcc7cb', fog: '#c0cbce', fogNear: 40, fogFar: 94, sun: '#f4efe2', sunIntensity: 1.98, hemiSky: '#ccd8dd', hemiGround: '#43483f', exposure: 1.05 },
   },
 }
 
@@ -392,6 +412,17 @@ function SceneEffects({ multisampling }: { multisampling: number }) {
   )
 }
 
+// Tone-map exposure has to be set imperatively and kept in sync as the player
+// moves between districts (onCreated only fires once).
+function ExposureRig({ exposure }: { exposure: number }) {
+  const gl = useThree((three) => three.gl)
+  useEffect(() => {
+    gl.toneMapping = THREE.ACESFilmicToneMapping
+    gl.toneMappingExposure = exposure
+  }, [gl, exposure])
+  return null
+}
+
 export function WashScene({
   state,
   onCollect,
@@ -402,6 +433,7 @@ export function WashScene({
   collectFx = null,
 }: WashSceneProps) {
   const preset = GRAPHICS_PRESETS[graphicsQuality]
+  const sky = themeFor(currentCityDefinition(state)).sky
 
   return (
     <Canvas
@@ -409,21 +441,18 @@ export function WashScene({
       shadows={preset.shadows}
       dpr={preset.dpr}
       gl={{ antialias: preset.antialias, powerPreference: graphicsQuality === 'low' ? 'default' : 'high-performance' }}
-      onCreated={({ gl }) => {
-        gl.toneMapping = THREE.ACESFilmicToneMapping
-        gl.toneMappingExposure = 1.08
-      }}
     >
-      <color attach="background" args={['#c6dcea']} />
-      <fog attach="fog" args={['#c6dcea', 42, 96]} />
+      <ExposureRig exposure={sky.exposure} />
+      <color attach="background" args={[sky.bg]} />
+      <fog attach="fog" args={[sky.fog, sky.fogNear, sky.fogFar]} />
       <Sky sunPosition={[12, 18, 8]} turbidity={3.4} rayleigh={0.8} mieCoefficient={0.004} mieDirectionalG={0.72} />
       {preset.environment && <StudioEnvironment resolution={preset.envResolution} />}
       <ambientLight intensity={preset.environment ? 0.4 : 0.62} />
-      <hemisphereLight args={['#dcecff', '#55603f', preset.environment ? 0.5 : 0.72]} />
+      <hemisphereLight args={[sky.hemiSky, sky.hemiGround, preset.environment ? 0.5 : 0.72]} />
       <directionalLight
         castShadow={preset.shadows}
-        color="#fff1da"
-        intensity={2.05}
+        color={sky.sun}
+        intensity={sky.sunIntensity}
         position={[8, 12, 5]}
         shadow-mapSize={[preset.shadowMapSize, preset.shadowMapSize]}
       />
