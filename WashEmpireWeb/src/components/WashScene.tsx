@@ -5279,6 +5279,33 @@ function CarOccupants({ variant }: { variant: number }) {
   )
 }
 
+type CarKind = 'sedan' | 'hatch' | 'suv' | 'pickup' | 'van' | 'sport'
+const CAR_KINDS: CarKind[] = ['sedan', 'hatch', 'suv', 'pickup', 'van', 'sport']
+
+interface CarSpec {
+  bodyLen: number
+  bodyH: number
+  bodyY: number
+  cabinLen: number
+  cabinH: number
+  cabinZ: number
+  cabinBodyColor: boolean
+  wheelR: number
+  bed: boolean
+  roundRoof: boolean
+}
+
+// One entry per silhouette. Cabin sits on the body; roof + windows derive from
+// it, so each kind reads as a distinct shape even at the far camera.
+const CAR_SPECS: Record<CarKind, CarSpec> = {
+  sedan: { bodyLen: 1.62, bodyH: 0.34, bodyY: 0.42, cabinLen: 0.74, cabinH: 0.34, cabinZ: -0.08, cabinBodyColor: false, wheelR: 0.14, bed: false, roundRoof: true },
+  hatch: { bodyLen: 1.4, bodyH: 0.34, bodyY: 0.42, cabinLen: 0.86, cabinH: 0.4, cabinZ: 0.08, cabinBodyColor: false, wheelR: 0.14, bed: false, roundRoof: true },
+  suv: { bodyLen: 1.66, bodyH: 0.44, bodyY: 0.48, cabinLen: 0.94, cabinH: 0.42, cabinZ: 0.0, cabinBodyColor: false, wheelR: 0.16, bed: false, roundRoof: false },
+  pickup: { bodyLen: 1.76, bodyH: 0.36, bodyY: 0.44, cabinLen: 0.58, cabinH: 0.42, cabinZ: -0.46, cabinBodyColor: false, wheelR: 0.16, bed: true, roundRoof: true },
+  van: { bodyLen: 1.66, bodyH: 0.5, bodyY: 0.52, cabinLen: 1.04, cabinH: 0.5, cabinZ: -0.02, cabinBodyColor: true, wheelR: 0.15, bed: false, roundRoof: false },
+  sport: { bodyLen: 1.7, bodyH: 0.28, bodyY: 0.38, cabinLen: 0.64, cabinH: 0.26, cabinZ: 0.08, cabinBodyColor: false, wheelR: 0.14, bed: false, roundRoof: true },
+}
+
 function VehicleModel({
   car,
   bodyColor,
@@ -5288,50 +5315,62 @@ function VehicleModel({
   bodyColor: string
   accentColor: string
 }) {
-  const isPickup = car.variant % 5 === 2
-  const isVan = car.variant % 5 === 4
-  const cabinColor = isVan ? bodyColor : '#eef2f7'
+  const s = CAR_SPECS[CAR_KINDS[car.variant % CAR_KINDS.length]]
+  const cabinColor = s.cabinBodyColor ? bodyColor : '#eef2f7'
   const windowColor = '#0f172a'
+  const cabinY = s.bodyY + s.bodyH / 2 + s.cabinH / 2 - 0.07
+  const roofY = cabinY + s.cabinH / 2
+  const frontZ = -s.bodyLen / 2
+  const rearZ = s.bodyLen / 2
+  const wheelZ = s.bodyLen / 2 - 0.34
+  const windowLen = s.cabinLen * 0.66
 
   return (
     <group>
-      <TransparentBox name={`${car.id}-vehicle-shadow`} color="#020617" position={[0, 0.12, 0.08]} scale={[1.18, 0.035, 1.98]} opacity={0.24} />
-      <Box name={`${car.id}-chassis`} color="#111827" position={[0, 0.24, 0.04]} scale={[1.02, 0.14, 1.86]} />
-      <Box name={`${car.id}-body-main`} color={bodyColor} position={[0, 0.43, 0.1]} scale={[0.96, 0.36, isPickup ? 1.72 : 1.6]} metalness={0.16} roughness={0.24} />
-      <Box
-        name={`${car.id}-hood-slope`}
-        color={bodyColor}
-        position={[0, 0.53, -0.64]}
-        rotation={[0.12, 0, 0]}
-        scale={[0.86, 0.14, 0.46]}
-        metalness={0.16}
-        roughness={0.24}
-      />
-      {isPickup ? (
-        <Box name={`${car.id}-pickup-bed`} color="#1f2937" position={[0, 0.56, 0.57]} scale={[0.76, 0.16, 0.54]} />
+      <TransparentBox name={`${car.id}-vehicle-shadow`} color="#020617" position={[0, 0.12, 0.04]} scale={[1.2, 0.035, s.bodyLen + 0.28]} opacity={0.24} />
+      <Box name={`${car.id}-chassis`} color="#0b1220" position={[0, 0.24, 0.02]} scale={[1.0, 0.14, s.bodyLen + 0.12]} />
+      <Box name={`${car.id}-body-main`} color={bodyColor} position={[0, s.bodyY, 0.03]} scale={[0.96, s.bodyH, s.bodyLen]} metalness={0.18} roughness={0.22} />
+      {/* Rounded fenders soften the boxy sides. */}
+      {[-0.49, 0.49].map((fx) => (
+        <mesh key={`fender-${fx}`} position={[fx, s.bodyY - 0.02, 0.03]} rotation={[Math.PI / 2, 0, 0]} dispose={null}>
+          <primitive attach="geometry" object={getCylinderGeometry(s.bodyH * 0.52, s.bodyH * 0.52, s.bodyLen * 0.92, 14)} />
+          <primitive attach="material" object={getStandardMaterial(bodyColor, 0.22, 0.18)} />
+        </mesh>
+      ))}
+      <Box name={`${car.id}-hood`} color={bodyColor} position={[0, s.bodyY + s.bodyH * 0.32, frontZ + 0.24]} rotation={[0.12, 0, 0]} scale={[0.86, 0.13, 0.48]} metalness={0.18} roughness={0.22} />
+      {s.bed ? (
+        <Box name={`${car.id}-pickup-bed`} color="#1f2937" position={[0, s.bodyY + 0.12, rearZ - 0.34]} scale={[0.78, 0.18, 0.62]} />
       ) : (
-        <Box name={`${car.id}-trunk-slope`} color={bodyColor} position={[0, 0.55, 0.64]} rotation={[-0.08, 0, 0]} scale={[0.84, 0.14, 0.4]} metalness={0.16} roughness={0.24} />
+        <Box name={`${car.id}-trunk`} color={bodyColor} position={[0, s.bodyY + s.bodyH * 0.3, rearZ - 0.22]} rotation={[-0.08, 0, 0]} scale={[0.84, 0.13, 0.42]} metalness={0.18} roughness={0.22} />
       )}
-      <Box name={`${car.id}-cabin`} color={cabinColor} position={[0, isVan ? 0.72 : 0.72, isVan ? -0.02 : -0.11]} scale={[0.68, isVan ? 0.5 : 0.36, isVan ? 1.0 : 0.72]} metalness={0.12} roughness={0.3} />
-      <Box name={`${car.id}-windshield`} color={windowColor} position={[0, 0.83, -0.55]} rotation={[0.22, 0, 0]} scale={[0.55, 0.055, 0.2]} metalness={0.2} roughness={0.08} />
-      <Box name={`${car.id}-rear-window`} color={windowColor} position={[0, 0.82, isVan ? 0.48 : 0.35]} rotation={[-0.18, 0, 0]} scale={[0.55, 0.055, 0.18]} metalness={0.2} roughness={0.08} />
-      <Box name={`${car.id}-left-window`} color="#1e293b" position={[-0.37, 0.74, -0.08]} scale={[0.05, 0.22, isVan ? 0.72 : 0.5]} metalness={0.2} roughness={0.08} />
-      <Box name={`${car.id}-right-window`} color="#1e293b" position={[0.37, 0.74, -0.08]} scale={[0.05, 0.22, isVan ? 0.72 : 0.5]} metalness={0.2} roughness={0.08} />
+      <Box name={`${car.id}-cabin`} color={cabinColor} position={[0, cabinY, s.cabinZ]} scale={[0.68, s.cabinH, s.cabinLen]} metalness={0.12} roughness={0.3} />
+      {s.roundRoof ? (
+        <mesh position={[0, roofY - 0.03, s.cabinZ]} scale={[0.35, 0.15, s.cabinLen * 0.52]} castShadow dispose={null}>
+          <primitive attach="geometry" object={getSphereGeometry(1, 14, 10)} />
+          <primitive attach="material" object={getStandardMaterial(cabinColor, 0.3, 0.12)} />
+        </mesh>
+      ) : (
+        <Box name={`${car.id}-roof-rack`} color="#334155" position={[0, roofY + 0.02, s.cabinZ]} scale={[0.5, 0.05, s.cabinLen * 0.8]} />
+      )}
+      <Box name={`${car.id}-windshield`} color={windowColor} position={[0, cabinY + s.cabinH * 0.12, s.cabinZ - s.cabinLen / 2 + 0.04]} rotation={[0.32, 0, 0]} scale={[0.56, 0.05, 0.22]} metalness={0.2} roughness={0.07} />
+      <Box name={`${car.id}-rear-window`} color={windowColor} position={[0, cabinY + s.cabinH * 0.12, s.cabinZ + s.cabinLen / 2 - 0.04]} rotation={[-0.28, 0, 0]} scale={[0.56, 0.05, 0.2]} metalness={0.2} roughness={0.07} />
+      <Box name={`${car.id}-left-window`} color="#111c2e" position={[-0.35, cabinY, s.cabinZ]} scale={[0.05, s.cabinH * 0.56, windowLen]} metalness={0.2} roughness={0.07} />
+      <Box name={`${car.id}-right-window`} color="#111c2e" position={[0.35, cabinY, s.cabinZ]} scale={[0.05, s.cabinH * 0.56, windowLen]} metalness={0.2} roughness={0.07} />
       <CarOccupants variant={car.variant} />
-      <Box name={`${car.id}-stripe-left`} color={accentColor} position={[-0.51, 0.46, -0.02]} scale={[0.045, 0.1, 1.18]} />
-      <Box name={`${car.id}-stripe-right`} color={accentColor} position={[0.51, 0.46, -0.02]} scale={[0.045, 0.1, 1.18]} />
-      <Box name={`${car.id}-front-bumper`} color="#020617" position={[0, 0.34, -0.94]} scale={[0.76, 0.14, 0.08]} />
-      <Box name={`${car.id}-rear-bumper`} color="#020617" position={[0, 0.34, 0.98]} scale={[0.76, 0.14, 0.08]} />
-      <Box name={`${car.id}-headlight-left`} color="#fde68a" position={[-0.26, 0.45, -0.99]} scale={[0.22, 0.055, 0.04]} />
-      <Box name={`${car.id}-headlight-right`} color="#fde68a" position={[0.26, 0.45, -0.99]} scale={[0.22, 0.055, 0.04]} />
-      <Box name={`${car.id}-tail-left`} color="#b91c1c" position={[-0.26, 0.45, 1.03]} scale={[0.22, 0.055, 0.04]} />
-      <Box name={`${car.id}-tail-right`} color="#b91c1c" position={[0.26, 0.45, 1.03]} scale={[0.22, 0.055, 0.04]} />
-      <Box name={`${car.id}-mirror-left`} color="#111827" position={[-0.55, 0.66, -0.42]} scale={[0.08, 0.08, 0.12]} />
-      <Box name={`${car.id}-mirror-right`} color="#111827" position={[0.55, 0.66, -0.42]} scale={[0.08, 0.08, 0.12]} />
-      <Wheel x={-0.54} z={-0.58} />
-      <Wheel x={0.54} z={-0.58} />
-      <Wheel x={-0.54} z={0.58} />
-      <Wheel x={0.54} z={0.58} />
+      <Box name={`${car.id}-stripe-left`} color={accentColor} position={[-0.5, s.bodyY, 0.0]} scale={[0.04, 0.08, s.bodyLen * 0.74]} />
+      <Box name={`${car.id}-stripe-right`} color={accentColor} position={[0.5, s.bodyY, 0.0]} scale={[0.04, 0.08, s.bodyLen * 0.74]} />
+      <Box name={`${car.id}-front-bumper`} color="#020617" position={[0, s.bodyY - s.bodyH * 0.28, frontZ - 0.02]} scale={[0.78, 0.14, 0.08]} />
+      <Box name={`${car.id}-rear-bumper`} color="#020617" position={[0, s.bodyY - s.bodyH * 0.28, rearZ + 0.02]} scale={[0.78, 0.14, 0.08]} />
+      <Box name={`${car.id}-headlight-left`} color="#fef3c7" position={[-0.28, s.bodyY, frontZ - 0.03]} scale={[0.2, 0.08, 0.04]} />
+      <Box name={`${car.id}-headlight-right`} color="#fef3c7" position={[0.28, s.bodyY, frontZ - 0.03]} scale={[0.2, 0.08, 0.04]} />
+      <Box name={`${car.id}-tail-left`} color="#ef4444" position={[-0.28, s.bodyY, rearZ + 0.03]} scale={[0.2, 0.07, 0.04]} />
+      <Box name={`${car.id}-tail-right`} color="#ef4444" position={[0.28, s.bodyY, rearZ + 0.03]} scale={[0.2, 0.07, 0.04]} />
+      <Box name={`${car.id}-mirror-left`} color="#111827" position={[-0.54, cabinY - s.cabinH * 0.2, s.cabinZ - s.cabinLen * 0.34]} scale={[0.08, 0.07, 0.12]} />
+      <Box name={`${car.id}-mirror-right`} color="#111827" position={[0.54, cabinY - s.cabinH * 0.2, s.cabinZ - s.cabinLen * 0.34]} scale={[0.08, 0.07, 0.12]} />
+      <Wheel x={-0.54} z={-wheelZ} r={s.wheelR} />
+      <Wheel x={0.54} z={-wheelZ} r={s.wheelR} />
+      <Wheel x={-0.54} z={wheelZ} r={s.wheelR} />
+      <Wheel x={0.54} z={wheelZ} r={s.wheelR} />
     </group>
   )
 }
@@ -5443,12 +5482,19 @@ function WashProgress({ value }: { value: number }) {
   )
 }
 
-function Wheel({ x, z }: { x: number; z: number }) {
+function Wheel({ x, z, r = 0.14 }: { x: number; z: number; r?: number }) {
+  const outward = x >= 0 ? 1 : -1
   return (
-    <mesh position={[x, 0.22, z]} rotation={[0, 0, Math.PI / 2]} castShadow dispose={null}>
-      <primitive attach="geometry" object={getCylinderGeometry(0.14, 0.14, 0.12, 24)} />
-      <primitive attach="material" object={getStandardMaterial('#020617', 0.62, 0)} />
-    </mesh>
+    <group position={[x, r + 0.08, z]}>
+      <mesh rotation={[0, 0, Math.PI / 2]} castShadow dispose={null}>
+        <primitive attach="geometry" object={getCylinderGeometry(r, r, 0.12, 20)} />
+        <primitive attach="material" object={getStandardMaterial('#0b0f17', 0.62, 0)} />
+      </mesh>
+      <mesh position={[outward * 0.065, 0, 0]} rotation={[0, 0, Math.PI / 2]} dispose={null}>
+        <primitive attach="geometry" object={getCylinderGeometry(r * 0.5, r * 0.5, 0.02, 14)} />
+        <primitive attach="material" object={getStandardMaterial('#cbd5e1', 0.35, 0.35)} />
+      </mesh>
+    </group>
   )
 }
 

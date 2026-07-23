@@ -45,7 +45,19 @@ const OFFLINE_BASELINE_RATE_FRACTION = 0.5
 const OFFLINE_MIN_RECONCILE_SECONDS = 60
 const DEFAULT_LOCATION_NAME = 'Wash Empire Auto Spa'
 
-const CAR_COLORS = ['#f8fafc', '#dbe4ea', '#b8c3cc', '#334155', '#1f2937', '#8f1d1d']
+// Mostly neutral like real traffic, with a few toy colours mixed in for life.
+const CAR_COLORS = [
+  '#eef2f6',
+  '#b8c3cc',
+  '#3b4757',
+  '#1f2937',
+  '#b91c1c',
+  '#1d4ed8',
+  '#0d9488',
+  '#059669',
+  '#ea580c',
+  '#7c3aed',
+]
 
 export const upgradeDefinitions: UpgradeDefinition[] = [
   {
