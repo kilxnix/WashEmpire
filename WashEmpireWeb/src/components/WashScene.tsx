@@ -763,6 +763,7 @@ function SelfServeWashSite({
       <BayRow state={state} onCollect={onCollect} theme={theme} />
       <Office state={state} onCollect={onCollect} theme={theme} />
       <RoadSign lit={state.upgrades.signage} painted={state.upgrades.paint} label={state.locationName} theme={theme} />
+      <LotLandscaping theme={theme} />
       <EmployeeParking state={state} />
       {state.collectRequired && (state.lastReview?.autoCollected ?? 0) > 0 && <StaffCollectionMarker />}
       {hasReward(rewardIds, 'vacuum-island-pad') && <VacuumIsland />}
@@ -5215,10 +5216,12 @@ function Office({ state, onCollect, theme }: { state: GameState; onCollect: () =
   )
 }
 
+// Tall roadside pylon — a landmark the lot reads from the street. Text is
+// geometric (the scene has no live lettering), so it brands with colour, an
+// illuminated cabinet, and a glowing water-drop logo.
 function RoadSign({
   lit,
   painted,
-  label,
   theme,
 }: {
   lit: boolean
@@ -5226,15 +5229,113 @@ function RoadSign({
   label: string
   theme: CityThemeSpec
 }) {
-  const signLabel = label.length > 16 ? `${label.slice(0, 15)}...` : label
+  const faceColor = painted ? theme.trim : '#0756a5'
   return (
-    <group position={[-6.0, 0, -4.95]}>
-      <Box name="sign-post" color="#1f2937" position={[0, 0.8, 0]} scale={[0.12, 1.6, 0.12]} />
-      <Box name="sign-face" color={painted ? theme.trim : '#0756a5'} position={[0, 1.55, 0]} scale={[2.15, 0.55, 0.12]} />
-      <Text color="#f8fafc" fontSize={0.13} position={[-0.88, 1.55, -0.08]}>
-        {signLabel.toUpperCase()}
-      </Text>
-      {lit && <Box name="sign-light" color="#fde68a" position={[0, 1.15, -0.09]} scale={[1.8, 0.07, 0.04]} />}
+    <group position={[-6.5, 0, 4.7]}>
+      <mesh position={[0, 0.13, 0]} castShadow dispose={null}>
+        <primitive attach="geometry" object={getCylinderGeometry(0.42, 0.5, 0.26, 18)} />
+        <primitive attach="material" object={getStandardMaterial('#334155', 0.6, 0.12)} />
+      </mesh>
+      <mesh position={[0, 2.0, 0]} castShadow dispose={null}>
+        <primitive attach="geometry" object={getCylinderGeometry(0.14, 0.17, 3.9, 16)} />
+        <primitive attach="material" object={getStandardMaterial('#1f2937', 0.5, 0.25)} />
+      </mesh>
+      <Box name="pylon-cabinet" color="#0b1220" position={[0, 3.72, 0]} scale={[2.34, 1.54, 0.24]} />
+      {[0.13, -0.13].map((fz, i) => (
+        <group key={`pylon-side-${i}`} position={[0, 3.72, fz]}>
+          <Box name={`pylon-panel-${i}`} color={faceColor} position={[0, 0.34, 0]} scale={[2.14, 0.78, 0.03]} metalness={0.1} roughness={0.4} />
+          <Box name={`pylon-band-${i}`} color="#facc15" position={[0, -0.42, 0]} scale={[2.14, 0.42, 0.03]} />
+          <Box name={`pylon-chevron-${i}`} color={theme.accent} position={[-0.66, -0.42, 0.02]} rotation={[0, 0, Math.PI / 4]} scale={[0.2, 0.2, 0.02]} />
+          <Box name={`pylon-chevron2-${i}`} color={theme.accent} position={[-0.36, -0.42, 0.02]} rotation={[0, 0, Math.PI / 4]} scale={[0.2, 0.2, 0.02]} />
+        </group>
+      ))}
+      {/* Water-drop logo on the crown. */}
+      <mesh position={[0, 4.78, 0]} scale={[0.9, 1.2, 0.9]} castShadow dispose={null}>
+        <primitive attach="geometry" object={getSphereGeometry(0.22, 16, 14)} />
+        <meshStandardMaterial color="#38bdf8" emissive="#0ea5e9" emissiveIntensity={lit ? 0.85 : 0.4} roughness={0.15} metalness={0.1} />
+      </mesh>
+      {lit && (
+        <>
+          <Box name="pylon-glow-left" color="#fde68a" position={[-1.2, 3.72, 0]} scale={[0.06, 1.5, 0.3]} />
+          <Box name="pylon-glow-right" color="#fde68a" position={[1.2, 3.72, 0]} scale={[0.06, 1.5, 0.3]} />
+        </>
+      )}
+    </group>
+  )
+}
+
+// Rounded shrub — a couple of overlapping spheres for a soft, non-boxy bush.
+function Shrub({ position, r = 0.34, color }: { position: Vec3; r?: number; color: string }) {
+  return (
+    <group position={position}>
+      <mesh position={[0, r * 0.6, 0]} castShadow dispose={null}>
+        <primitive attach="geometry" object={getSphereGeometry(r, 10, 8)} />
+        <primitive attach="material" object={getStandardMaterial(color, 0.72, 0)} />
+      </mesh>
+      <mesh position={[r * 0.5, r * 0.42, r * 0.2]} castShadow dispose={null}>
+        <primitive attach="geometry" object={getSphereGeometry(r * 0.62, 8, 6)} />
+        <primitive attach="material" object={getStandardMaterial(color, 0.72, 0)} />
+      </mesh>
+    </group>
+  )
+}
+
+const FLOWER_COLORS = ['#f472b6', '#fb923c', '#facc15', '#f87171', '#c084fc']
+
+function FlowerPlanter({ position, theme }: { position: Vec3; theme: CityThemeSpec }) {
+  return (
+    <group position={position}>
+      <Box name="planter-box" color="#8a7a63" position={[0, 0.1, 0]} scale={[1.0, 0.2, 0.4]} />
+      <Box name="planter-soil" color="#3b2f24" position={[0, 0.21, 0]} scale={[0.92, 0.04, 0.34]} />
+      {Array.from({ length: 5 }, (_, i) => (
+        <group key={i} position={[-0.36 + i * 0.18, 0.32, (i % 2) * 0.12 - 0.06]}>
+          <Box name={`flower-stem-${i}`} color={theme.foliage} position={[0, -0.09, 0]} scale={[0.03, 0.18, 0.03]} />
+          <mesh dispose={null}>
+            <primitive attach="geometry" object={getSphereGeometry(0.06, 8, 6)} />
+            <meshStandardMaterial color={FLOWER_COLORS[i % FLOWER_COLORS.length]} emissive={FLOWER_COLORS[i % FLOWER_COLORS.length]} emissiveIntensity={0.25} roughness={0.5} />
+          </mesh>
+        </group>
+      ))}
+    </group>
+  )
+}
+
+function LotTree({ position, color }: { position: Vec3; color: string }) {
+  return (
+    <group position={position}>
+      <mesh position={[0, 0.5, 0]} castShadow dispose={null}>
+        <primitive attach="geometry" object={getCylinderGeometry(0.1, 0.14, 1.0, 10)} />
+        <primitive attach="material" object={getStandardMaterial('#5b4636', 0.7, 0)} />
+      </mesh>
+      <mesh position={[0, 1.26, 0]} castShadow dispose={null}>
+        <primitive attach="geometry" object={getSphereGeometry(0.56, 10, 8)} />
+        <primitive attach="material" object={getStandardMaterial(color, 0.72, 0)} />
+      </mesh>
+      <mesh position={[0.28, 1.5, 0.12]} castShadow dispose={null}>
+        <primitive attach="geometry" object={getSphereGeometry(0.34, 8, 6)} />
+        <primitive attach="material" object={getStandardMaterial(color, 0.72, 0)} />
+      </mesh>
+    </group>
+  )
+}
+
+// Curb-appeal greenery around the lot edges, clear of the car lanes.
+function LotLandscaping({ theme }: { theme: CityThemeSpec }) {
+  const leaf = theme.foliage
+  return (
+    <group>
+      <FlowerPlanter position={[-6.4, 0, 3.7]} theme={theme} />
+      <FlowerPlanter position={[6.4, 0, 3.7]} theme={theme} />
+      <Shrub position={[-6.7, 0, 1.9]} color={leaf} />
+      <Shrub position={[-6.7, 0, 0.1]} r={0.4} color={leaf} />
+      <Shrub position={[-6.7, 0, -1.8]} color={leaf} />
+      <Shrub position={[6.7, 0, 1.9]} color={leaf} />
+      <Shrub position={[6.7, 0, 0.1]} r={0.4} color={leaf} />
+      <Shrub position={[6.7, 0, -1.8]} color={leaf} />
+      <Shrub position={[-3.6, 0, 4.5]} r={0.3} color={leaf} />
+      <Shrub position={[3.6, 0, 4.5]} r={0.3} color={leaf} />
+      <LotTree position={[-6.7, 0, -3.4]} color={leaf} />
+      <LotTree position={[6.7, 0, -3.4]} color={leaf} />
     </group>
   )
 }
