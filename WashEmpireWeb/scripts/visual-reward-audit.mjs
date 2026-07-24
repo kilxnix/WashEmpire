@@ -36,7 +36,7 @@ const coveredUpgradeIds = unique([...environmentRewards.matchAll(/upgradeId:\s*'
 const bayUpgradeSection = getSection(
   simulation,
   'export const bayUpgradeDefinitions',
-  'export const employeeDefinitions',
+  'export const campaignDefinitions',
 )
 const bayUpgradeIds = unique([...bayUpgradeSection.matchAll(/id:\s*'([^']+)'/g)].map((match) => match[1]))
 

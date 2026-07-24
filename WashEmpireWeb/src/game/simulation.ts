@@ -27,12 +27,12 @@ const DAY_SECONDS = 30
 const WEEK_SECONDS = DAY_SECONDS * 7
 const BAY_COUNT = 4
 const CUSTOMERS_PER_VISIBLE_CAR = 2
-const BASE_PRICE = 12
+const BASE_PRICE = 16
 const BASE_WASH_SECONDS = 8.8
 const BASE_SPAWN_SECONDS = 1.8
 const BASE_QUEUE_SECONDS = 9.5
-const APPROACH_SECONDS = 7.2
-const ENTERING_SECONDS = 3.1
+const APPROACH_SECONDS = 4.2
+const ENTERING_SECONDS = 2.0
 const PASSING_SECONDS = 8.4
 const WEEKLY_FIXED_COSTS = 520
 const CARD_FEE_RATE = 0.03
@@ -271,7 +271,7 @@ export const employeeDefinitions: EmployeeDefinition[] = [
     id: 'nightManager',
     name: 'Night Manager',
     hireCost: 18000,
-    weeklyWage: 900,
+    weeklyWage: 600,
     effect: 'Collects weekly, trims leakage, +6% demand',
     visual: 'Office staff handles closeout and late customers',
   },
@@ -834,7 +834,7 @@ export function expectedHourlyRevenue(state: GameState): number {
 }
 
 /** Share of theoretical throughput a lot actually captures (arrival gaps, queue churn). */
-const CAPTURE_FACTOR = 0.75
+const CAPTURE_FACTOR = 0.88
 
 const CONVEYOR_BAY_UPGRADE_DISPLAY: Record<BayUpgradeId, { name: string; visual: string }> = {
   selector: { name: 'Entry Console', visual: 'Lane guidance screens and package selector' },
@@ -901,7 +901,7 @@ export function estimatedWeeklyProfit(
   avgWashSeconds /= bays.length
   avgPrice /= bays.length
 
-  const cycleSeconds = avgWashSeconds + ENTERING_SECONDS + 2.6
+  const cycleSeconds = avgWashSeconds + ENTERING_SECONDS + 1.4
   const arrivalsPerSec = 1 / spawnInterval(probe)
   const capacityPerSec = bays.length / cycleSeconds
   const revenue =
@@ -927,7 +927,7 @@ export function weeklyRushTarget(state: GameState): number {
     }, 0) / bays.length
 
   // A bay is also blocked while a car pulls in and while it clears the stall.
-  const cycleSeconds = avgWashSeconds + ENTERING_SECONDS + 2.6
+  const cycleSeconds = avgWashSeconds + ENTERING_SECONDS + 1.4
   const arrivalsPerSec = 1 / spawnInterval(state)
   const capacityPerSec = bays.length / cycleSeconds
   const weeklyCustomers = Math.min(arrivalsPerSec, capacityPerSec) * WEEK_SECONDS * CUSTOMERS_PER_VISIBLE_CAR
@@ -1109,7 +1109,7 @@ function updateCars(input: GameState, deltaSeconds: number): GameState {
         next.progress = 0
       }
     } else if (next.stage === 'leaving') {
-      next.progress = Math.min(1, next.progress + deltaSeconds / 4.2)
+      next.progress = Math.min(1, next.progress + deltaSeconds / 2.2)
     }
 
     if (
@@ -1259,19 +1259,19 @@ function washDurationForPayment(
   priceBonus = 0,
   automatic = false,
 ): number {
-  if (payment.kind === 'laser') return 5.8
-  if (automatic) return Math.max(4.2, 7.4 - bay.upgrades.dryer * 0.32 - bay.upgrades.rinse * 0.18)
+  if (payment.kind === 'laser') return 4.6
+  if (automatic) return Math.max(3.1, 6.6 - bay.upgrades.dryer * 0.4 - bay.upgrades.rinse * 0.24)
 
   const price = bayWashPrice(upgrades, bay, priceBonus)
   const equivalentQuarters = payment.quarters + payment.tokens * 4 + payment.bills * 4
-  const timeShare = Math.min(1.8, Math.max(0.45, equivalentQuarters / (price * 4)))
+  const timeShare = Math.min(1.4, Math.max(0.45, equivalentQuarters / (price * 4)))
   const baySpeed =
     1 -
-    bay.upgrades.wand * 0.055 -
-    bay.upgrades.dryer * 0.035 -
-    bay.upgrades.selector * 0.018 -
+    bay.upgrades.wand * 0.07 -
+    bay.upgrades.dryer * 0.045 -
+    bay.upgrades.selector * 0.022 -
     (upgrades.manager ? 0.06 : 0)
-  return Math.max(3.1, BASE_WASH_SECONDS * timeShare * Math.max(0.56, baySpeed))
+  return Math.max(2.4, BASE_WASH_SECONDS * timeShare * Math.max(0.4, baySpeed))
 }
 
 function paymentValue(payment: Payment): number {
@@ -1280,10 +1280,10 @@ function paymentValue(payment: Payment): number {
 
 function bayWashPrice(upgrades: UpgradeState, bay: BayState, priceBonus = 0): number {
   const premium =
-    bay.upgrades.soap * 0.5 +
-    bay.upgrades.rinse * 0.25 +
-    bay.upgrades.dryer * 0.1 +
-    (upgrades.loyaltyApp ? 0.25 : 0) +
+    bay.upgrades.soap * 1.25 +
+    bay.upgrades.rinse * 0.72 +
+    bay.upgrades.dryer * 0.4 +
+    (upgrades.loyaltyApp ? 0.9 : 0) +
     priceBonus
   return roundMoney(BASE_PRICE + premium)
 }

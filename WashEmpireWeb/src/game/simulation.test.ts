@@ -700,3 +700,102 @@ describe('marketing campaigns', () => {
     expect(launchCampaign(state, 'weekend')).toBe(state)
   })
 })
+
+import { restoreCityDistrict, REVENUE_CROWN_TARGET } from './simulation'
+
+/** Builds a fully-built empire operating from Frostpeak (strong 3-bay snow district). */
+function maxedLateGameState(): GameState {
+  let s = setSpeed(startGame(createInitialState(), 'Maxed Empire'), 10)
+  s = { ...s, cash: 8_000_000 }
+  for (const id of ['harbor', 'downtown', 'skyway', 'beltline'] as const) {
+    s = buyCityDistrict(s, id)
+  }
+  for (const id of ['rustwater', 'harbor', 'downtown', 'skyway', 'beltline'] as const) {
+    for (let level = 0; level < 5; level += 1) s = restoreCityDistrict(s, id)
+  }
+  s = switchCityDistrict(s, 'skyway')
+  for (let bay = 0; bay < s.bays.length; bay += 1) {
+    for (const upgrade of bayUpgradeDefinitions) {
+      for (let level = 0; level < upgrade.maxLevel; level += 1) s = buyBayUpgrade(s, bay, upgrade.id)
+    }
+  }
+  for (const upgrade of upgradeDefinitions) s = buyUpgrade(s, upgrade.id)
+  for (const employee of employeeDefinitions) s = hireEmployee(s, employee.id)
+  return s
+}
+
+/** Advances until `weeks` week-closes have elapsed, reporting weekly economics. */
+function measureWeeklyEconomy(state: GameState, weeks: number) {
+  const startWeek = state.week
+  const startLifetime = state.lifetimeRevenue
+  const startCash = state.cash
+  const weeklyRevenues: number[] = []
+  let s = state
+  let prevWeek = s.week
+  let prevLifetime = s.lifetimeRevenue
+  let guard = 0
+  while (s.week < startWeek + weeks && guard < 2_000_000) {
+    s = advanceGame(s, 0.1)
+    if (s.week > prevWeek) {
+      weeklyRevenues.push(s.lifetimeRevenue - prevLifetime)
+      prevWeek = s.week
+      prevLifetime = s.lifetimeRevenue
+    }
+    guard += 1
+  }
+  const weeksElapsed = Math.max(1, s.week - startWeek)
+  const revenue = (s.lifetimeRevenue - startLifetime) / weeksElapsed
+  const cars = (s.totalCars - state.totalCars) / weeksElapsed
+  return {
+    avgWeeklyRevenue: revenue,
+    minWeeklyRevenue: weeklyRevenues.length ? Math.min(...weeklyRevenues) : 0,
+    avgWeeklyCashDelta: (s.cash - startCash) / weeksElapsed,
+    avgWeeklyCars: cars,
+    avgPricePerCar: cars > 0 ? revenue / cars : 0,
+    weeksElapsed,
+  }
+}
+
+describe('late-game economy (lucrative-and-earned rebalance)', () => {
+  it('a fully built empire clears the Wealth Crown target and runs a clear profit', () => {
+    const random = vi.spyOn(Math, 'random').mockImplementation(seededRandom(4242))
+    try {
+      const econ = measureWeeklyEconomy(maxedLateGameState(), 8)
+
+      // The Wealth Crown needs four straight weeks over $4,000 — every week must clear it.
+      expect(econ.minWeeklyRevenue).toBeGreaterThan(REVENUE_CROWN_TARGET)
+      // Lucrative, but not an idle money-machine.
+      expect(econ.avgWeeklyRevenue).toBeLessThan(7000)
+      // Earned: staff pay for themselves and the lot banks a clear weekly profit.
+      expect(econ.avgWeeklyCashDelta).toBeGreaterThan(1200)
+    } finally {
+      random.mockRestore()
+    }
+  })
+
+  it('a mid-build lot is already break-even-plus, so profit arrives before full max', () => {
+    const random = vi.spyOn(Math, 'random').mockImplementation(seededRandom(909))
+    try {
+      let s = setSpeed(startGame(createInitialState(), 'Mid Build'), 10)
+      s = { ...s, cash: 2_000_000 }
+      for (const id of ['harbor', 'downtown', 'skyway'] as const) s = buyCityDistrict(s, id)
+      for (let level = 0; level < 3; level += 1) s = restoreCityDistrict(s, 'skyway')
+      s = switchCityDistrict(s, 'skyway')
+      // Half-built bays and a couple of lot upgrades, two collectors.
+      for (let bay = 0; bay < s.bays.length; bay += 1) {
+        for (const upgrade of bayUpgradeDefinitions) {
+          for (let level = 0; level < 3; level += 1) s = buyBayUpgrade(s, bay, upgrade.id)
+        }
+      }
+      s = buyUpgrade(s, 'paint')
+      s = buyUpgrade(s, 'signage')
+      s = hireEmployee(s, 'cashRunner')
+      s = hireEmployee(s, 'bayTech')
+
+      const econ = measureWeeklyEconomy(s, 6)
+      expect(econ.avgWeeklyCashDelta).toBeGreaterThan(0)
+    } finally {
+      random.mockRestore()
+    }
+  })
+})
