@@ -5546,7 +5546,14 @@ function LaserWashExpansion() {
 }
 
 function TrafficLayer({ state }: { state: GameState }) {
-  const poses = resolveCarPoses(state)
+  // Yielding is continuous across renders, so it needs the previous result to
+  // work from. Reading it here is the same escape hatch ExposureRig uses: the
+  // poses are three.js state rather than React state, and resolving the same
+  // game state twice returns the same answer, so a repeated render cannot
+  // advance traffic twice or leave the scene stale.
+  const yieldMemory = useRef<Map<string, FollowerMemory>>(new Map())
+  // eslint-disable-next-line react-hooks/refs
+  const poses = resolveCarPoses(state, yieldMemory.current)
   return (
     <>
       {state.cars.map((car) => (
@@ -5907,6 +5914,19 @@ function TransparentBox({
 const MIN_CAR_GAP = 2.4
 const MIN_CAR_GAP_SQ = MIN_CAR_GAP * MIN_CAR_GAP
 
+// Furthest a yielding car may fall behind the spot the simulation has it at,
+// in world units. Enough to clear a stopped car, bounded so a held car never
+// drifts so far that it has to catch up in a rush.
+const MAX_YIELD_DISTANCE = 4.4
+// Resolution of the backwards search for a clear spot, in world units.
+const YIELD_SEARCH_STEP = 0.3
+// A car that has been held closes the gap at this multiple of its normal speed.
+// Above 1 so traffic drains; low enough that catching up still reads as driving.
+const YIELD_CATCHUP = 1.7
+// The yield allowance ramps to zero over the last stretch of a route, so a car
+// is back on its exact path by the time the simulation hands it to a bay.
+const YIELD_RELEASE = 0.14
+
 // Right-of-way: cars in/at a bay hold their spot; arriving cars yield to them;
 // drive-bys yield to everyone. Higher wins.
 function carRank(stage: CarStage): number {
@@ -5917,54 +5937,107 @@ function carRank(stage: CarStage): number {
 
 type ResolvedPose = { position: Vec3; rotationY: number }
 
+// Where the yielding left each car last render. Without this the clear/blocked
+// test is decided fresh every frame, so the instant a blocker moves in or out
+// of range the car snaps the whole yield distance at once and reads as a
+// flicker — most visibly as a washed car pulls out of a bay and releases the
+// queue behind it.
+type FollowerMemory = { key: string; raw: number; eased: number }
+
 // Cars follow fixed road paths with no awareness of each other, so two on the
 // same route (or crossing at a junction) render on top of one another. Resolve
-// it globally: place the highest-priority cars first, then pull each lower one
+// it globally: place the highest-priority cars first, then hold each lower one
 // back along its own path until it clears everything already placed. Runs at
 // render time because the road paths live here, not in the simulation.
-function resolveCarPoses(state: GameState): Map<string, ResolvedPose> {
+function resolveCarPoses(state: GameState, memory: Map<string, FollowerMemory>): Map<string, ResolvedPose> {
   const conveyor = isConveyorCity(state)
   const result = new Map<string, ResolvedPose>()
   const placed: Vec3[] = []
-  const followers: Array<{ car: Car; route: PathPoint[]; rawEased: number }> = []
+  const followers: Array<{
+    car: Car
+    key: string
+    segments: SmoothPathSegment[]
+    totalLength: number
+    tail: PathPoint
+    rawEased: number
+  }> = []
 
   for (const car of state.cars) {
     if (car.stage === 'approaching' || car.stage === 'passing') {
       const x = laneXForCar(car, state, conveyor)
       const route = car.stage === 'passing' ? passByRoute(car) : arrivalRoute(car, x)
-      followers.push({ car, route, rawEased: ease(car.progress) })
+      const segments = smoothPathSegments(route)
+      followers.push({
+        car,
+        // A stage or bay change swaps the route out from under the car, so the
+        // remembered position on the old one no longer means anything.
+        key: `${car.stage}:${car.bayIndex}`,
+        segments,
+        totalLength: segments.reduce((total, segment) => total + segment.length, 0),
+        tail: route[route.length - 1] ?? [0, 0],
+        rawEased: ease(car.progress),
+      })
     } else {
       const pose = carPose(car, state)
       result.set(car.id, pose)
       placed.push(pose.position)
+      memory.delete(car.id)
     }
   }
 
   // Approaching cars claim space before drive-bys; within a rank the car further
-  // along leads, so the one behind is the one that yields.
-  followers.sort((a, b) => carRank(b.car.stage) - carRank(a.car.stage) || b.rawEased - a.rawEased)
+  // along leads, so the one behind is the one that yields. Ties break on id so
+  // the order cannot flip between frames.
+  followers.sort(
+    (a, b) =>
+      carRank(b.car.stage) - carRank(a.car.stage) ||
+      b.rawEased - a.rawEased ||
+      a.car.id.localeCompare(b.car.id),
+  )
+
+  const live = new Set<string>()
 
   for (const follower of followers) {
-    let eased = follower.rawEased
-    let pose = poseFromPath(follower.route, eased)
-    let guard = 0
-    while (
-      guard < 26 &&
-      placed.some((p) => (p[0] - pose.position[0]) ** 2 + (p[2] - pose.position[2]) ** 2 < MIN_CAR_GAP_SQ)
-    ) {
-      eased -= 0.03
-      if (eased <= 0) {
-        pose = poseFromPath(follower.route, 0)
-        break
-      }
-      pose = poseFromPath(follower.route, eased)
-      guard += 1
+    const { car, segments, totalLength, tail, rawEased } = follower
+    live.add(car.id)
+    const previous = memory.get(car.id)
+    const carried = previous && previous.key === follower.key ? previous : null
+    const perUnit = totalLength > 0 ? 1 / totalLength : 0
+
+    // Give the allowance back over the end of the route so the car is on its
+    // exact path again before the simulation moves it to the next stage.
+    const release = Math.min(1, Math.max(0, (1 - rawEased) / YIELD_RELEASE))
+    const lagLimit = MAX_YIELD_DISTANCE * perUnit * release
+
+    // The resolved spot only ever moves forward, and only a little faster than
+    // the simulation is moving the car, so nothing can teleport either way.
+    const floor = carried ? Math.min(rawEased, Math.max(carried.eased, rawEased - lagLimit)) : rawEased
+    const advance = carried ? Math.max(0, rawEased - carried.raw) * YIELD_CATCHUP : 0
+    const searchStep = Math.max(0.002, YIELD_SEARCH_STEP * perUnit)
+
+    let eased = carried ? Math.min(rawEased, floor + advance) : rawEased
+    let pose = poseFromSegments(segments, totalLength, eased, tail)
+    while (eased > floor && isCarSpotBlocked(placed, pose.position)) {
+      eased = Math.max(floor, eased - searchStep)
+      pose = poseFromSegments(segments, totalLength, eased, tail)
     }
-    result.set(follower.car.id, pose)
+
+    memory.set(car.id, { key: follower.key, raw: rawEased, eased })
+    result.set(car.id, pose)
     placed.push(pose.position)
   }
 
+  for (const id of [...memory.keys()]) {
+    if (!live.has(id)) memory.delete(id)
+  }
+
   return result
+}
+
+function isCarSpotBlocked(placed: Vec3[], position: Vec3): boolean {
+  return placed.some(
+    (p) => (p[0] - position[0]) ** 2 + (p[2] - position[2]) ** 2 < MIN_CAR_GAP_SQ,
+  )
 }
 
 function carPose(car: Car, state: GameState): { position: Vec3; rotationY: number } {
@@ -6096,13 +6169,23 @@ function passByRoute(car: Car): PathPoint[] {
 }
 
 function poseFromPath(points: PathPoint[], progress: number): { position: Vec3; rotationY: number } {
-  const safeProgress = Math.min(1, Math.max(0, progress))
   const segments = smoothPathSegments(points)
   const totalLength = segments.reduce((total, segment) => total + segment.length, 0)
+  return poseFromSegments(segments, totalLength, progress, points[points.length - 1] ?? [0, 0])
+}
+
+// Split out so the traffic resolver can sample the same route many times per
+// frame without rebuilding its segments each probe.
+function poseFromSegments(
+  segments: SmoothPathSegment[],
+  totalLength: number,
+  progress: number,
+  fallback: PathPoint,
+): { position: Vec3; rotationY: number } {
+  const safeProgress = Math.min(1, Math.max(0, progress))
   const distance = safeProgress * totalLength
 
   if (segments.length === 0 || totalLength <= 0) {
-    const fallback = points[points.length - 1] ?? [0, 0]
     return { position: [fallback[0], 0.02, fallback[1]], rotationY: 0 }
   }
 
