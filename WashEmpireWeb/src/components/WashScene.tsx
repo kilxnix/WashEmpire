@@ -3,7 +3,7 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { ContactShadows, Environment, Lightformer, OrbitControls, Sky } from '@react-three/drei'
 import { Bloom, BrightnessContrast, EffectComposer, HueSaturation, SMAA, Vignette } from '@react-three/postprocessing'
 import * as THREE from 'three'
-import type { BayState, BayUpgradeId, Car, CityDefinition, CityDistrictState, CityTheme, GameState, GraphicsQuality } from '../game/types'
+import type { BayState, BayUpgradeId, Car, CarStage, CityDefinition, CityDistrictState, CityTheme, GameState, GraphicsQuality } from '../game/types'
 import { activeBayCount, cashBoxValue, cityDefinitions, currentCityDefinition, currentCityDistrict, isConveyorCity, totalCashBox } from '../game/simulation'
 import { activeEnvironmentRewards, type EnvironmentRewardVisualId } from '../game/environmentRewards'
 import { PrototypeAssetLayer } from './PrototypeAssetLayer'
@@ -462,9 +462,7 @@ export function WashScene({
       <RenderInfoProbe />
       {rideAlong ? <RideAlongCamera state={state} /> : <CameraSetup />}
       <Lot state={state} onCollect={onCollect} graphicsQuality={graphicsQuality} />
-      {state.cars.map((car) => (
-        <CarWithCustomer car={car} key={car.id} state={state} />
-      ))}
+      <TrafficLayer state={state} />
       {collectFx && <CollectBurst key={collectFx.id} state={state} />}
       {!rideAlong && focus && (
         <PurchaseVignette key={focus.id} focus={focus} state={state} onDone={onFocusDone} />
@@ -5496,8 +5494,19 @@ function LaserWashExpansion() {
   )
 }
 
-function CarWithCustomer({ car, state }: { car: Car; state: GameState }) {
-  const pose = carPose(car, state)
+function TrafficLayer({ state }: { state: GameState }) {
+  const poses = resolveCarPoses(state)
+  return (
+    <>
+      {state.cars.map((car) => (
+        <CarWithCustomer car={car} key={car.id} state={state} pose={poses.get(car.id)} />
+      ))}
+    </>
+  )
+}
+
+function CarWithCustomer({ car, state, pose: resolvedPose }: { car: Car; state: GameState; pose?: ResolvedPose }) {
+  const pose = resolvedPose ?? carPose(car, state)
   const bodyColor = car.color || TRAFFIC_PALETTE[car.variant % TRAFFIC_PALETTE.length] || TRAFFIC_PALETTE[0]
   const accentColor = car.stage === 'passing' ? '#0a8496' : '#0f4f9c'
   const automatic = isConveyorCity(state)
@@ -5840,6 +5849,71 @@ function TransparentBox({
       <primitive attach="material" object={getStandardMaterial(color, 0.25, 0.02, opacity)} />
     </mesh>
   )
+}
+
+// Minimum centre-to-centre distance between two cars before they read as
+// clipping (bodies are ~2 long, ~1 wide).
+const MIN_CAR_GAP = 2.4
+const MIN_CAR_GAP_SQ = MIN_CAR_GAP * MIN_CAR_GAP
+
+// Right-of-way: cars in/at a bay hold their spot; arriving cars yield to them;
+// drive-bys yield to everyone. Higher wins.
+function carRank(stage: CarStage): number {
+  if (stage === 'washing' || stage === 'entering' || stage === 'leaving' || stage === 'queued') return 3
+  if (stage === 'approaching') return 2
+  return 1
+}
+
+type ResolvedPose = { position: Vec3; rotationY: number }
+
+// Cars follow fixed road paths with no awareness of each other, so two on the
+// same route (or crossing at a junction) render on top of one another. Resolve
+// it globally: place the highest-priority cars first, then pull each lower one
+// back along its own path until it clears everything already placed. Runs at
+// render time because the road paths live here, not in the simulation.
+function resolveCarPoses(state: GameState): Map<string, ResolvedPose> {
+  const conveyor = isConveyorCity(state)
+  const result = new Map<string, ResolvedPose>()
+  const placed: Vec3[] = []
+  const followers: Array<{ car: Car; route: PathPoint[]; rawEased: number }> = []
+
+  for (const car of state.cars) {
+    if (car.stage === 'approaching' || car.stage === 'passing') {
+      const x = laneXForCar(car, state, conveyor)
+      const route = car.stage === 'passing' ? passByRoute(car) : arrivalRoute(car, x)
+      followers.push({ car, route, rawEased: ease(car.progress) })
+    } else {
+      const pose = carPose(car, state)
+      result.set(car.id, pose)
+      placed.push(pose.position)
+    }
+  }
+
+  // Approaching cars claim space before drive-bys; within a rank the car further
+  // along leads, so the one behind is the one that yields.
+  followers.sort((a, b) => carRank(b.car.stage) - carRank(a.car.stage) || b.rawEased - a.rawEased)
+
+  for (const follower of followers) {
+    let eased = follower.rawEased
+    let pose = poseFromPath(follower.route, eased)
+    let guard = 0
+    while (
+      guard < 26 &&
+      placed.some((p) => (p[0] - pose.position[0]) ** 2 + (p[2] - pose.position[2]) ** 2 < MIN_CAR_GAP_SQ)
+    ) {
+      eased -= 0.03
+      if (eased <= 0) {
+        pose = poseFromPath(follower.route, 0)
+        break
+      }
+      pose = poseFromPath(follower.route, eased)
+      guard += 1
+    }
+    result.set(follower.car.id, pose)
+    placed.push(pose.position)
+  }
+
+  return result
 }
 
 function carPose(car: Car, state: GameState): { position: Vec3; rotationY: number } {
