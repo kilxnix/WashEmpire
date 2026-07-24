@@ -417,6 +417,9 @@ function SceneEffects({ multisampling }: { multisampling: number }) {
 function ExposureRig({ exposure }: { exposure: number }) {
   const gl = useThree((three) => three.gl)
   useEffect(() => {
+    // The renderer is long-lived three.js state, not React state; configuring it
+    // in place is the documented r3f escape hatch.
+    // eslint-disable-next-line react-hooks/immutability
     gl.toneMapping = THREE.ACESFilmicToneMapping
     gl.toneMappingExposure = exposure
   }, [gl, exposure])
@@ -730,6 +733,24 @@ function RenderInfoProbe() {
   const gl = useThree((three) => three.gl)
   const frame = useRef(0)
 
+  // The effect composer renders several passes per frame, and three.js clears
+  // render counters at the start of every pass. Accumulate them by hand so the
+  // probe reports the whole frame instead of just the final fullscreen pass.
+  useEffect(() => {
+    // Same r3f escape hatch: renderer bookkeeping lives outside React state.
+    // eslint-disable-next-line react-hooks/immutability
+    gl.info.autoReset = false
+    return () => {
+      gl.info.autoReset = true
+    }
+  }, [gl])
+
+  // Priority 0 runs before the composer (priority 1): start the frame at zero.
+  useFrame(() => {
+    gl.info.reset()
+  }, 0)
+
+  // Priority 2 runs after the composer, once every pass has been counted.
   useFrame(() => {
     frame.current += 1
     if (frame.current % 60 !== 0) return
@@ -755,7 +776,7 @@ function RenderInfoProbe() {
       triangles: info.render.triangles,
       usedJSHeapSize: heap?.usedJSHeapSize,
     }
-  })
+  }, 2)
 
   return null
 }

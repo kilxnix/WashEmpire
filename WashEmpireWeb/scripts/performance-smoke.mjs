@@ -16,6 +16,8 @@ const MAX_TEXTURE_DRIFT = 3
 const MAX_HEAP_DRIFT_MB = 50
 const WARMUP_MS = 24_000
 const MEASURE_MS = 14_000
+const HEAP_SAMPLES = 3
+const HEAP_SETTLE_MS = 400
 
 if (!existsSync(join(process.cwd(), 'dist', 'index.html'))) {
   throw new Error('[performance-smoke] Production build is missing. Run npm.cmd run build before audit:perf.')
@@ -76,21 +78,21 @@ async function runPerformanceCheck(browser, url) {
     await speed10.click()
 
     await page.waitForTimeout(WARMUP_MS)
-    await forceGarbageCollection(cdp)
     const warm = await sampleRenderInfo(page)
+    const warmHeapMb = await measureSettledHeapMb(cdp, page)
 
     await page.waitForTimeout(MEASURE_MS)
-    await forceGarbageCollection(cdp)
     const final = await sampleRenderInfo(page)
+    const finalHeapMb = await measureSettledHeapMb(cdp, page)
     await page.screenshot({ path: join(qaDir, 'performance-smoke.png'), fullPage: true })
 
     const geometryDrift = final.geometries - warm.geometries
     const textureDrift = final.textures - warm.textures
-    const heapDrift = optionalHeapDriftMb(warm, final)
+    const heapDrift = warmHeapMb === null || finalHeapMb === null ? null : finalHeapMb - warmHeapMb
     const summary = [
       '[performance-smoke] WebGL sample:',
-      `warm=${describe(warm)}`,
-      `final=${describe(final)}`,
+      `warm=${describe(warm, warmHeapMb)}`,
+      `final=${describe(final, finalHeapMb)}`,
       `drift={geometries:${geometryDrift}, textures:${textureDrift}, heap:${heapDrift === null ? 'n/a' : `${heapDrift.toFixed(1)} MB`}}`,
     ].join('\n')
 
@@ -119,6 +121,28 @@ async function forceGarbageCollection(cdp) {
   await cdp.send('Runtime.evaluate', { expression: 'globalThis.gc?.()' }).catch(() => null)
 }
 
+/**
+ * A single post-GC heap read swings tens of MB run to run, which made this gate
+ * fail at random. Collect a few times and keep the lowest reading: the floor
+ * after collection is the memory actually retained, so a real leak still shows
+ * up while ordinary allocation churn does not.
+ */
+async function measureSettledHeapMb(cdp, page) {
+  let lowestBytes = Infinity
+
+  for (let attempt = 0; attempt < HEAP_SAMPLES; attempt += 1) {
+    await forceGarbageCollection(cdp)
+    await page.waitForTimeout(HEAP_SETTLE_MS)
+
+    const usage = await cdp.send('Runtime.getHeapUsage').catch(() => null)
+    if (usage && typeof usage.usedSize === 'number') {
+      lowestBytes = Math.min(lowestBytes, usage.usedSize)
+    }
+  }
+
+  return Number.isFinite(lowestBytes) ? lowestBytes / 1024 / 1024 : null
+}
+
 async function sampleRenderInfo(page) {
   return page.evaluate(() => {
     const info = window.__washEmpireRenderInfo
@@ -141,13 +165,8 @@ function assertDrift(label, value, max) {
   }
 }
 
-function optionalHeapDriftMb(warm, final) {
-  if (typeof warm.usedJSHeapSize !== 'number' || typeof final.usedJSHeapSize !== 'number') return null
-  return (final.usedJSHeapSize - warm.usedJSHeapSize) / 1024 / 1024
-}
-
-function describe(info) {
-  const heap = typeof info.usedJSHeapSize === 'number' ? `, heap=${(info.usedJSHeapSize / 1024 / 1024).toFixed(1)} MB` : ''
+function describe(info, heapMb) {
+  const heap = typeof heapMb === 'number' ? `, heap=${heapMb.toFixed(1)} MB` : ''
   return `{calls:${info.calls}, geometries:${info.geometries}, textures:${info.textures}, programs:${info.programs}, triangles:${info.triangles}${heap}}`
 }
 
