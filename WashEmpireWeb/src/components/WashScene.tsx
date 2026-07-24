@@ -851,8 +851,8 @@ function ConveyorWashSite({
       <Box name="auto-right-wall" color={theme.wall} position={[3.45, 1.08, 0.2]} scale={[0.18, 2.16, 8.9]} />
       <Box name="auto-back-header" color="#26323d" position={[0, 2.42, 4.58]} scale={[7.1, 0.3, 0.22]} />
       <Box name="auto-front-header" color="#26323d" position={[0, 2.42, -4.18]} scale={[7.1, 0.3, 0.22]} />
-      <Box name="auto-roof-left" color="#93a6b3" position={[-2.18, 2.58, 0.2]} scale={[1.8, 0.14, 8.9]} />
-      <Box name="auto-roof-right" color="#93a6b3" position={[2.18, 2.58, 0.2]} scale={[1.8, 0.14, 8.9]} />
+      <ConveyorCanopy trim={theme.trim} />
+      <ConveyorGateway theme={theme} />
       <Text color="#f8fafc" fontSize={0.24} position={[-2.6, 2.42, -4.35]}>
         AUTOMATIC EXPRESS
       </Text>
@@ -868,6 +868,57 @@ function ConveyorWashSite({
       <EmployeeParking state={state} />
       {state.collectRequired && (state.lastReview?.autoCollected ?? 0) > 0 && <StaffCollectionMarker />}
       {hasReward(rewardIds, 'vacuum-island-pad') && <VacuumIsland automatic />}
+    </group>
+  )
+}
+
+// Matches the self-serve BayCanopy, sized for the wider automatic tunnel:
+// rounded wall-top coping and arched ribs read as a real wash tunnel while
+// staying open to the camera.
+function ConveyorCanopy({ trim }: { trim: string }) {
+  return (
+    <group>
+      {[-3.45, 3.45].map((wx) => (
+        <mesh key={`autocope-${wx}`} name={`auto-coping-${wx}`} position={[wx, 2.2, 0.2]} rotation={[Math.PI / 2, 0, 0]} castShadow dispose={null}>
+          <primitive attach="geometry" object={getCylinderGeometry(0.16, 0.16, 8.9, 16)} />
+          <primitive attach="material" object={getStandardMaterial('#cbd5e1', 0.5, 0.06)} />
+        </mesh>
+      ))}
+      {[-3.6, -1.7, 0.2, 2.1, 4.0].map((rz, i) => (
+        <mesh key={`autorib-${i}`} name={`auto-rib-${i}`} position={[0, 2.16, rz]} scale={[1, 0.34, 1]} castShadow dispose={null}>
+          <primitive attach="geometry" object={getTorusGeometry(3.45, 0.09, 8, 30, Math.PI)} />
+          <primitive attach="material" object={getStandardMaterial(trim, 0.42, 0.12)} />
+        </mesh>
+      ))}
+      <Box name="auto-ridge" color="#94a4b2" position={[0, 3.33, 0.2]} scale={[0.1, 0.1, 8.9]} roughness={0.5} metalness={0.12} />
+    </group>
+  )
+}
+
+// Grand pillared entrance arch for the automatic tunnel, matching BayGateway.
+function ConveyorGateway({ theme }: { theme: CityThemeSpec }) {
+  return (
+    <group name="auto-gateway" position={[0, 0, -4.5]}>
+      {[-3.45, 3.45].map((px) => (
+        <group key={`autopillar-${px}`} position={[px, 0, 0]}>
+          <mesh position={[0, 1.16, 0]} castShadow dispose={null}>
+            <primitive attach="geometry" object={getCylinderGeometry(0.18, 0.21, 2.32, 20)} />
+            <primitive attach="material" object={getStandardMaterial(theme.trim, 0.4, 0.14)} />
+          </mesh>
+          <mesh position={[0, 0.14, 0]} castShadow dispose={null}>
+            <primitive attach="geometry" object={getCylinderGeometry(0.28, 0.32, 0.28, 20)} />
+            <primitive attach="material" object={getStandardMaterial('#cbd5e1', 0.5, 0.06)} />
+          </mesh>
+        </group>
+      ))}
+      <mesh position={[0, 2.32, 0]} scale={[1, 0.5, 1]} castShadow dispose={null}>
+        <primitive attach="geometry" object={getTorusGeometry(3.5, 0.18, 12, 32, Math.PI)} />
+        <primitive attach="material" object={getStandardMaterial(theme.accent, 0.38, 0.18)} />
+      </mesh>
+      <mesh position={[0, 4.08, 0.02]} scale={[1, 1.2, 1]} castShadow dispose={null}>
+        <primitive attach="geometry" object={getSphereGeometry(0.24, 16, 14)} />
+        <meshStandardMaterial color="#38bdf8" emissive="#0ea5e9" emissiveIntensity={0.6} roughness={0.15} metalness={0.1} />
+      </mesh>
     </group>
   )
 }
